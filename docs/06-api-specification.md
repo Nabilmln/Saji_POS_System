@@ -4,11 +4,11 @@
 
 | Metadata | Nilai |
 |---|---|
-| Versi | **1.0 — Draft kontrak implementasi** |
+| Versi | **1.1 — BE-01 contract alignment** |
 | Tanggal | **10 Oktober 2026** |
 | Lokasi repository | `docs/06-api-specification.md` |
 | Acuan | PRD v1.2; Business Rules v1.2; User Flows v1.2; System Architecture v1.0; Database Design v1.0 |
-| Stack target | Next.js App Router Route Handlers, TypeScript, Zod, Drizzle ORM, Neon PostgreSQL, Better Auth (usulan) |
+| Stack target | Next.js App Router Route Handlers, TypeScript, Zod, Drizzle ORM, Neon PostgreSQL, Neon Managed Better Auth |
 | Base path | `/api` (same-origin) |
 | Format | JSON UTF-8; `camelCase` untuk payload publik; API database tetap `snake_case` |
 | Status | **Rancangan**, tidak menandakan endpoint sudah diimplementasikan |
@@ -88,9 +88,9 @@ Error:
 
 ## 2. Autentikasi, akses publik, dan matriks role
 
-### 2.1 Staff authentication (Better Auth; rancangan)
+### 2.1 Staff authentication (Neon Managed Better Auth; keputusan G-03)
 
-Framework menangani `/api/auth/[...all]` (misalnya `POST /api/auth/sign-in/email`, `POST /api/auth/sign-out`, `GET /api/auth/get-session`). Payload/response **mengikuti Better Auth**, bukan envelope milik kita. Nonaktifkan signup publik; akun staff hanya dibuat Admin melalui service server tepercaya. `staff_profiles` menyimpan role `ADMIN|CASHIER` dan `is_active`.
+Neon Auth sudah diaktifkan dalam `neon.ts`; aplikasi Next.js akan memasang proxy Managed Auth di `/api/auth/[...path]`. Payload/response login, logout, dan session **mengikuti SDK Neon Auth/Better Auth**, bukan envelope milik kita. Nonaktifkan sign-up baru **pada konfigurasi Neon Auth branch** sebelum merilis route auth; menyembunyikan tombol sign-up saja tidak cukup. Pengelola membuat admin awal melalui operasi user tepercaya pada branch development, lalu mengaitkan `staff_profiles` dengan ID user tersebut. Akun kasir berikutnya dibuat oleh Admin melalui service server tepercaya. Mekanisme pengiriman kredensial/reset dan kemampuan Admin API yang dipakai diverifikasi pada BE-03; tidak menyimpan password awal di repository atau seed. `staff_profiles` menyimpan role `ADMIN|CASHIER` dan `is_active`.
 
 **Setiap** endpoint `/api/staff/*` dan `/api/admin/*`: validasi sesi server, `staff_profiles.is_active`, lalu role. Admin boleh melakukan operasi cashier. Kasir tidak boleh menggunakan endpoint admin walaupun membuat HTTP request secara manual. `GET /api/staff/me` mengembalikan profil aman tanpa hash password atau token.
 
@@ -272,7 +272,7 @@ Headers: `Authorization: Bearer <guestToken>`, `Idempotency-Key: <uuid>` (nilai 
 }
 ```
 
-**Validasi:** minimal satu baris; item ID UUID; qty bilangan bulat 1–99 per baris (batas rancangan); item duplikat dalam satu request ditolak atau dinormalisasi konsisten (usulan: tolak); note maksimum 500 karakter; nama diambil dari guestToken; tidak menerima harga. `clientRequestKey` UUID wajib dan cocok dengan header bila keduanya dikirim. Server menghitung `request_fingerprint` untuk mendeteksi penggunaan ulang key dengan payload berbeda (lihat §12).
+**Validasi:** minimal satu baris; item ID UUID; qty bilangan bulat 1–99 per baris; item duplikat dalam satu request **ditolak**; note maksimum 500 karakter; nama diambil dari guestToken; tidak menerima harga. `clientRequestKey` UUID wajib dan cocok dengan header bila keduanya dikirim. Server menghitung `request_fingerprint` untuk mendeteksi penggunaan ulang key dengan payload berbeda (lihat §12).
 
 **201**:
 
@@ -647,7 +647,7 @@ Tanpa `print`, `download PDF`, atau integrasi printer sebagai persyaratan MVP. T
 ### 8.3 Manajemen akun staff
 
 - `GET /api/admin/staff?page=1&pageSize=20`: `{userId,displayName,role,isActive,createdAt}`; jangan tampilkan password/token/hash.
-- `POST /api/admin/staff` Body `{"email":"cashier@example.test","displayName":"Kasir 1","role":"CASHIER","initialPassword":"<secret>"}`; buat identitas **melalui server/auth provider** dan profil staff. Tidak ada signup publik. **201** mengembalikan profil tanpa password. Kebijakan penyampaian password awal, reset password, dan mencegah partial user creation wajib direncanakan saat integrasi Better Auth.
+- `POST /api/admin/staff` Body `{"email":"cashier@example.test","displayName":"Kasir 1","role":"CASHIER"}`; buat identitas **melalui operasi Admin Neon Managed Auth** dan profil staff. Tidak ada signup publik atau password di API admin aplikasi. **201** mengembalikan profil tanpa kredensial. Alur pengiriman undangan/reset dan kompensasi bila profil gagal dibuat sesudah user Auth tercipta wajib diverifikasi pada BE-03 sebelum endpoint dirilis.
 - `PATCH /api/admin/staff/{userId}` Body subset `{"displayName":"Kasir Sore","isActive":false}`; nonaktifkan akses saat cek RBAC berikutnya. Perubahan role sensitif perlu audit, dan cegah menonaktifkan satu-satunya admin aktif. Tidak ada endpoint kasir membuat akun.
 
 ### 8.4 Setting diskon dan pajak live
@@ -749,46 +749,15 @@ Hindari mengirim quote finansial sensitif pada error publik. Pada staff, UI **me
 
 ## 10. Validasi Zod — kontrak TypeScript acuan
 
-Contoh berikut **rancangan**, bukan paket source produksi siap jalan. Implementasi harus menghindari coercion ambigu (`"1.2"`, `"-10"`, `NaN`, integer tidak aman).
+Implementasi awal berada di [`src/lib/contracts.ts`](../src/lib/contracts.ts); file tersebut menjadi sumber schema Zod untuk checkout, payment, billing settings, dan void. Schema memakai strict object, string desimal IDR (maksimum 9.000.000.000.000.000), string versi positif yang muat `BIGINT`, qty integer 1–99, maksimum 30 baris, dan menolak item menu duplikat. Tidak ada coercion untuk angka ambigu (`"1.2"`, `"-10"`, `NaN`, integer tidak aman). Contoh bentuk kontrak:
 
 ```ts
-import { z } from "zod";
-
-const uuid = z.string().uuid();
-const moneyIdr = z.string().regex(/^(0|[1-9]\d*)$/).refine((s) => BigInt(s) <= 9_000_000_000_000_000n);
-const positiveQty = z.number().int().min(1).max(99);
-const version = z.string().regex(/^[1-9]\d*$/);
-
-export const checkoutSchema = z.object({
-  expectedCycleNumber: z.number().int().min(0),
-  clientRequestKey: uuid,
-  note: z.string().trim().max(500).optional(),
-  items: z.array(z.object({
-    menuItemId: uuid,
-    quantity: positiveQty,
-    note: z.string().trim().max(500).optional(),
-  }).strict()).min(1).max(30),
-}).strict();
-
-export const paySchema = z.object({
-  idempotencyKey: uuid,
-  expectedSessionRevision: version,
-  expectedSettingsVersion: version,
-  cashReceivedIdr: moneyIdr,
-}).strict();
-
-export const billingSettingsSchema = z.object({
-  expectedVersion: version,
-  discountEnabled: z.boolean(),
-  discountAmountIdr: moneyIdr,
-  taxEnabled: z.boolean(),
-  taxRateBps: z.number().int().min(0).max(10_000),
-}).strict();
-
-export const voidSchema = z.object({
-  reasonType: z.enum(["CUSTOMER_REQUEST", "EMPLOYEE_ERROR"]),
-  reasonDetail: z.string().trim().min(5).max(500),
-}).strict();
+import {
+  checkoutSchema,
+  paymentSchema,
+  billingSettingsSchema,
+  voidSchema,
+} from "@/lib/contracts";
 ```
 
 Catatan: saat membuat response `priceIdr`, `billRevision`, atau `settingsVersion`, ubah nilai `bigint` menjadi string. Saat parse uang, gunakan `BigInt` pada server lalu pastikan nilai berada dalam batas PostgreSQL `BIGINT`, dan batasi nominal operasional lebih rendah bila perlu.
@@ -866,14 +835,14 @@ Dokumen API tidak boleh diam-diam mengklaim kolom yang belum ada di [`05-schema-
 
 | Perubahan | Alasan | Status |
 |---|---|---|
-| Tambah `orders.request_fingerprint` (`TEXT NOT NULL`, hash request dinormalisasi) | Bedakan retry identik vs key sama dengan payload berbeda | **Usulan penting** |
+| `orders.request_fingerprint` (`TEXT NOT NULL`, SHA-256 hex lowercase) | Bedakan retry identik vs key sama dengan payload berbeda | **Selaras dengan SQL 05** |
 | Kolom/tabel untuk revoked public token **tidak wajib** | Token signed + expiry + cycle check dapat dipakai tanpa tabel baru pada MVP | Desain API |
 | `store_settings.version`, `table_sessions.bill_revision`, `dining_tables.cycle_number` | **Sudah tersedia** di schema 05 | Tidak perlu migrasi baru |
 | `payments.idempotency_key` dan `receipt_snapshot` | **Sudah tersedia** di schema 05 | Tidak perlu migrasi baru |
 | `orders.voided_at`, `order_items.void*`, `served_at` | **Sudah tersedia** di schema 05 | Tidak perlu migrasi baru |
-| Auth tables (`user`, `session`, `account`, `verification`) | Dikelola migrasi Better Auth, terpisah dari schema domain | Integrasi diperlukan |
+| Auth tables di schema `neon_auth` | Dikelola Neon Managed Auth, terpisah dari migrasi Drizzle domain | Verifikasi `neon_auth.user.id` pada branch development sebelum FK staff |
 
-**Fingerprint:** nilai hash hasil normalisasi `{source,tableId,cycleNumber,customerName,note,items}`, bukan hash token tamu mentah. Jika menolak perubahan schema, implementasi harus membandingkan ulang payload request dengan data order yang disimpan, namun lebih rumit. Tanda `request_fingerprint` mesti konsisten untuk retry dengan urutan field JSON yang berbeda.
+**Fingerprint:** SHA-256 hex lowercase dari representasi kanonis `{source,tableId,cycleNumber,customerName,note,items}`. Gunakan nilai setelah validasi dan normalisasi: note opsional menjadi string kosong, item diurutkan stabil berdasarkan `menuItemId`, dan setiap item memuat `quantity` serta note ternormalisasi. Jangan hash token tamu mentah atau urutan key JSON asli. Key request yang sama + fingerprint sama → replay order lama; key sama + fingerprint berbeda → `409 IDEMPOTENCY_KEY_REUSED`. Implementasi hash dan race test berada di BE-06.
 
 ---
 
@@ -945,7 +914,7 @@ Gunakan Vitest (unit calculation/status), test DB Neon branch/disposable Postgre
 |---|---|---|---|
 | **OD-01** | Checkout pertama membuka sesi otomatis atau kasir membuka dulu? | **Usulan auto-open** untuk meja Available; QR Reserved harus check-in | Paling berpengaruh ke checkout/session |
 | **OD-02** | Saat kasir salah centang Served, boleh menghapus centang? | MVP hanya `served=true`; koreksi staff dengan audit bisa dirancang terpisah | UI checklist, servis, audit |
-| **OD-03** | Akun staff dibuat dengan password awal atau undangan/reset? | Admin membuat akun internal; onboarding password diputuskan saat Better Auth disiapkan | Auth ops; tidak memengaruhi order DB |
+| **OD-03** | Alur aktivasi kredensial staff baru | G-03 memilih Managed Auth tanpa public signup; verifikasi operasi Admin dan pengiriman setup/reset di BE-03 | Auth ops; tidak memengaruhi order DB |
 | **OD-04** | Preview total tagihan bagi pelanggan menampilkan agregat satu meja? | `bill-summary` P1 hanya angka agregat, tanpa item/nama orang lain | Privasi QR statis |
 | **OD-05** | Membatasi guest token saat meja telah menjadi Paid? | Cycle guard membatalkan token lama saat meja direset | Pengalaman refresh/order lama |
 | **OD-06** | Bagaimana menutup sesi hasil check-in reservasi jika tamu tidak jadi memesan? | Belum ada endpoint close-empty; **jangan** gunakan close-all-void tanpa histori void | Penutupan sesi kosong di luar alur normal |

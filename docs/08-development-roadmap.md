@@ -9,7 +9,7 @@
 | Repository target | `docs/08-development-roadmap.md` |
 | Pemilik rencana | Solo developer — proyek portofolio |
 | Produk | Restaurant POS untuk **satu outlet**, dine-in, QR table ordering |
-| Stack acuan | Next.js App Router, TypeScript, Neon PostgreSQL, Drizzle ORM, Better Auth (rancangan), Zod, Tailwind CSS, shadcn/ui, TanStack Query; custom React/SVG charts |
+| Stack acuan | Next.js App Router, TypeScript, Neon PostgreSQL, Drizzle ORM, Neon Managed Better Auth, Zod, Tailwind CSS, shadcn/ui, TanStack Query; custom React/SVG charts |
 | Package manager | npm (`package-lock.json`) |
 | Arsitektur | Modular monolith, satu codebase / satu deployment |
 | Referensi wajib | `01-prd-restaurant-pos.md` v1.2; `02-business-rules.md` v1.2; `03-user-flows.md` v1.2; `04-system-architecture.md` v1.0; `05-database-design.md` v1.0; `05-schema-reference.sql`; `06-api-specification.md` v1.0; `07-ui-ux-guidelines.md` v1.0; `docs/DESIGN.md` |
@@ -54,12 +54,12 @@ Jangan menjadikan asumsi teknis sebagai kesepakatan produk. Putuskan hanya saat 
 |---|---|---|---|---|
 | **G-01** | Checkout pertama otomatis membuka sesi saat meja Available, atau harus dibuka kasir? | **Auto-open saat checkout pertama**; meja Reserved baru bisa order setelah check-in | M3 checkout publik | Dua request serentak tidak menciptakan dua sesi; tidak bisa checkout Reserved tanpa check-in |
 | **G-02** | Kasir salah mencentang Served: apakah ada undo? | MVP satu arah; koreksi beralasan/audit dapat ditambahkan | M4 Served UI/API | Transisi status dan histori koreksi |
-| **G-03** | Provisioning akun staf Better Auth | Admin membuat akun awal (tanpa public signup); mekanisme password awal/invite perlu dipilih | M1 auth & M6 staff | Akun staff tidak dapat self-register |
+| **G-03** | Provisioning akun staf | **Diputuskan BE-01:** Neon Managed Better Auth; nonaktifkan sign-up pada konfigurasi branch, bootstrap admin lewat operasi user tepercaya, lalu akun Kasir dibuat Admin. Verifikasi alur kredensial/reset di BE-03 | M1 auth & M6 staff | Akun staff tidak dapat self-register |
 | **G-04** | Apakah customer boleh melihat agregat tagihan satu meja? | P1 agregat nominal saja; tanpa daftar order/nama orang lain | M3 layar status; P1 bill-summary | Tidak mengekspos detail pihak lain |
 | **G-05** | Penutupan sesi reservasi setelah check-in tetapi **belum ada order** | Perlu aturan/endpoint `close-empty` tersendiri; **tidak** memakai `close-all-void` | M6 reservasi | Session kosong ditutup tanpa payment atau void palsu |
 | **G-06** | Order manual kasir masuk Pending atau langsung Preparing? | Langsung Preparing merupakan usulan di PRD/API | M4 manual order | Status konsisten dengan aksi kasir |
 | **G-07** | Pembatalan quantity sebagian dalam satu baris? | MVP void seluruh baris item | M4 void | Subtotal konsisten; alasan wajib |
-| **G-08** | Sumber foto menu saat MVP (URL eksternal tervalidasi atau upload via storage) | Image URL + placeholder aman untuk demo; upload endpoint media P2 di API | M2 menu CRUD/UI | Gambar valid, fallback, ukuran/perizinan |
+| **G-08** | Sumber foto menu saat MVP | **Diputuskan BE-01:** image URL tervalidasi + placeholder aman untuk demo; bucket Neon private yang sudah dikonfigurasi belum diperlukan untuk P0; upload media tetap P2 | M2 menu CRUD/UI | Gambar valid, fallback, ukuran/perizinan |
 | **G-09** | Bila admin mengganti setting tepat ketika pembayaran dieksekusi, aturan konflik? | Version recheck + snapshot dalam transaction yang diserialisasi | M5 payment | Tidak ada tagihan ambigu atau revenue salah |
 
 **Release gate minimum:** G-01, G-02, G-03, G-06, G-07, G-08, G-09 diputuskan/didokumentasikan sebelum freeze P0. G-04 dan G-05 dapat tetap ditunda sampai fitur P1 jika UI tidak bergantung padanya.
@@ -74,6 +74,8 @@ Dokumen `05` dan `06` merupakan **rancangan**, bukan migrasi yang sudah dijalank
 - Pastikan `payments.session_id` unik, unique index satu sesi aktif per meja, snapshot Paid, timestamp audit, dan constraints status tervalidasi.
 - Buat Drizzle migration **versioned**. Jangan menjalankan SQL referensi dan Drizzle migration terpisah ke satu database tanpa rekonsiliasi.
 - Catat setiap perubahan di `docs/05-database-design.md` dan `docs/06-api-specification.md` sebagai revisi terkontrol, bukan mengedit implementasi diam-diam.
+
+**Review BE-01:** `orders.request_fingerprint` telah ditambahkan ke referensi SQL dan dokumen 05–06. `client_request_key`, `bill_revision`, `settings.version`, `cycle_number`, dan keunikan `payments.session_id` sudah tersedia. Kontrak Zod, error envelope, uang string desimal, dan tanggal restoran berada di `src/lib/`. Auth `neon_auth.user.id` harus diperiksa pada branch development sebelum FK/migrasi pertama; jangan migrasi schema domain pada branch `production` yang saat ini ter-link.
 
 ---
 

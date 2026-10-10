@@ -4,7 +4,7 @@
 
 | Metadata | Nilai |
 |---|---|
-| Versi | **1.0 — Draft untuk review** |
+| Versi | **1.1 — BE-01 contract alignment** |
 | Tanggal | **10 Oktober 2026** |
 | Lokasi repository | `docs/05-database-design.md` |
 | Berdasarkan | PRD v1.2, Business Rules v1.2, User Flows v1.2, System Architecture v1.0 |
@@ -83,6 +83,7 @@ erDiagram
       varchar source
       varchar status
       uuid client_request_key UK
+      varchar request_fingerprint
       timestamptz voided_at
     }
     ORDER_ITEMS {
@@ -153,8 +154,8 @@ Catatan: relasi staf dalam diagram disederhanakan; seluruh `accepted_by`, `serve
 
 **Kolom:** `user_id TEXT PK`, `display_name VARCHAR(120)`, `role VARCHAR(12)` (`ADMIN`/`CASHIER`), `is_active BOOLEAN`, `created_at`, `updated_at`.
 
-- Kredensial **tidak** disimpan di tabel ini. Better Auth menangani tabel autentikasi (misalnya user/session/account/verification menurut versi dan konfigurasi yang dipakai).
-- `user_id` secara konseptual mengacu pada user milik Better Auth; **tambahkan foreign key ke tabel autentikasi yang benar setelah migrasi Better Auth dipastikan**, bukan dengan menebak nama schema.
+- Kredensial **tidak** disimpan di tabel ini. Neon Managed Better Auth menangani tabel autentikasi di schema `neon_auth`.
+- `user_id` mengacu ke `neon_auth.user.id` (`TEXT`). Verifikasi nama/tipenya pada branch development sebelum membuat foreign key `staff_profiles.user_id`; jangan menebak migration milik provider.
 - Nonaktifkan staf melalui `is_active=false`, jangan hapus akun yang menjadi pemilik transaksi historis.
 
 ### 3.2 `dining_tables` — daftar meja
@@ -212,6 +213,7 @@ Indeks parsial ini menjamin **maksimal satu sesi aktif per meja**, bahkan saat d
 | `source` | `QR` / `MANUAL` | Dari pelanggan / kasir |
 | `status` | `PENDING` / `PREPARING` / `SERVED` | **Tepat tiga status** |
 | `client_request_key` | `UUID UNIQUE NOT NULL` | Idempotensi checkout, juga untuk manual |
+| `request_fingerprint` | `TEXT NOT NULL` (SHA-256 hex, 64 karakter) | Membandingkan payload semantik saat key diulang; tidak menyimpan guest token |
 | `created_by_user_id` | `TEXT FK NULL` | Kasir bila input manual |
 | `accepted_at`, `accepted_by_user_id` | timestamp / FK nullable | Konfirmasi kasir |
 | `voided_at` | timestamp nullable | Ditandai bila seluruh item order telah di-void; metadata, bukan status keempat |
@@ -293,7 +295,7 @@ Contoh event: `ORDER_ACCEPTED`, `ITEM_SERVED`, `ITEM_VOIDED`, `SESSION_CLOSED_AL
 |---|---|
 | Satu sesi aktif per meja | **DB**: unique partial index `table_sessions(table_id) WHERE closed_at IS NULL` |
 | Satu payment per sesi | **DB**: `UNIQUE(payments.session_id)` |
-| Permintaan checkout tidak membuat order dobel | **DB**: `UNIQUE(orders.client_request_key)` + **service** retry yang mengembalikan hasil lama |
+| Permintaan checkout tidak membuat order dobel | **DB**: `UNIQUE(orders.client_request_key)` + **service** membandingkan `request_fingerprint` sebelum mengembalikan hasil lama |
 | `dining_tables.status = OCCUPIED` ↔ memiliki sesi aktif | **Service transaction** (check-in, checkout pertama, pembayaran, all-void) + integration test; sulit dinyatakan sebagai CHECK antar tabel |
 | Meja `RESERVED` tidak dipakai checkout publik | **Service** dengan lock meja + cek status |
 | `PENDING → PREPARING → SERVED` | **Service state machine**, penolakan transisi ilegal; CHECK DB membatasi nilai enum |
@@ -595,7 +597,7 @@ Pilih `bigint` mode secara konsisten agar API tidak mengirim JavaScript `BigInt`
 src/db/
   index.ts
   schema/
-    auth.ts                 # dari/untuk Better Auth
+    auth.ts                 # mapping read-only Neon Managed Auth, jika dibutuhkan
     staff.ts
     tables.ts
     reservations.ts
@@ -656,7 +658,7 @@ Untuk uji transaksi paralel, gunakan database testing Neon terpisah (bukan produ
 ## 13. Migrasi, seed data, dan deployment
 
 1. Buat project Neon untuk development/test, simpan `DATABASE_URL` **hanya** pada environment variable server.
-2. Inisialisasi Better Auth + migrasi auth terlebih dahulu; pastikan tipe `user.id` yang sebenarnya sebelum menambahkan FK dari staff/audit.
+2. Gunakan Neon Managed Auth yang sudah aktif; verifikasi `neon_auth.user.id` pada branch development sebelum menambahkan FK dari staff/audit. Migrasi auth dikelola Neon, bukan Drizzle aplikasi.
 3. Buat Drizzle schema dan migration untuk tabel domain sesuai ERD; tambahkan index parsial, CHECK, FK, dan metadata.
 4. Seed satu admin demo, satu kasir demo, 8–12 meja, kategori/menu foto dummy, dan singleton settings; jangan masukkan kredensial nyata ke repository.
 5. Jalankan integration test race-condition, lalu E2E dari QR → Paid dan dari QR → ALL_VOID.
@@ -671,7 +673,7 @@ Untuk uji transaksi paralel, gunakan database testing Neon terpisah (bukan produ
 | ID | Keputusan | Status saat dokumen dibuat | Dampak |
 |---|---|---|---|
 | OD-01 | Sesi dibuat otomatis saat checkout pertama meja Available atau diaktifkan kasir? | **Terbuka**. Baseline di diagram: otomatis | Menentukan guard endpoint checkout dan tabel Available → Occupied |
-| TD-01 | Better Auth user ID dan nama tabel aktual | **Rancangan / perlu verifikasi saat setup** | FK `staff_profiles` + migrations |
+| TD-01 | Tipe dan tabel user Neon Managed Auth pada branch development | **Dirancang:** `neon_auth.user.id` TEXT; verifikasi pada BE-02 sebelum FK | FK `staff_profiles` + migrations |
 | TD-02 | Simpan `cycle_number` table untuk menghambat checkout tab lama | **Rancangan disarankan** | Tambahan field request checkout; tidak mencegah QR dipotret |
 | TD-03 | `receipt_snapshot` JSONB untuk struk digital | **Rancangan disarankan** | Bukti transaksi Paid tidak berubah dan UI struk sederhana |
 | TD-04 | Void selalu seluruh baris item (bukan beberapa qty) | **Rancangan penyederhanaan MVP** | UX pembatalan dan implementasi `order_items` |

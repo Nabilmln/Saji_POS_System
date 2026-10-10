@@ -1,8 +1,8 @@
 -- Restaurant POS — 05 / PostgreSQL reference DDL (review draft)
 -- Neon PostgreSQL. Run ONLY against a disposable development database after review.
 -- The authentication "user" / sessions / account / verification tables belong to
--- Better Auth migrations and are intentionally not reproduced here.
--- staff_profiles.user_id should receive FK -> actual Better Auth user table during integration.
+-- Neon Managed Better Auth migrations and are intentionally not reproduced here.
+-- Verify neon_auth.user(id) on the development branch before adding the staff FK.
 
 CREATE TABLE staff_profiles (
   user_id text PRIMARY KEY,
@@ -108,6 +108,7 @@ CREATE TABLE orders (
     CHECK (status IN ('PENDING', 'PREPARING', 'SERVED')),
   note text,
   client_request_key uuid NOT NULL UNIQUE,
+  request_fingerprint text NOT NULL CHECK (request_fingerprint ~ '^[0-9a-f]{64}$'),
   created_by_user_id text REFERENCES staff_profiles(user_id) ON DELETE SET NULL,
   accepted_at timestamptz,
   accepted_by_user_id text REFERENCES staff_profiles(user_id) ON DELETE SET NULL,
@@ -201,4 +202,4 @@ CREATE INDEX audit_entity_time_idx ON audit_events(entity_type, entity_id, creat
 -- 4. payment succeeds only if non-void item count > 0 AND all active orders served.
 -- 5. bill includes only non-void lines and current settings; paid receipts never recompute.
 -- 6. active session checkout requires matching table cycle number; closing increments it.
--- 7. Better Auth user FK is installed in a separate authentication-integrated migration.
+-- 7. The Managed Auth user FK is installed after verifying its branch schema.
