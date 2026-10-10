@@ -2,10 +2,10 @@
 -- Neon PostgreSQL. Run ONLY against a disposable development database after review.
 -- The authentication "user" / sessions / account / verification tables belong to
 -- Neon Managed Better Auth migrations and are intentionally not reproduced here.
--- Verify neon_auth.user(id) on the development branch before adding the staff FK.
+-- The linked Neon database has neon_auth."user"(id uuid).
 
 CREATE TABLE staff_profiles (
-  user_id text PRIMARY KEY,
+  user_id uuid PRIMARY KEY REFERENCES neon_auth."user"(id) ON DELETE RESTRICT,
   display_name varchar(120) NOT NULL,
   role varchar(12) NOT NULL CHECK (role IN ('ADMIN', 'CASHIER')),
   is_active boolean NOT NULL DEFAULT true,
@@ -57,7 +57,7 @@ CREATE TABLE store_settings (
   tax_enabled boolean NOT NULL DEFAULT false,
   tax_rate_bps integer NOT NULL DEFAULT 0 CHECK (tax_rate_bps BETWEEN 0 AND 10000),
   version bigint NOT NULL DEFAULT 1 CHECK (version >= 1),
-  updated_by_user_id text REFERENCES staff_profiles(user_id) ON DELETE SET NULL,
+  updated_by_user_id uuid REFERENCES staff_profiles(user_id) ON DELETE SET NULL,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 INSERT INTO store_settings(id) VALUES (1);
@@ -66,11 +66,11 @@ CREATE TABLE table_sessions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   table_id uuid NOT NULL REFERENCES dining_tables(id) ON DELETE RESTRICT,
   opened_at timestamptz NOT NULL DEFAULT now(),
-  opened_by_user_id text REFERENCES staff_profiles(user_id) ON DELETE SET NULL,
+  opened_by_user_id uuid REFERENCES staff_profiles(user_id) ON DELETE SET NULL,
   bill_revision bigint NOT NULL DEFAULT 1 CHECK (bill_revision >= 1),
   closed_at timestamptz,
   closure_reason varchar(12) CHECK (closure_reason IN ('PAID', 'ALL_VOID')),
-  closed_by_user_id text REFERENCES staff_profiles(user_id) ON DELETE SET NULL,
+  closed_by_user_id uuid REFERENCES staff_profiles(user_id) ON DELETE SET NULL,
   CHECK (
     (closed_at IS NULL AND closure_reason IS NULL) OR
     (closed_at IS NOT NULL AND closure_reason IS NOT NULL)
@@ -92,7 +92,7 @@ CREATE TABLE reservations (
   notes text,
   status varchar(16) NOT NULL DEFAULT 'RESERVED'
     CHECK (status IN ('RESERVED', 'CHECKED_IN', 'CANCELLED')),
-  created_by_user_id text NOT NULL REFERENCES staff_profiles(user_id),
+  created_by_user_id uuid NOT NULL REFERENCES staff_profiles(user_id),
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
@@ -109,9 +109,9 @@ CREATE TABLE orders (
   note text,
   client_request_key uuid NOT NULL UNIQUE,
   request_fingerprint text NOT NULL CHECK (request_fingerprint ~ '^[0-9a-f]{64}$'),
-  created_by_user_id text REFERENCES staff_profiles(user_id) ON DELETE SET NULL,
+  created_by_user_id uuid REFERENCES staff_profiles(user_id) ON DELETE SET NULL,
   accepted_at timestamptz,
-  accepted_by_user_id text REFERENCES staff_profiles(user_id) ON DELETE SET NULL,
+  accepted_by_user_id uuid REFERENCES staff_profiles(user_id) ON DELETE SET NULL,
   voided_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
@@ -132,9 +132,9 @@ CREATE TABLE order_items (
   line_total_idr bigint GENERATED ALWAYS AS (unit_price_idr * quantity) STORED,
   customer_note text,
   served_at timestamptz,
-  served_by_user_id text REFERENCES staff_profiles(user_id) ON DELETE SET NULL,
+  served_by_user_id uuid REFERENCES staff_profiles(user_id) ON DELETE SET NULL,
   voided_at timestamptz,
-  voided_by_user_id text REFERENCES staff_profiles(user_id) ON DELETE SET NULL,
+  voided_by_user_id uuid REFERENCES staff_profiles(user_id) ON DELETE SET NULL,
   void_reason_type varchar(20) CHECK (void_reason_type IN ('CUSTOMER_REQUEST','EMPLOYEE_ERROR')),
   void_reason_detail text,
   CHECK (
@@ -154,7 +154,7 @@ CREATE INDEX order_items_menu_idx ON order_items(menu_item_id);
 CREATE TABLE payments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id uuid NOT NULL UNIQUE REFERENCES table_sessions(id) ON DELETE RESTRICT,
-  cashier_user_id text NOT NULL REFERENCES staff_profiles(user_id) ON DELETE RESTRICT,
+  cashier_user_id uuid NOT NULL REFERENCES staff_profiles(user_id) ON DELETE RESTRICT,
   idempotency_key uuid NOT NULL UNIQUE,
   method varchar(8) NOT NULL DEFAULT 'CASH' CHECK (method = 'CASH'),
   subtotal_idr bigint NOT NULL CHECK (subtotal_idr >= 0),
@@ -180,7 +180,7 @@ CREATE INDEX payments_paid_at_idx ON payments(paid_at DESC);
 
 CREATE TABLE audit_events (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  actor_user_id text REFERENCES staff_profiles(user_id) ON DELETE SET NULL,
+  actor_user_id uuid REFERENCES staff_profiles(user_id) ON DELETE SET NULL,
   actor_type varchar(10) NOT NULL CHECK (actor_type IN ('CUSTOMER','STAFF','SYSTEM')),
   action varchar(80) NOT NULL,
   entity_type varchar(80) NOT NULL,
@@ -202,4 +202,4 @@ CREATE INDEX audit_entity_time_idx ON audit_events(entity_type, entity_id, creat
 -- 4. payment succeeds only if non-void item count > 0 AND all active orders served.
 -- 5. bill includes only non-void lines and current settings; paid receipts never recompute.
 -- 6. active session checkout requires matching table cycle number; closing increments it.
--- 7. The Managed Auth user FK is installed after verifying its branch schema.
+-- 7. Staff user IDs reference the existing Managed Auth user table.

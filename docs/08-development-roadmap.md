@@ -68,14 +68,14 @@ Jangan menjadikan asumsi teknis sebagai kesepakatan produk. Putuskan hanya saat 
 
 Dokumen `05` dan `06` merupakan **rancangan**, bukan migrasi yang sudah dijalankan. Pada M1, lakukan review bersama:
 
-- Sinkronkan tipe ID (UUID untuk entitas bisnis, TEXT untuk auth user), nama enum, FK dan indeks; cocokkan tabel Better Auth yang **benar-benar** dihasilkan versinya.
+- Sinkronkan tipe ID (UUID untuk entitas bisnis dan auth user), nama enum, FK dan indeks; cocokkan tabel Better Auth yang **benar-benar** dihasilkan versinya.
 - Tambahkan `orders.request_fingerprint` bila idempotency API membutuhkannya; pastikan `client_request_key` dan respons replay dirancang konsisten.
 - Tentukan penyimpanan quote/bill revision + settings version dan aturan cycle QR stale; jangan menambahkan tabel baru tanpa kebutuhan nyata.
 - Pastikan `payments.session_id` unik, unique index satu sesi aktif per meja, snapshot Paid, timestamp audit, dan constraints status tervalidasi.
 - Buat Drizzle migration **versioned**. Jangan menjalankan SQL referensi dan Drizzle migration terpisah ke satu database tanpa rekonsiliasi.
 - Catat setiap perubahan di `docs/05-database-design.md` dan `docs/06-api-specification.md` sebagai revisi terkontrol, bukan mengedit implementasi diam-diam.
 
-**Review BE-01:** `orders.request_fingerprint` telah ditambahkan ke referensi SQL dan dokumen 05–06. `client_request_key`, `bill_revision`, `settings.version`, `cycle_number`, dan keunikan `payments.session_id` sudah tersedia. Kontrak Zod, error envelope, uang string desimal, dan tanggal restoran berada di `src/lib/`. Auth `neon_auth.user.id` harus diperiksa pada branch development sebelum FK/migrasi pertama; jangan migrasi schema domain pada branch `production` yang saat ini ter-link.
+**Review BE-01/02:** `orders.request_fingerprint` telah ditambahkan ke referensi SQL dan dokumen 05–06. `client_request_key`, `bill_revision`, `settings.version`, `cycle_number`, dan keunikan `payments.session_id` sudah tersedia. Kontrak Zod, error envelope, uang string desimal, dan tanggal restoran berada di `src/lib/`. `neon_auth.user.id` telah diverifikasi bertipe UUID pada Neon `production`; migrasi Drizzle menyertakan FK staff. Review migrasi dan backup data sebelum mengubah schema.
 
 ---
 
@@ -90,7 +90,7 @@ Centang sebuah subtask hanya setelah bukti pada kolom Selesai tercapai dan perub
 | Status | Subtask | Referensi | Selesai ketika |
 |---|---|---|---|
 | [ ] | **BE-01 · Kontrak dan fondasi** — audit scaffold, selaraskan schema/API, siapkan validasi Zod, error envelope, serialisasi uang dan timezone | `PLAN-01`, `PLAN-02`, `PLAN-03`, `INF-01`, `INF-03` | Kontrak konsisten dengan docs 05–06; lint, typecheck dan build lulus; keputusan `G-03` dicatat sebelum auth |
-| [ ] | **BE-02 · Database dev** — koneksi Neon via `pg`/Drizzle, schema, constraint, migration versioned dan seed fiktif | `INF-02`, `DB-01`, `DB-02` | Migration dan seed dapat dijalankan ulang di DB dev; satu sesi aktif per meja dan satu payment per sesi dijaga DB |
+| [ ] | **BE-02 · Database** — koneksi Neon via `pg`/Drizzle, schema, constraint, migration versioned dan seed fiktif | `INF-02`, `DB-01`, `DB-02` | Migration dan seed dapat diulang di PostgreSQL lokal, lalu diterapkan ke Neon yang ter-link setelah review; satu sesi aktif per meja dan satu payment per sesi dijaga DB |
 | [ ] | **BE-03 · Auth dan RBAC** — login/logout staf, bootstrap aman, disable signup publik, guard Admin/Kasir dan proteksi mutasi | `AUTH-01`, `AUTH-02` | Akun nonaktif dan Kasir ditolak dari API Admin; `AT-21` lulus via HTTP |
 | [ ] | **BE-04 · Master data** — API Admin kategori/menu, availability, meja, token/QR dan billing settings | `MENU-01`, `TABLE-01`, `TABLE-02` (API), `SET-01` | `G-08` diputuskan; availability, QR unik, dan settings version diuji; mutasi hanya Admin |
 | [ ] | **BE-05 · Akses pelanggan** — validasi QR, nama wajib, guest token, katalog publik setelah nama, dan akses status hanya untuk order miliknya | `GUEST-01`, `GUEST-05` (API) | Hanya menu active terlihat setelah nama valid; token tidak membuka data pelanggan lain; `AT-01`, `AT-07` lulus via HTTP |
@@ -99,7 +99,9 @@ Centang sebuah subtask hanya setelah bukti pada kolom Selesai tercapai dan perub
 | [ ] | **BE-08 · Void dan close-all-void** — alasan dan audit Kasir, pengecualian Served, tutup sesi tanpa payment | `POS-06`, `SESSION-02`, `QA-04` | `G-07` disahkan; `AT-10`–`AT-12` lulus; histori tetap ada dan revenue nol |
 | [ ] | **BE-09 · Billing dan pembayaran** — hitung tagihan live, versi quote, full cash atomik, receipt snapshot dan histori API | `BILL-01`, `BILL-02` (API), `PAY-02`, `PAY-03`, `PAY-04` (API) | `G-09` disahkan; `AT-13`–`AT-20` lulus, termasuk race payment/order/settings dan receipt immutable |
 | [ ] | **BE-10 · Operasional P1** — API reservasi/check-in/cancel, akun staf dan laporan revenue Paid | `RES-01`, `RES-02`, `STAFF-01`, `REPORT-01` (API) | `G-05` disahkan; `AT-21`–`AT-23` lulus pada API/DB, tanpa revenue dari Unpaid |
-| [ ] | **BE-11 · Gate backend** — suite unit/integration/API, fixture, CI, security review dan panduan menjalankan backend | `QA-01`, `QA-02`, `QA-04`, `QA-05`, `QA-06`, `SEC-01`, `DOC-01` (backend) | Semua endpoint P0/P1 terdokumentasi dan diuji pada DB terpisah; concurrency/RBAC/invalid input lulus; migration + seed reproducible; tidak ada secret di repo |
+| [ ] | **BE-11 · Gate backend** — suite unit/integration/API, fixture, CI, security review dan panduan menjalankan backend | `QA-01`, `QA-02`, `QA-04`, `QA-05`, `QA-06`, `SEC-01`, `DOC-01` (backend) | Semua endpoint P0/P1 terdokumentasi dan diuji pada PostgreSQL lokal untuk tes mutasi; concurrency/RBAC/invalid input lulus; migration + seed reproducible; tidak ada secret di repo |
+
+**Progress BE-02 (10 Oktober 2026):** schema Drizzle, migrasi versi, dan seed demo selesai. Migrasi dan seed lulus pada PostgreSQL lokal; constraint satu sesi aktif/meja dan satu payment/sesi diuji dalam transaksi rollback. Snapshot Neon `production` `pre-be02-20261010` dibuat sebelum migrasi; migrasi dan seed diterapkan, lalu seed ulang tanpa duplikasi (8 meja, 2 kategori, 4 menu, 1 settings). Kotak tetap kosong sampai perubahan di-commit sesuai aturan roadmap.
 
 **Gate ke Phase 2:** BE-01 sampai BE-11 selesai. Backend dapat menjalankan alur QR → Pending → Preparing → Served → Paid → Available dan ALL_VOID melalui request HTTP tanpa UI. Kontrak request/response, role, error dan fixture tersedia untuk frontend. R0 **belum** tercapai pada gate ini karena alur pengguna dan E2E browser belum diuji.
 
@@ -124,7 +126,7 @@ Centang sebuah subtask hanya setelah bukti pada kolom Selesai tercapai dan perub
 
 ## 4. Backlog referensi per milestone lama
 
-**Urutan eksekusi mengikuti BE/FE di §3**, bukan urutan M0–M7 di bawah. Bagian ini mempertahankan rincian ID task untuk branch, issue, dan traceability. `S` kecil, `M` sedang, `L` kompleks (estimasi relatif, bukan jam); `P0/P1` mengikuti scope produk. **Task selesai hanya jika acceptance criteria terkait diuji.**
+**Urutan eksekusi mengikuti BE/FE di §3**, bukan urutan M0–M7 di bawah. Bagian ini mempertahankan rincian ID task untuk issue, commit, dan traceability. `S` kecil, `M` sedang, `L` kompleks (estimasi relatif, bukan jam); `P0/P1` mengikuti scope produk. **Task selesai hanya jika acceptance criteria terkait diuji.**
 
 ### M0 — Scope, UI direction & contracts
 
@@ -143,15 +145,15 @@ Centang sebuah subtask hanya setelah bukti pada kolom Selesai tercapai dan perub
 | ID | Task | Pri | Size | Bukti selesai |
 |---|---|---|---|---|
 | `INF-01` | Inisialisasi Next.js + TypeScript strict, Tailwind, shadcn/ui, lint/format, alias dan folder modular | P0 | M | Build lint/typecheck hijau; modul terpisah |
-| `INF-02` | Konfigurasi Neon **dev** PostgreSQL, `.env.example` tanpa secret, `pg` + Drizzle ORM | P0 | M | Health/query sederhana dari server, bukan client |
+| `INF-02` | Konfigurasi Neon yang ter-link dan PostgreSQL lokal untuk tes, `.env.example` tanpa secret, `pg` + Drizzle ORM | P0 | M | Health/query sederhana dari server, bukan client |
 | `DB-01` | Review `05-schema-reference.sql` vs Drizzle + Better Auth; finalisasi constraint, enum dan index | P0 | L | Review schema disetujui dan migration pertama dihasilkan |
-| `DB-02` | Jalankan migrasi versioned; seed 1 admin, 1 cashier, kategori/menu/meja/settings fiktif | P0 | M | Database dev bisa di-reseed; tidak menggunakan kredensial nyata |
+| `DB-02` | Jalankan migrasi versioned; seed 1 admin, 1 cashier, kategori/menu/meja/settings fiktif | P0 | M | PostgreSQL lokal bisa di-reseed; Neon hanya diisi data demo setelah review |
 | `AUTH-01` | Better Auth staff login, logout, sesi dan disable public signup | P0 | L | Customer tanpa login, admin/kasir punya sesi aman |
 | `AUTH-02` | `requireStaff`, `requireAdmin`, account active guard, origin/CSRF strategy | P0 | M | Kasir ditolak endpoint admin dengan 403 |
 | `INF-03` | Shared Zod schemas, response/error envelope, money IDR string serialization, utility timezone | P0 | M | Invalid payload 422; tidak ada BigInt JSON error |
 | `QA-01` | Setup Vitest + integration DB tests + Playwright E2E, CI workflow | P0 | M | Semua smoke tests dijalankan otomatis |
 
-**Gate:** test transaksi menggunakan **PostgreSQL sungguhan** (Neon dev branch atau Postgres lokal) agar constraint/locking yang diuji nyata; mocks untuk unit business logic saja.
+**Gate:** test transaksi menggunakan **PostgreSQL lokal sungguhan** agar constraint/locking yang diuji nyata tanpa mengubah data Neon yang ter-link; mocks untuk unit business logic saja.
 
 ### M2 — Menu, table QR, store settings (Admin minimal)
 
@@ -231,7 +233,7 @@ Centang sebuah subtask hanya setelah bukti pada kolom Selesai tercapai dan perub
 | `UX-03` | Bandingkan implementasi dengan `docs/DESIGN.md` dan dokumen 07; review responsive/a11y | P0 | M | Customer 390px, cashier tablet/desktop, admin desktop; tidak ada horizontal overflow |
 | `QA-07` | E2E matrix normal, edge, adversarial, concurrency; mobile keyboard/nav accessibility | P0 | L | Semua blocker resolved, bug list triaged |
 | `SEC-01` | Auth/RBAC, CSRF, rate limit publik, secret exposure, signed token TTL/cycle, upload URL safety | P0 | M | Tidak bisa mengakses pesanan orang lain, admin routes, internal data |
-| `INF-04` | Deploy preview + production demo (mis. Vercel Hobby + Neon dev/demo); cek kuota dan environment | P0 | M | Demo stabil; tidak ada secret di client/repo/log |
+| `INF-04` | Deploy demo dari Git `main` (mis. Vercel Hobby + Neon yang ter-link); cek kuota dan environment | P0 | M | Demo stabil; tidak ada secret di client/repo/log |
 | `DOC-01` | README setup, env template, migration/seed commands, endpoint map, architecture/ERD link, limitations | P0 | M | Developer lain bisa run dari dokumentasi |
 | `DOC-02` | Screenshot 3 role + diagram + video alur QR→Paid, testcase summary, postmortem | P1 | M | Portfolio dapat dinilai tanpa akses admin produksi |
 | `REL-02` | Tag **R1 Portfolio v1.0**, catat fitur & known limitations | P1 | S | Release checklist ditandatangani sendiri |
@@ -327,18 +329,13 @@ Hindari tes yang hanya melihat tombol disabled: untuk pembayaran, void dan RBAC,
 
 ## 8. Cara menjalankan roadmap di VS Code / Codex
 
-### 8.1 Manajemen issue dan branch
+### 8.1 Manajemen issue dan commit
 
 Gunakan papan sederhana `Backlog → Ready → In Progress → Review → Done` dengan **satu task aktif utama per iterasi**. Issue title contoh:
 
 `[M3][GUEST-04][P0] Transactional checkout + idempotency`
 
-Branch naming yang mudah ditelusuri:
-
-- `feat/GUEST-04-checkout-idempotency`
-- `feat/POS-04-served-checklist`
-- `feat/PAY-02-atomic-cash-payment`
-- `fix/BILL-02-stale-quote-warning`
+Kerjakan task pada Git `main`; gunakan commit kecil dengan ID task pada pesan, misalnya `feat(backend): implement GUEST-04 checkout idempotency`. Neon tetap ter-link ke branch `production`; tidak perlu membuat branch Neon baru untuk roadmap ini.
 
 Tidak perlu memecah proyek menjadi microservices. Pertahankan service/domain dalam `src/features/*`, Route Handlers tipis dalam `src/app/api/*`, UI bersama dalam `src/components/*`, dan schema/migrations di `src/db/*` sesuai dokumen arsitektur.
 
@@ -393,7 +390,7 @@ failures, DB migrations, docs changes, and remaining risks.
 ### 9.1 Kebijakan gratis
 
 - Gunakan paket gratis yang masih memenuhi terms penggunaan **portofolio pribadi**; verifikasi kembali pricing/quotas/provider idle policy saat deploy, jangan mengandalkan angka kuota statis.
-- Simpan database development/demo terpisah bila kuota memungkinkan; tidak diperlukan Redis, broker pesan, queue atau managed realtime service untuk MVP.
+- Gunakan data fiktif pada Neon yang ter-link dan PostgreSQL lokal untuk tes mutasi/destruktif; tidak diperlukan Redis, broker pesan, queue atau managed realtime service untuk MVP.
 - Jangan mengekspos Neon database connection string ke klien. API Next.js menjadi satu-satunya gerbang mutasi data; image hosting hanya jika benar-benar diperlukan.
 - Hindari pembelian domain, printer, QRIS/gateway, atau SaaS monitoring untuk P0. Domain subdomain platform hosting cukup untuk demo selama syarat lisensi/hosting dipenuhi.
 

@@ -4,14 +4,14 @@
 
 | Metadata | Nilai |
 |---|---|
-| Versi | **1.1 — BE-01 contract alignment** |
+| Versi | **1.2 — BE-02 schema implementation** |
 | Tanggal | **10 Oktober 2026** |
 | Lokasi repository | `docs/05-database-design.md` |
 | Berdasarkan | PRD v1.2, Business Rules v1.2, User Flows v1.2, System Architecture v1.0 |
 | Database | **NeonDB (PostgreSQL)** |
-| ORM / migrasi | **Drizzle ORM + Drizzle Kit** (rancangan) |
+| ORM / migrasi | **Drizzle ORM + Drizzle Kit** (`src/db/schema.ts`, `drizzle/`) |
 | Arsitektur | **Next.js modular monolith**, satu outlet |
-| Referensi SQL | [`05-schema-reference.sql`](05-schema-reference.sql) — DDL referensi, **belum** migrasi produksi final |
+| Referensi SQL | [`05-schema-reference.sql`](05-schema-reference.sql) — DDL referensi; jalankan migrasi versi di `drizzle/` |
 | Dokumen berikutnya | `06-api-specification.md` |
 
 > **Label keputusan:** **Disepakati** = kebutuhan bisnis dari diskusi; **Rancangan** = pemodelan teknis yang disarankan dan dapat direvisi; **Terbuka** = keputusan yang belum dipastikan. Skema ini bukan bukti bahwa aturan bisnis lintas tabel telah otomatis ditegakkan database; sebagian membutuhkan service + transaksi di backend.
@@ -56,7 +56,7 @@ erDiagram
     TABLE_SESSIONS ||--o{ AUDIT_EVENTS : "riwayat"
 
     STAFF_PROFILES {
-      text user_id PK
+      uuid user_id PK
       varchar display_name
       varchar role
       boolean is_active
@@ -112,7 +112,7 @@ erDiagram
     PAYMENTS {
       uuid id PK
       uuid session_id FK,UK
-      text cashier_user_id FK
+      uuid cashier_user_id FK
       bigint grand_total_idr
       bigint cash_received_idr
       bigint change_idr
@@ -135,7 +135,7 @@ erDiagram
     }
     AUDIT_EVENTS {
       uuid id PK
-      text actor_user_id FK
+      uuid actor_user_id FK
       varchar action
       uuid session_id FK
       jsonb details
@@ -152,10 +152,10 @@ Catatan: relasi staf dalam diagram disederhanakan; seluruh `accepted_by`, `serve
 
 ### 3.1 `staff_profiles` — role Admin/Kasir
 
-**Kolom:** `user_id TEXT PK`, `display_name VARCHAR(120)`, `role VARCHAR(12)` (`ADMIN`/`CASHIER`), `is_active BOOLEAN`, `created_at`, `updated_at`.
+**Kolom:** `user_id UUID PK`, `display_name VARCHAR(120)`, `role VARCHAR(12)` (`ADMIN`/`CASHIER`), `is_active BOOLEAN`, `created_at`, `updated_at`.
 
 - Kredensial **tidak** disimpan di tabel ini. Neon Managed Better Auth menangani tabel autentikasi di schema `neon_auth`.
-- `user_id` mengacu ke `neon_auth.user.id` (`TEXT`). Verifikasi nama/tipenya pada branch development sebelum membuat foreign key `staff_profiles.user_id`; jangan menebak migration milik provider.
+- `user_id` mengacu ke `neon_auth.user.id` (`UUID`), diverifikasi pada Neon `production` yang ter-link. Migrasi auth tetap dikelola Neon.
 - Nonaktifkan staf melalui `is_active=false`, jangan hapus akun yang menjadi pemilik transaksi historis.
 
 ### 3.2 `dining_tables` — daftar meja
@@ -179,11 +179,11 @@ Tidak ada `CLEANING`. `qr_token` tidak dipakai sebagai credential staff maupun b
 | `id` | `UUID PK` | Satu sesi kunjungan |
 | `table_id` | `UUID FK` | Meja terkait |
 | `opened_at` | `TIMESTAMPTZ` | Awal sesi |
-| `opened_by_user_id` | `TEXT FK NULL` | NULL untuk pembukaan oleh checkout QR |
+| `opened_by_user_id` | `UUID FK NULL` | NULL untuk pembukaan oleh checkout QR |
 | `bill_revision` | `BIGINT DEFAULT 1` | Naik saat isi/progres tagihan berubah |
 | `closed_at` | `TIMESTAMPTZ NULL` | NULL = sesi masih aktif |
 | `closure_reason` | `PAID` / `ALL_VOID` / NULL | **Status internal penutupan**, bukan status meja |
-| `closed_by_user_id` | `TEXT FK NULL` | Kasir yang menyelesaikan sesi |
+| `closed_by_user_id` | `UUID FK NULL` | Kasir yang menyelesaikan sesi |
 
 **Constraint utama:**
 
@@ -214,7 +214,7 @@ Indeks parsial ini menjamin **maksimal satu sesi aktif per meja**, bahkan saat d
 | `status` | `PENDING` / `PREPARING` / `SERVED` | **Tepat tiga status** |
 | `client_request_key` | `UUID UNIQUE NOT NULL` | Idempotensi checkout, juga untuk manual |
 | `request_fingerprint` | `TEXT NOT NULL` (SHA-256 hex, 64 karakter) | Membandingkan payload semantik saat key diulang; tidak menyimpan guest token |
-| `created_by_user_id` | `TEXT FK NULL` | Kasir bila input manual |
+| `created_by_user_id` | `UUID FK NULL` | Kasir bila input manual |
 | `accepted_at`, `accepted_by_user_id` | timestamp / FK nullable | Konfirmasi kasir |
 | `voided_at` | timestamp nullable | Ditandai bila seluruh item order telah di-void; metadata, bukan status keempat |
 | `note`, `created_at`, `updated_at` | metadata | Catatan & waktu |
@@ -259,7 +259,7 @@ Indeks parsial ini menjamin **maksimal satu sesi aktif per meja**, bahkan saat d
 |---|---|---|
 | `id` | UUID PK | Identitas payment |
 | `session_id` | UUID **UNIQUE** FK | Maksimal **satu payment** per sesi |
-| `cashier_user_id` | TEXT FK | Penerima tunai |
+| `cashier_user_id` | UUID FK | Penerima tunai |
 | `idempotency_key` | UUID **UNIQUE** | Mencegah pembayaran ganda dari retry |
 | `method` | `CASH` | Cash only |
 | `subtotal_idr` | BIGINT | Snapshot subtotal non-void |
@@ -651,18 +651,18 @@ Kode produksi harus menggunakan migrasi yang direview, bukan menjalankan DDL ref
 | DB-15 | Kasir tidak berwenang memodifikasi setting | Ditolak di server |
 | DB-16 | SQL CHECK/FK/unique index | Menolak nilai negatif, role/status ilegal, session/payment duplikat |
 
-Untuk uji transaksi paralel, gunakan database testing Neon terpisah (bukan production), koneksi ganda, dan hitung jumlah row final. Unit test fungsi billing saja **tidak** cukup membuktikan keamanan pembayaran.
+Untuk uji transaksi paralel, gunakan PostgreSQL lokal dengan data fiktif, koneksi ganda, dan hitung jumlah row final. Jangan jalankan tes destruktif pada Neon yang ter-link. Unit test fungsi billing saja **tidak** cukup membuktikan keamanan pembayaran.
 
 ---
 
 ## 13. Migrasi, seed data, dan deployment
 
-1. Buat project Neon untuk development/test, simpan `DATABASE_URL` **hanya** pada environment variable server.
-2. Gunakan Neon Managed Auth yang sudah aktif; verifikasi `neon_auth.user.id` pada branch development sebelum menambahkan FK dari staff/audit. Migrasi auth dikelola Neon, bukan Drizzle aplikasi.
+1. Gunakan project Neon yang sudah ter-link untuk data fiktif pengembangan/demo; simpan `DATABASE_URL` **hanya** pada environment variable server. Siapkan PostgreSQL lokal untuk tes mutasi.
+2. Gunakan Neon Managed Auth yang sudah aktif; `neon_auth.user.id` telah diverifikasi UUID pada Neon yang ter-link. FK `staff_profiles.user_id` ada pada migrasi BE-02; migrasi auth dikelola Neon, bukan Drizzle aplikasi.
 3. Buat Drizzle schema dan migration untuk tabel domain sesuai ERD; tambahkan index parsial, CHECK, FK, dan metadata.
 4. Seed satu admin demo, satu kasir demo, 8–12 meja, kategori/menu foto dummy, dan singleton settings; jangan masukkan kredensial nyata ke repository.
 5. Jalankan integration test race-condition, lalu E2E dari QR → Paid dan dari QR → ALL_VOID.
-6. Semua perubahan skema setelah deploy harus memakai versioned migrations. Simpan dump development terpisah; jangan gunakan `push` langsung ke production tanpa review.
+6. Semua perubahan skema setelah deploy harus memakai versioned migrations. Backup data Neon sebelum perubahan schema; jangan gunakan `push` langsung ke production tanpa review.
 
 **Referensi:** [Drizzle + Neon](https://orm.drizzle.team/docs/connect-neon), [Drizzle Indexes & Constraints](https://orm.drizzle.team/docs/indexes-constraints), [PostgreSQL Partial Indexes](https://www.postgresql.org/docs/current/indexes-partial.html), [Neon Connection Pooling](https://neon.com/docs/connect/connection-pooling).
 
@@ -673,7 +673,7 @@ Untuk uji transaksi paralel, gunakan database testing Neon terpisah (bukan produ
 | ID | Keputusan | Status saat dokumen dibuat | Dampak |
 |---|---|---|---|
 | OD-01 | Sesi dibuat otomatis saat checkout pertama meja Available atau diaktifkan kasir? | **Terbuka**. Baseline di diagram: otomatis | Menentukan guard endpoint checkout dan tabel Available → Occupied |
-| TD-01 | Tipe dan tabel user Neon Managed Auth pada branch development | **Dirancang:** `neon_auth.user.id` TEXT; verifikasi pada BE-02 sebelum FK | FK `staff_profiles` + migrations |
+| TD-01 | Tipe dan tabel user Neon Managed Auth yang ter-link | **Terverifikasi BE-02:** `neon_auth.user.id` UUID pada Neon `production` | FK `staff_profiles` + migrations |
 | TD-02 | Simpan `cycle_number` table untuk menghambat checkout tab lama | **Rancangan disarankan** | Tambahan field request checkout; tidak mencegah QR dipotret |
 | TD-03 | `receipt_snapshot` JSONB untuk struk digital | **Rancangan disarankan** | Bukti transaksi Paid tidak berubah dan UI struk sederhana |
 | TD-04 | Void selalu seluruh baris item (bukan beberapa qty) | **Rancangan penyederhanaan MVP** | UX pembatalan dan implementasi `order_items` |

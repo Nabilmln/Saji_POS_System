@@ -90,7 +90,7 @@ Error:
 
 ### 2.1 Staff authentication (Neon Managed Better Auth; keputusan G-03)
 
-Neon Auth sudah diaktifkan dalam `neon.ts`; aplikasi Next.js akan memasang proxy Managed Auth di `/api/auth/[...path]`. Payload/response login, logout, dan session **mengikuti SDK Neon Auth/Better Auth**, bukan envelope milik kita. Nonaktifkan sign-up baru **pada konfigurasi Neon Auth branch** sebelum merilis route auth; menyembunyikan tombol sign-up saja tidak cukup. Pengelola membuat admin awal melalui operasi user tepercaya pada branch development, lalu mengaitkan `staff_profiles` dengan ID user tersebut. Akun kasir berikutnya dibuat oleh Admin melalui service server tepercaya. Mekanisme pengiriman kredensial/reset dan kemampuan Admin API yang dipakai diverifikasi pada BE-03; tidak menyimpan password awal di repository atau seed. `staff_profiles` menyimpan role `ADMIN|CASHIER` dan `is_active`.
+Neon Auth sudah diaktifkan dalam `neon.ts`; aplikasi Next.js akan memasang proxy Managed Auth di `/api/auth/[...path]`. Payload/response login, logout, dan session **mengikuti SDK Neon Auth/Better Auth**, bukan envelope milik kita. Nonaktifkan sign-up baru **pada konfigurasi Neon Auth yang ter-link** sebelum merilis route auth; menyembunyikan tombol sign-up saja tidak cukup. Pengelola membuat admin awal melalui operasi user tepercaya pada Neon yang ter-link, lalu mengaitkan `staff_profiles` dengan ID user tersebut. Akun kasir berikutnya dibuat oleh Admin melalui service server tepercaya. Mekanisme pengiriman kredensial/reset dan kemampuan Admin API yang dipakai diverifikasi pada BE-03; tidak menyimpan password awal di repository atau seed. `staff_profiles` menyimpan role `ADMIN|CASHIER` dan `is_active`.
 
 **Setiap** endpoint `/api/staff/*` dan `/api/admin/*`: validasi sesi server, `staff_profiles.is_active`, lalu role. Admin boleh melakukan operasi cashier. Kasir tidak boleh menggunakan endpoint admin walaupun membuat HTTP request secara manual. `GET /api/staff/me` mengembalikan profil aman tanpa hash password atau token.
 
@@ -177,7 +177,7 @@ Tidak perlu PIN dan tidak perlu akun pelanggan. Agar **form nama muncul sebelum 
 | GET | `/admin/reports/top-menus` | Admin | P1 | Menu terlaris dari transaksi Paid |
 | POST | `/admin/media/menu-images` | Admin | P2 | Upload gambar aman ke provider media |
 
-**Penamaan:** `/{id}` pada `/admin/*` maupun `/staff/*` harus UUID sesuai ERD, kecuali `userId` milik Better Auth berupa TEXT. Jangan membuat endpoint untuk `print`, `refund`, `split-bill`, `stock`, `recipe`, atau payment gateway.
+**Penamaan:** `/{id}` pada `/admin/*` maupun `/staff/*` harus UUID sesuai ERD; `userId` Neon Managed Auth juga UUID. Jangan membuat endpoint untuk `print`, `refund`, `split-bill`, `stock`, `recipe`, atau payment gateway.
 
 ---
 
@@ -840,7 +840,7 @@ Dokumen API tidak boleh diam-diam mengklaim kolom yang belum ada di [`05-schema-
 | `store_settings.version`, `table_sessions.bill_revision`, `dining_tables.cycle_number` | **Sudah tersedia** di schema 05 | Tidak perlu migrasi baru |
 | `payments.idempotency_key` dan `receipt_snapshot` | **Sudah tersedia** di schema 05 | Tidak perlu migrasi baru |
 | `orders.voided_at`, `order_items.void*`, `served_at` | **Sudah tersedia** di schema 05 | Tidak perlu migrasi baru |
-| Auth tables di schema `neon_auth` | Dikelola Neon Managed Auth, terpisah dari migrasi Drizzle domain | Verifikasi `neon_auth.user.id` pada branch development sebelum FK staff |
+| Auth tables di schema `neon_auth` | Dikelola Neon Managed Auth, terpisah dari migrasi Drizzle domain | `neon_auth.user.id` UUID telah diverifikasi pada BE-02; FK staff ada di migrasi |
 
 **Fingerprint:** SHA-256 hex lowercase dari representasi kanonis `{source,tableId,cycleNumber,customerName,note,items}`. Gunakan nilai setelah validasi dan normalisasi: note opsional menjadi string kosong, item diurutkan stabil berdasarkan `menuItemId`, dan setiap item memuat `quantity` serta note ternormalisasi. Jangan hash token tamu mentah atau urutan key JSON asli. Key request yang sama + fingerprint sama → replay order lama; key sama + fingerprint berbeda → `409 IDEMPOTENCY_KEY_REUSED`. Implementasi hash dan race test berada di BE-06.
 
@@ -888,7 +888,7 @@ Dokumen API tidak boleh diam-diam mengklaim kolom yang belum ada di [`05-schema-
 | API-25 | Timeout jaringan setelah commit payment | Retry key sama mengembalikan payment yang telah ada |
 | API-26 | Admin mematikan diskon pada unpaid | Quote berubah sesuai versi baru, Paid lama tetap |
 
-Gunakan Vitest (unit calculation/status), test DB Neon branch/disposable PostgreSQL (integration + concurrency), Playwright (E2E QR sampai Paid). Gunakan fixtures, bukan layanan pembayaran sungguhan.
+Gunakan Vitest (unit calculation/status), PostgreSQL lokal dengan data fiktif (integration + concurrency), Playwright (E2E QR sampai Paid). Gunakan fixtures, bukan layanan pembayaran sungguhan.
 
 ---
 

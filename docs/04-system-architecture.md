@@ -449,8 +449,8 @@ Nilai di atas adalah placeholder, jangan dicopy sebagai credential nyata. Gunaka
 
 ### 11.2 Strategi lingkungan
 
-- **Local:** Next.js dev + Neon database dev/branch terpisah; seed data menu/meja/staff demo.
-- **Preview:** gunakan environment terisolasi agar tidak menimpa data utama; jangan menjalankan migrasi destructive otomatis tanpa kontrol.
+- **Local:** Next.js dev + Neon `production` yang ter-link berisi data fiktif untuk pengembangan/demo; seed data menu/meja/staff demo.
+- **Migrasi:** review dan backup sebelum mengubah schema pada Neon yang ter-link; jangan jalankan migrasi destructive otomatis.
 - **Demo production:** HTTPS, secret diset via platform environment, login staff demo terbatas, data dummy, audit/error monitoring dasar.
 - **Free plan:** kuota/batas layanan dapat berubah. Desain menghindari kebutuhan Redis, queue, realtime broker, dan layanan berbayar untuk MVP.
 - **Backup:** ekspor data/backup sesuai kemampuan plan; jangan menganggap free-tier memiliki SLA/retensi backup produksi.
