@@ -1,10 +1,10 @@
 # 07 — UI/UX Guidelines
 
 **Product:** Restaurant POS & QR-Based Self-Ordering System  
-**Version:** 1.0 — Design brief for OpenDesign  
+**Version:** 1.1 — UI implementation guidelines
 **Date:** 10 Oktober 2026  
 **Status:** Proposed design direction; not approved visual identity  
-**Audience:** Designer/AI design agent, frontend engineer, product reviewer  
+**Audience:** Frontend engineer and product reviewer
 **Language:** Bahasa Indonesia (`id-ID`)  
 **Primary platform:** Responsive web application
 
@@ -67,7 +67,7 @@ Do not design QRIS/payment gateway; split bill; customer login or PIN; self-canc
 
 ---
 
-## 3. Proposed visual direction (can be revised in OpenDesign)
+## 3. Proposed visual direction
 
 **Design concept: “Modern Hospitality Utility.”** Warm and inviting for customers, efficient and confident for cashiers, precise and analytical for admins. Use a unified brand accent but different density per role.
 
@@ -462,9 +462,9 @@ Only cashier/admin see all orders on a table. Customer sees own authorized order
 
 ---
 
-## 13. Screen inventory for OpenDesign
+## 13. Screen inventory
 
-Each screen should include a **mobile or desktop target, purpose, key widgets, and relevant states**. Use these IDs to keep AI outputs consistent.
+Each screen should include a **mobile or desktop target, purpose, key widgets, and relevant states**. Use these IDs to keep implementation and review consistent.
 
 | ID | Screen | Viewport baseline | Mandatory content |
 |---|---|---|---|
@@ -491,51 +491,11 @@ Each screen should include a **mobile or desktop target, purpose, key widgets, a
 | A08 | Staff Management (P1) | 1440 | list, add/deactivate cashier |
 | X02 | Errors / Empty States | mobile+desktop | QR invalid, forbidden, empty, offline, stale quote |
 
-Generate **P0 screens first**, then P1. The IDs are for design coordination, not backend enums.
+Implement **P0 screens first**, then P1. The IDs are for UI coordination, not backend enums.
 
 ---
 
-## 14. OpenDesign handoff and generation workflow
-
-OpenDesign can work from a machine-readable design system (`docs/DESIGN.md`) plus feature requirements. This project ships both `docs/DESIGN.md` and this guide. **Do not ask the design agent to generate the entire application in one prompt.** Start with design direction + key screen, validate components, then expand using the same tokens.
-
-### 14.1 Recommended intake order
-
-1. Read docs `01`–`06` as business/technical references; read this `07` as interaction spec.
-2. Read `docs/DESIGN.md` as working design system; colors/typography can be refined with approval but domain workflows cannot be altered by styling preferences.
-3. Generate 2–3 **low/medium-fidelity layout variants** of K01 POS Overview and C02 Customer Menu (the two UX extremes) with one coherent visual direction.
-4. Select a consistent direction; refine responsive rules and shared component library.
-5. Generate high-fidelity P0 screens per user role in small batches, covering one action + its success/error/disabled states.
-6. Build a connected clickable prototype including customer checkout → cashier Served checklist → cash payment → table Available.
-7. Run the acceptance checklist below before development handoff.
-
-### 14.2 Copy-ready design brief
-
-> Design a responsive restaurant Point-of-Sale and QR-based self-ordering web application for a **single Indonesian café/restaurant outlet**. Use `docs/01-prd-restaurant-pos.md` through `docs/06-api-specification.md` for product rules, `docs/07-ui-ux-guidelines.md` for screen behavior, and `docs/DESIGN.md` for visual tokens. The three surfaces are mobile customer ordering (mandatory name before menu, QR table context, cart, 3 order statuses), cashier tablet/desktop operations (table grid, Pending inbox, per-item Served checklist, full cash payment after all items served, receipt preview, manual reservations), and admin desktop management (menu toggle, numbered QR, staff access, live discount/tax settings, custom paid revenue charts). **Do not add customer login/PIN, stock/recipes, split bill, QRIS, cancellation buttons for customers, print receipts, or extra order/table statuses.** Prioritize a warm, premium-but-functional look with exceptional usability, cohesive design tokens, realistic Indonesian copy, and responsive accessible layouts. Start with **Customer Catalog C02** and **Cashier Overview K01** to lock visual style, then iterate screen by screen.
-
-### 14.3 Batch prompts
-
-**Batch 1 — Customer:** “Using the project's docs and DESIGN.md, design C01, C02, C04, C05, C06 at 390px. Include invalid QR, empty catalog search, item deactivated after cart, loading submit, and Pending/Preparing/Served statuses. Avoid user payment or cancellation actions.”
-
-**Batch 2 — Cashier:** “Design K01, K03, K05, K08, K09 at 1440px and 1024px. Show multiple guests’ additional orders inside one active table session, per-item Served controls, disabled payment until all non-void orders Served, a live bill-change notice, cash confirmation and a historical non-print receipt.”
-
-**Batch 3 — Admin:** “Design A01, A02, A05/A06, A07 and A08 as applicable. Revenue must come from Paid transactions only. Use custom SVG charts. Admin billing settings have fixed-Rp discount and configurable-% tax applied live to unpaid sessions, with explicit ‘affects existing unpaid bills’ copy.”
-
-**Batch 4 — Quality/state pass:** “Audit all generated screens against screen inventory, business statuses, responsive targets, accessibility, Indonesian copy, required error/empty/loading/disabled states, and the no-extra-features list. Return a checklist of mismatches before making visual refinements.”
-
-### 14.4 Expected design deliverables
-
-- Editable design/project source, not only static screenshots.
-- Responsive layouts for customer mobile, cashier desktop/tablet, admin desktop.
-- Shared component inventory with named variants and design tokens.
-- Interactive prototype for the full order-to-payment flow.
-- Screens documenting typical failure/conflict states.
-- Developer-facing notes on spacing, states, responsive behavior and data bindings.
-- Explicit list of **proposed** (not approved) visual choices and remaining product decisions.
-
----
-
-## 15. Design QA / acceptance checklist
+## 14. Design QA / acceptance checklist
 
 ### Functional fidelity
 
@@ -566,11 +526,11 @@ OpenDesign can work from a machine-readable design system (`docs/DESIGN.md`) plu
 
 ---
 
-## 16. Outstanding decisions and assumptions
+## 15. Outstanding decisions and assumptions
 
-**OD-01 — Opening table session:** *Not yet explicitly approved*. Baseline used for prototype: first successful customer checkout on Available table opens Occupied session automatically. At Reserved table, checkout is blocked until cashier check-in. Label this as **proposed** in design notes. Do not obscure or silently finalize it.
+**OD-01 — Opening table session:** *Not yet explicitly approved*. The proposed policy is that the first successful customer checkout on an Available table opens its Occupied session automatically. At a Reserved table, checkout is blocked until cashier check-in. Do not silently finalize this policy.
 
-**OD-02 — Menu detail notes:** Optional free-text item notes may be included only if backed by adopted API/schema; if not present, do not introduce it in MVP prototype.
+**OD-02 — Menu detail notes:** Optional free-text item notes may be included only if backed by adopted API/schema; if not present, do not introduce them in the MVP.
 
 **OD-03 — Visual identity:** Project name/logo, final brand palette and imagery style are provisional. Brand tokens are a **working direction**, not an asserted client identity. Revise them as a system, not screen-by-screen.
 
@@ -582,7 +542,7 @@ OpenDesign can work from a machine-readable design system (`docs/DESIGN.md`) plu
 
 ---
 
-## 17. Cross-document links
+## 16. Cross-document links
 
 - `01-prd-restaurant-pos.md` — product goals, priorities, acceptance criteria.
 - `02-business-rules.md` — state rules, void, live billing, Paid transition.
@@ -592,4 +552,4 @@ OpenDesign can work from a machine-readable design system (`docs/DESIGN.md`) plu
 - `06-api-specification.md` — exact endpoint list and role authorizations.
 - `docs/DESIGN.md` — visual tokens, components, voice, motion, anti-patterns.
 
-**Definition of done for this document:** A design agent can generate key UI screens without inventing unapproved functions, and a frontend engineer can map every actionable UI element to a documented business rule or API endpoint.
+**Definition of done for this document:** A frontend engineer can map every actionable UI element to a documented business rule or API endpoint without inventing unapproved functions.

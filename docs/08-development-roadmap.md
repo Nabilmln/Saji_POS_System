@@ -4,7 +4,7 @@
 
 | Metadata | Detail |
 |---|---|
-| Versi | **1.0 — Implementation planning draft** |
+| Versi | **1.1 — Backend-first execution plan** |
 | Tanggal | **10 Oktober 2026** |
 | Repository target | `docs/08-development-roadmap.md` |
 | Pemilik rencana | Solo developer — proyek portofolio |
@@ -77,58 +77,64 @@ Dokumen `05` dan `06` merupakan **rancangan**, bukan migrasi yang sudah dijalank
 
 ---
 
-## 3. Strategi delivery dan dependensi
+## 3. Rencana eksekusi dua fase
 
-**Jalur kritis:** M0 → M1 → M2 → M3 → M4 → M5 → M7. M6 dapat menyusul setelah alur P0 stabil. Jalankan review desain OpenDesign **bertahap**, sejajar dengan pengerjaan frontend pada setiap milestone, bukan menunggu semua layar selesai.
+**Urutan kerja: Phase 1 Backend → gate backend → Phase 2 Frontend.** Backend dan frontend tetap berada dalam satu aplikasi Next.js. Phase 1 menghasilkan schema, service, dan Route Handlers yang dapat diuji langsung melalui HTTP; Phase 2 menghubungkan layar ke API tersebut. ID `BE-*` dan `FE-*` di bawah adalah urutan kerja; ID lama pada kolom Referensi menunjuk rincian di §4. M0–M7 di §4 dan kolom Stage pada §6 adalah pengelompokan fitur lama, **bukan urutan eksekusi atau tanda selesai**.
 
-```mermaid
-flowchart TD
-    M0["M0 · Finalisasi scope & design handoff"] --> M1["M1 · Repo, auth, DB, tests"]
-    M1 --> M2["M2 · Menu, meja, QR, settings"]
-    M2 --> M3["M3 · Customer QR → Pending"]
-    M3 --> M4["M4 · Cashier Pending → Served"]
-    M4 --> M5["M5 · Live bill → Cash Paid → Available"]
-    M5 --> GATE{"P0 E2E lulus?"}
-    GATE -->|Ya| M6["M6 · Reservasi, staff, revenue P1"]
-    GATE -->|Perbaikan| M4
-    M6 --> M7["M7 · Hardening, deploy & showcase"]
-```
+Centang sebuah subtask hanya setelah bukti pada kolom Selesai tercapai dan perubahan terkait ada di commit. Kerjakan satu baris aktif pada satu waktu; keputusan `G-*` yang relevan harus disahkan sebelum subtask yang bergantung padanya. Semua kotak masih kosong karena repo baru terhubung, bukan karena fiturnya telah diuji.
 
-| Milestone | Hasil yang harus bisa **didemokan** | Dependency utama | Exit criteria |
+### Phase 1 — Backend
+
+| Status | Subtask | Referensi | Selesai ketika |
 |---|---|---|---|
-| **M0** — Planning & design handoff | Backlog prioritas, keputusan blocking diselesaikan, 2 layar awal disetujui | Dokumen 01–07 + DESIGN.md | Tidak ada perubahan diam-diam terhadap business rules |
-| **M1** — Foundation | App boot, auth staff, Neon schema migrated, seed data, pipeline tests | M0 + G-03 + schema/API alignment | `npm run build`, unit test, migrasi dan login role berjalan |
-| **M2** — Master data P0 | Admin kelola menu/availability, meja + QR, diskon & pajak | M1 + G-08 | QR mengarah ke meja benar; inactive menu tak dapat dibeli; version setting naik |
-| **M3** — QR ordering P0 | Scan QR → isi nama → cart → checkout → order Pending terlihat di inbox kasir | M2 + G-01 | Checkout retry tidak menduplikasi order; 2 customer satu meja → 1 sesi |
-| **M4** — Kasir operations P0 | Confirm, manual order, served checklist, void dan `ALL_VOID` | M3 + G-02/G-06/G-07 | Hanya transaksi sah dapat lanjut; Served only when all active items served |
-| **M5** — Financial close P0 | Bill live + full cash pay + digital receipt + Available | M4 + G-09 | Seluruh jalur QR → Paid & ALL_VOID lulus, konflik/duplikasi ditangani |
-| **M6** — Store management P1 | Reservasi manual, kelola staf, dashboard revenue & custom charts | M5 + G-05 | Reservasi tidak bentrok; revenue dari Paid, role staff aman |
-| **M7** — Release & portfolio | Responsive, a11y, test report, demo deployment, README dan rekaman demo | M5 (P0 release) atau M6 (v1.0 lengkap) | Release checklist lulus, tidak ada blocker/security critical |
+| [ ] | **BE-01 · Kontrak dan fondasi** — audit scaffold, selaraskan schema/API, siapkan validasi Zod, error envelope, serialisasi uang dan timezone | `PLAN-01`, `PLAN-02`, `PLAN-03`, `INF-01`, `INF-03` | Kontrak konsisten dengan docs 05–06; lint, typecheck dan build lulus; keputusan `G-03` dicatat sebelum auth |
+| [ ] | **BE-02 · Database dev** — koneksi Neon via `pg`/Drizzle, schema, constraint, migration versioned dan seed fiktif | `INF-02`, `DB-01`, `DB-02` | Migration dan seed dapat dijalankan ulang di DB dev; satu sesi aktif per meja dan satu payment per sesi dijaga DB |
+| [ ] | **BE-03 · Auth dan RBAC** — login/logout staf, bootstrap aman, disable signup publik, guard Admin/Kasir dan proteksi mutasi | `AUTH-01`, `AUTH-02` | Akun nonaktif dan Kasir ditolak dari API Admin; `AT-21` lulus via HTTP |
+| [ ] | **BE-04 · Master data** — API Admin kategori/menu, availability, meja, token/QR dan billing settings | `MENU-01`, `TABLE-01`, `TABLE-02` (API), `SET-01` | `G-08` diputuskan; availability, QR unik, dan settings version diuji; mutasi hanya Admin |
+| [ ] | **BE-05 · Akses pelanggan** — validasi QR, nama wajib, guest token, katalog publik setelah nama, dan akses status hanya untuk order miliknya | `GUEST-01`, `GUEST-05` (API) | Hanya menu active terlihat setelah nama valid; token tidak membuka data pelanggan lain; `AT-01`, `AT-07` lulus via HTTP |
+| [ ] | **BE-06 · Sesi dan checkout** — buka/gabung sesi sesuai `G-01`, snapshot harga, cycle guard, idempotency dan additional order | `SESSION-01`, `GUEST-04` | `G-01` disahkan; `AT-02`–`AT-06` lulus pada PostgreSQL nyata, termasuk dua checkout serentak |
+| [ ] | **BE-07 · Operasi pesanan Kasir** — inbox/detail API, konfirmasi, checklist Served per baris dan order manual | `POS-01`, `POS-02`, `POS-03`, `POS-04`, `POS-05` (API) | `G-02`/`G-06` disahkan; hanya `PENDING → PREPARING → SERVED`; `AT-08`, `AT-09` lulus |
+| [ ] | **BE-08 · Void dan close-all-void** — alasan dan audit Kasir, pengecualian Served, tutup sesi tanpa payment | `POS-06`, `SESSION-02`, `QA-04` | `G-07` disahkan; `AT-10`–`AT-12` lulus; histori tetap ada dan revenue nol |
+| [ ] | **BE-09 · Billing dan pembayaran** — hitung tagihan live, versi quote, full cash atomik, receipt snapshot dan histori API | `BILL-01`, `BILL-02` (API), `PAY-02`, `PAY-03`, `PAY-04` (API) | `G-09` disahkan; `AT-13`–`AT-20` lulus, termasuk race payment/order/settings dan receipt immutable |
+| [ ] | **BE-10 · Operasional P1** — API reservasi/check-in/cancel, akun staf dan laporan revenue Paid | `RES-01`, `RES-02`, `STAFF-01`, `REPORT-01` (API) | `G-05` disahkan; `AT-21`–`AT-23` lulus pada API/DB, tanpa revenue dari Unpaid |
+| [ ] | **BE-11 · Gate backend** — suite unit/integration/API, fixture, CI, security review dan panduan menjalankan backend | `QA-01`, `QA-02`, `QA-04`, `QA-05`, `QA-06`, `SEC-01`, `DOC-01` (backend) | Semua endpoint P0/P1 terdokumentasi dan diuji pada DB terpisah; concurrency/RBAC/invalid input lulus; migration + seed reproducible; tidak ada secret di repo |
 
-### 3.1 Dua target rilis
+**Gate ke Phase 2:** BE-01 sampai BE-11 selesai. Backend dapat menjalankan alur QR → Pending → Preparing → Served → Paid → Available dan ALL_VOID melalui request HTTP tanpa UI. Kontrak request/response, role, error dan fixture tersedia untuk frontend. R0 **belum** tercapai pada gate ini karena alur pengguna dan E2E browser belum diuji.
 
-- **R0 — P0 Functional MVP (akhir M5):** buktikan satu transaksi lengkap dari QR sampai meja Available dengan pembayaran tunai penuh, termasuk additional order, void dan live setting.
-- **R1 — Portfolio v1.0 (akhir M7 setelah M6):** tambah reservasi, akses staf admin, revenue/custom chart, UX polish, automated tests, dan dokumentasi/demo publik.
+### Phase 2 — Frontend
 
-**Estimasi kapasitas, bukan tenggat:** untuk solo developer part-time, gunakan **1 sprint = 1 siklus kerja/review**, bukan tanggal wajib. Milestone M2–M5 berisiko tinggi dan dapat memerlukan lebih dari satu sprint. Gunakan backlog aktual dan *velocity* pribadi setelah M1 untuk menentukan jadwal realistis; jangan memaksa tanggal jika pengujian finansial belum lolos.
+| Status | Subtask | Referensi | Selesai ketika |
+|---|---|---|---|
+| [ ] | **FE-01 · Desain dan kerangka** — pilih arah visual C02/K01, token bersama, shell pelanggan/Kasir/Admin, peta layar→API | `UX-01`, `UX-02`, `PLAN-03`, `INF-01` (UI) | Desain direview terhadap `docs/DESIGN.md` dan dokumen 07; tidak ada aksi UI tanpa endpoint atau izin yang jelas |
+| [ ] | **FE-02 · Pelanggan** — QR, nama, katalog, cart, checkout, hasil dan status order miliknya | `GUEST-01`, `GUEST-02`, `GUEST-03`, `GUEST-04`, `GUEST-05` (UI) | Alur C01–C06 mobile memakai API nyata; loading/error/empty state ada; tidak menampilkan order pelanggan lain |
+| [ ] | **FE-03 · Admin P0** — CRUD menu/availability, meja dan preview QR, diskon/pajak | `MENU-02`, `TABLE-02` (UI), `SET-02` | A02–A07 bekerja pada API nyata; perubahan setting terlihat pada bill Unpaid |
+| [ ] | **FE-04 · Kasir** — overview, inbox polling, detail meja, confirm, Served, manual order, void dan ALL_VOID | `POS-01`, `POS-02`, `POS-03`–`POS-06` (UI), `SESSION-02` (UI) | K01–K06 bekerja; refresh/reconnect memulihkan data; `AT-24` lulus |
+| [ ] | **FE-05 · Tagihan dan struk** — live bill, warning quote berubah, pembayaran cash, histori dan preview struk digital | `BILL-02` (UI), `PAY-01`, `PAY-04` | K07–K09 bekerja; UI menunggu konfirmasi server untuk Paid dan meminta review ulang setelah `409 BILL_CHANGED` |
+| [ ] | **FE-06 · R0 P0** — E2E browser dua pengguna, responsif, aksesibilitas, keamanan UI dan demo P0 | `QA-03`, `QA-05`, `QA-07`, `UX-03`, `REL-01` | `AT-01`–`AT-20` dan `AT-24` lulus lewat API/integration/browser sesuai skenario; QR→Paid dan ALL_VOID dapat didemokan di mobile/desktop; tag R0 dibuat |
+| [ ] | **FE-07 · Operasional P1** — reservasi Kasir, kelola staf Admin, revenue dan grafik SVG | `RES-01`, `RES-02`, `STAFF-01` (UI), `REPORT-02` | K10–K11, A01, A08 memakai API nyata; grafik memiliki ringkasan teks dan angka Paid cocok dengan API |
+| [ ] | **FE-08 · R1 portfolio** — E2E P1, deployment demo, README, screenshot/video, limitations dan tag rilis | `QA-06`, `INF-04`, `DOC-01`, `DOC-02`, `REL-02` | R0 tetap hijau; `AT-21`–`AT-23` lulus; demo dan dokumentasi dapat diulang; tag R1 dibuat |
+
+**Target rilis:** R0 setelah FE-06; R1 setelah FE-08. Phase 1 tetap mencakup backend P1 agar semua kerja backend selesai sebelum frontend dimulai. Jika frontend menemukan gap kontrak, perbaiki API dan tes terkait dalam task FE yang menemukannya, lalu perbarui docs 05–06; jangan membuat endpoint bayangan di UI.
+
+**Estimasi kapasitas, bukan tenggat:** satu subtask dapat memerlukan beberapa iterasi. Prioritaskan correctness transaksi, auth dan data historis sebelum menandai gate backend selesai.
 
 ---
 
-## 4. Backlog terurut per milestone
+## 4. Backlog referensi per milestone lama
 
-**Keterangan:** `S` kecil, `M` sedang, `L` kompleks (estimasi relatif, bukan jam). `P0/P1` mengikuti scope produk. ID task stabil untuk branch, PR, issue, dan prompt coding agent. **Task selesai hanya jika acceptance criteria terkait diuji.**
+**Urutan eksekusi mengikuti BE/FE di §3**, bukan urutan M0–M7 di bawah. Bagian ini mempertahankan rincian ID task untuk branch, issue, dan traceability. `S` kecil, `M` sedang, `L` kompleks (estimasi relatif, bukan jam); `P0/P1` mengikuti scope produk. **Task selesai hanya jika acceptance criteria terkait diuji.**
 
-### M0 — Scope, OpenDesign handoff & contracts
+### M0 — Scope, UI direction & contracts
 
 | ID | Task | Pri | Size | Bukti selesai |
 |---|---|---|---|---|
 | `PLAN-01` | Buat `docs/08-development-roadmap.md`, backlog issue/kanban dan traceability fitur | P0 | S | Task IDs dan status terlihat |
 | `PLAN-02` | Review G-01 (auto-open vs manual), G-03, G-08; tandai keputusan pada dokumen induk | P0 | M | Decision log tanpa kontradiksi |
-| `UX-01` | Berikan `docs/DESIGN.md` + docs 01–07 ke OpenDesign; pilih visual direction | P0 | S | Preview C02 Customer Catalog dan K01 Cashier Overview |
-| `UX-02` | Review responsive, states dan flow C01 → C06, K01 → K09 serta desain A02/A05/A07 | P0 | M | Figma/design outputs/screenshots diberi status Approved / Needs revision |
+| `UX-01` | Pilih arah visual dari `docs/DESIGN.md` dan dokumen 01–07 | P0 | S | C02 Customer Catalog dan K01 Cashier Overview konsisten secara visual |
+| `UX-02` | Review responsive, states dan flow C01 → C06, K01 → K09 serta desain A02/A05/A07 | P0 | M | Implementasi layar direview terhadap pedoman dan status perbaikan tercatat |
 | `PLAN-03` | Susun mapping UI screen → endpoint API → tabel database | P0 | M | Tidak ada tombol UI yang memerlukan endpoint tak dirancang |
 
-**Gate:** UI OpenDesign boleh mengubah estetika, bukan logika status/menu/pembayaran. Buat keputusan desain sekecil mungkin per batch; jangan menunggu semua layar P1 selesai untuk coding P0.
+**Gate:** Pilihan visual boleh mengubah estetika, bukan logika status/menu/pembayaran. Buat keputusan desain sekecil mungkin per batch; jangan menunggu semua layar P1 selesai untuk coding P0.
 
 ### M1 — Repository, Neon, auth & engineering guardrails
 
@@ -220,7 +226,7 @@ flowchart TD
 
 | ID | Task | Pri | Size | Bukti selesai |
 |---|---|---|---|---|
-| `UX-03` | Bandingkan hasil implementation vs OpenDesign + DESIGN.md, responsive/a11y review | P0 | M | Customer 390px, cashier tablet/desktop, admin desktop; tidak ada horizontal overflow |
+| `UX-03` | Bandingkan implementasi dengan `docs/DESIGN.md` dan dokumen 07; review responsive/a11y | P0 | M | Customer 390px, cashier tablet/desktop, admin desktop; tidak ada horizontal overflow |
 | `QA-07` | E2E matrix normal, edge, adversarial, concurrency; mobile keyboard/nav accessibility | P0 | L | Semua blocker resolved, bug list triaged |
 | `SEC-01` | Auth/RBAC, CSRF, rate limit publik, secret exposure, signed token TTL/cycle, upload URL safety | P0 | M | Tidak bisa mengakses pesanan orang lain, admin routes, internal data |
 | `INF-04` | Deploy preview + production demo (mis. Vercel Hobby + Neon dev/demo); cek kuota dan environment | P0 | M | Demo stabil; tidak ada secret di client/repo/log |
@@ -230,7 +236,7 @@ flowchart TD
 
 ---
 
-## 5. Traceability: modul → UI OpenDesign → API → DB → test
+## 5. Traceability: modul → layar UI → API → DB → test
 
 | Slice | Layar acuan (`07`) | Endpoint kunci (`06`) | Tabel utama (`05`) | Test minimum |
 |---|---|---|---|---|
@@ -295,7 +301,7 @@ Hindari tes yang hanya melihat tombol disabled: untuk pembayaran, void dan RBAC,
 
 - Kebutuhan dapat ditelusuri ke dokumen 01–07 dan keputusan terbuka yang berdampak sudah diselesaikan.
 - Ada acceptance criteria yang bisa diuji dan fixture/seed data untuk pengujian.
-- Screen OpenDesign atau desain referensi yang relevan telah direview (atau task secara eksplisit backend-only).
+- Untuk task frontend, pedoman UI dan layar referensi yang relevan telah direview; task backend mengikuti kontrak API/DB tanpa menunggu layar.
 - Endpoint, request/response Zod, role guard dan DB migration (bila ada) sudah disepakati.
 - Dependency task terselesaikan, atau didokumentasikan sebagai mock sementara yang akan dihapus.
 
@@ -303,7 +309,7 @@ Hindari tes yang hanya melihat tombol disabled: untuk pembayaran, void dan RBAC,
 
 - `typecheck`, lint, unit test, integration test terkait, dan build berhasil.
 - Tidak ada perubahan status di client tanpa validasi server; error typed/terstandar sesuai API.
-- Auth, RBAC, input validation, loading/error/empty/success state, responsive dan keyboard accessibility diperiksa.
+- Auth, RBAC dan input validation diperiksa pada task backend; loading/error/empty/success state, responsive dan keyboard accessibility diperiksa pada task frontend yang relevan.
 - Perubahan DB memakai versioned migration + seed updated; tambah test untuk constraint baru.
 - Transaksi finansial menyimpan snapshot, idempotency, lock/version checks dan audit yang relevan.
 - Review tidak menemukan secret dalam code atau logging token tamu/order-view; `.env` tidak masuk Git.
@@ -359,12 +365,11 @@ failures, DB migrations, docs changes, and remaining risks.
 
 ### 8.3 Urutan eksekusi harian
 
-1. Pilih satu task berstatus Ready; baca acceptance criteria dan contracts terkait.
-2. Jalankan tests yang sudah ada; ubah skema/API hanya jika task memerlukan dan revisi dokumentasi.
-3. Implementasikan service/backend + validasi; tambahkan integration test untuk aturan bisnis.
-4. Implementasikan UI berdasarkan OpenDesign; hindari custom komponen duplikat bila `shadcn/ui` mencukupi.
-5. Jalankan unit/integration/E2E untuk slice tersebut; review diff, lint, typecheck, build, baru merge.
-6. Rekam hasil/demo singkat, update board dan decision log. Ulangi langkah ini untuk task berikutnya.
+1. Ambil subtask BE/FE berikutnya dari §3; selesaikan gate `G-*` yang memblokirnya dan baca acceptance criteria terkait.
+2. Pada Phase 1, implementasikan schema/service/Route Handler serta unit, integration, dan HTTP contract test. Uji aturan transaksi pada PostgreSQL nyata.
+3. Setelah gate backend lulus, pada Phase 2 implementasikan UI berdasarkan desain dan API nyata; tambah browser E2E untuk alur yang relevan.
+4. Untuk setiap subtask, jalankan tes terkait, lint, typecheck, build; review diff dan catat bukti sebelum mencentang kotaknya.
+5. Jika kontrak berubah, perbarui docs 05–06 serta tes backend dan frontend terkait dalam subtask yang sama.
 
 ---
 
@@ -377,11 +382,11 @@ failures, DB migrations, docs changes, and remaining risks.
 | Admin setting live saat kasir menerima cash | Kasir menagih nominal lama | Quote/version validation dalam payment TX; UI banner refresh + 409 `BILL_CHANGED` (M5) |
 | Menu berubah setelah order | Riwayat salah | Price/name snapshots pada order item, Paid receipt snapshot (M2/M5) |
 | Better Auth + DB schema mismatch | Migration gagal / FK rusak | G-03, inspect generated auth tables, migration review (M1) |
-| OpenDesign menghasilkan fitur tak sesuai produk | Scope creep/komponen susah dipakai | Review screen vs docs, design QA dan traceability (M0/M7) |
+| UI menyiratkan fitur di luar produk | Scope creep/komponen susah dipakai | Review layar terhadap aturan bisnis, QA desain dan traceability (M0/M7) |
 | Pembatasan free tier & project idle | Demo tidak dapat diakses sewaktu-waktu | Catat kuota/provider terms saat deployment; seed, env example, tes smoke rutin secara manual sebelum showcase |
 | Koneksi polling/hosting transient | UI terlambat update | TanStack Query refetch/poll 3–5 detik, reconnect/focus handling, no-store; server tetap sumber kebenaran |
 | Kredensial demo bocor | Akun disalahgunakan | Pisahkan data demo, secret di environment, role constraints, rotasi akun demo bila perlu |
-| Lingkup terlalu besar untuk solo developer | MVP tidak pernah selesai | Release R0 di M5; tahan fitur P1/P2 sampai E2E utama hijau |
+| Lingkup terlalu besar untuk solo developer | MVP tidak pernah selesai | Selesaikan backend sesuai gate, rilis R0 pada FE-06; tahan UI P1/P2 sampai E2E P0 hijau |
 
 ### 9.1 Kebijakan gratis
 
@@ -410,19 +415,13 @@ failures, DB migrations, docs changes, and remaining risks.
 
 ---
 
-## 11. Roadmap completion checklist
+## 11. Phase completion checklist
 
-- [ ] **M0** — Design handoff, traceability dan blocker decisions untuk modul terdekat sudah dibahas.
-- [ ] **M1** — Skeleton, dev Neon, migration, auth, CI & test runner siap.
-- [ ] **M2** — Menu/availability, table QR, billing settings Admin P0 berjalan.
-- [ ] **M3** — QR → nama → Pending, additional order, guest token & idempotency berjalan.
-- [ ] **M4** — Confirm → Preparing → checklist Served, manual order & void/all-void berjalan.
-- [ ] **M5** — Bill live, full cash Paid atomik, Paid receipt snapshot, reset Available berjalan; **R0 signed off**.
-- [ ] **M6** — Reservasi, manajemen staff, Paid revenue/custom charts berjalan.
-- [ ] **M7** — A11y/responsive/security QA, deployment, README/demo, **R1 signed off**.
+- [ ] **Phase 1 Backend** — BE-01 sampai BE-11 di §3 selesai dan gate backend lulus.
+- [ ] **Phase 2 Frontend** — FE-01 sampai FE-08 di §3 selesai; R0 dan R1 dirilis pada checkpoint yang sesuai.
 
 ## 12. Definition of project completion
 
 Proyek layak disebut selesai sebagai portofolio ketika pengguna **tanpa login** dapat memesan dari QR sesuai nomor meja, Kasir berhasil memproses layanan dan **satu pembayaran penuh**, meja dapat digunakan pelanggan berikutnya **tanpa mencampur sesi historis**, dan Admin dapat melihat revenue yang **hanya** berasal dari pembayaran sukses. Keberhasilan ini harus didukung oleh automated tests, migration yang dapat direproduksi, dokumentasi yang konsisten, dan demo yang dapat ditunjukkan.
 
-**Dokumen berikutnya:** setelah roadmap ini, **mulai implementation M0/M1**. Jangan menambahkan dokumen perencanaan baru kecuali ada gap nyata; fokus berpindah ke penyelesaian milestone dan pengujian.
+**Langkah berikutnya:** mulai BE-01 pada §3. Jangan menambahkan dokumen perencanaan baru kecuali ada gap nyata; fokus pada implementasi dan pengujian tiap subtask.

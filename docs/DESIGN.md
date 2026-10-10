@@ -1,6 +1,6 @@
 # DESIGN.md — Restaurant POS Design System (Working Draft)
 
-> **Purpose:** Machine-readable design context for OpenDesign and frontend agents. **Visual choices are proposals**, not approved branding. Functional source of truth: `docs/01-prd-restaurant-pos.md`–`docs/06-api-specification.md`. Interaction source of truth: `docs/07-ui-ux-guidelines.md`. Do not let visual choices change business states, payment rules or role permissions.
+> **Purpose:** Working design context for frontend implementation. **Visual choices are proposals**, not approved branding. Functional source of truth: `docs/01-prd-restaurant-pos.md`–`docs/06-api-specification.md`. Interaction source of truth: `docs/07-ui-ux-guidelines.md`. Do not let visual choices change business states, payment rules or role permissions.
 
 ## 1. Brand & experience
 
@@ -133,14 +133,3 @@ For every significant component: show **default, hover/focus, loading, disabled,
 8. Customer cannot cancel; cashier voids with reason; a Served item is voidable before Paid only to correct **employee error**.
 9. All-void session closes without payment and without revenue; history remains in audit.
 10. Manual reservation created by cashier; no customer self-booking. Auto-open on first customer checkout of Available table is **proposed, not approved**.
-
-## 10. OpenDesign workflow
-
-1. Read `docs/07-ui-ux-guidelines.md` and `docs/DESIGN.md`, then reference docs 01–06 before designing screens.
-2. First establish a consistent visual direction with **C02 Customer Menu (390px)** and **K01 Cashier Overview (1440px)**.
-3. Review their components and responsive behavior; refine tokens as a whole.
-4. Generate P0 screens and interaction states using the screen IDs in doc 07.
-5. Connect a clickable prototype: QR name → checkout → Pending → Preparing → Served checklist → full cash payment → digital receipt + Available table.
-6. Review the ‘Design QA / acceptance checklist’ in doc 07 before handoff.
-
-**Reminder:** This DESIGN.md proposes an initial visual system for design exploration. Any design changes must preserve business rules and be updated back into shared tokens and guidelines.

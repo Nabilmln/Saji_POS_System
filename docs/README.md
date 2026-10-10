@@ -1,6 +1,6 @@
-# Restaurant POS — OpenDesign Context Bundle
+# Restaurant POS — Project Documentation
 
-Use this bundle as the project knowledge base for designing the Restaurant POS & QR Self-Ordering web application.
+These documents define the product, business rules, architecture, API, and UI guidance for the Restaurant POS & QR Self-Ordering web application.
 
 ## Files
 
@@ -11,12 +11,8 @@ Use this bundle as the project knowledge base for designing the Restaurant POS &
 - `docs/04-system-architecture.md`: Next.js + NeonDB modular-monolith architecture.
 - `docs/05-database-design.md` and `docs/05-schema-reference.sql`: ERD/data design references.
 - `docs/06-api-specification.md`: API routes, roles, request/response contracts.
-- `docs/07-ui-ux-guidelines.md`: screens, interactive states, accessibility, responsive design and OpenDesign prompts.
+- `docs/07-ui-ux-guidelines.md`: screens, interactive states, accessibility, and responsive design.
 - `docs/08-development-roadmap.md`: milestone plan and open decision gates.
-
-## First prompt (copy into OpenDesign)
-
-Read `docs/DESIGN.md` and `docs/07-ui-ux-guidelines.md`, then consult `docs/01-prd-restaurant-pos.md` through `docs/06-api-specification.md` for constraints. Design two coherent screen directions first: **C02 Customer Menu** at 390px and **K01 Cashier POS Overview** at 1440px. Use realistic Indonesian copy and IDR currency. Present shared components and a consistent token system. Do not add split bill, QRIS, customer PIN/login/self-cancellation, stock, recipe, print receipt, or extra order/table statuses. Before expanding, show a checklist of adherence to the spec and identify visual decisions requiring approval.
 
 ## Important
 
