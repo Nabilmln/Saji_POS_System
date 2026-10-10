@@ -33,3 +33,25 @@ npm run db:health
 ```
 
 The seed adds fictional menu items, tables, and settings. It is safe to repeat. To also seed staff profiles, create the two users with Neon Auth first, then set `SEED_ADMIN_USER_ID` and `SEED_CASHIER_USER_ID` to their UUIDs. The integration test needs a local PostgreSQL database with the migration and `scripts/db/local-auth-stub.sql` applied; set `TEST_DATABASE_URL` to its localhost URL before `npm test`.
+
+## Staff authentication (BE-03)
+
+Neon Managed Auth is proxied at `/api/auth/*`; the browser SDK is in `src/lib/auth/client.ts`. Email/password sign-in, sign-out, and session requests use that SDK. `/api/staff/me` and `/api/admin/me` verify the session and an active `staff_profiles` row on the server. The admin endpoint also requires the `ADMIN` role. Future staff and admin handlers must call `requireStaff(request)` or `requireAdmin(request)` before reading or changing protected data; those guards also reject cross-origin mutations.
+
+Set `NEON_AUTH_BASE_URL` and a unique `NEON_AUTH_COOKIE_SECRET` (at least 32 characters) in `.env.local` and on the app host. Do not expose the cookie secret to the browser. Public signup must be disabled on the linked Neon Auth branch before deploying staff login. This branch currently has email signup enabled and a shared Google OAuth provider; both need to be locked:
+
+```bash
+neon neon-auth config email-password update --project-id purple-band-68637667 --branch production --disable-sign-up true
+neon neon-auth config email-password get --project-id purple-band-68637667 --branch production
+neon neon-auth oauth-provider delete --project-id purple-band-68637667 --branch production --provider-id google
+neon neon-auth oauth-provider list --project-id purple-band-68637667 --branch production
+```
+
+Create the first Auth user through the trusted Neon CLI, using the owner's email. The CLI returns the user UUID. Set `BOOTSTRAP_ADMIN_USER_ID` to that UUID and `BOOTSTRAP_ADMIN_NAME` to the desired display name in the server environment, then run the one-time profile link:
+
+```bash
+neon neon-auth user create --project-id purple-band-68637667 --branch production --email you@example.com --name "Restaurant Admin"
+npm run auth:bootstrap-admin
+```
+
+The bootstrap script verifies that the Auth user exists and refuses to create a second admin. It never stores or prints a password. Confirm the new user's credential setup with Neon Auth after creating the account; do not use public signup for staff provisioning.

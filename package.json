@@ -12,11 +12,13 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx scripts/db/seed.ts",
-    "db:health": "tsx scripts/db/health.ts"
+    "db:health": "tsx scripts/db/health.ts",
+    "auth:bootstrap-admin": "tsx scripts/db/bootstrap-admin.ts"
   },
   "dependencies": {
     "@neon/config": "^1.8.6",
     "@neon/env": "^1.5.3",
+    "@neondatabase/auth": "^0.5.0-beta",
     "drizzle-orm": "^0.45.4",
     "next": "16.4.0",
     "pg": "^8.23.1",
@@ -37,6 +39,7 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
     "typescript": "^5",
+    "vite": "^6.4.4",
     "vitest": "^5.0.3"
   }
 }

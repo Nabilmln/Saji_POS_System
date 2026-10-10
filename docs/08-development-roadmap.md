@@ -103,6 +103,8 @@ Centang sebuah subtask hanya setelah bukti pada kolom Selesai tercapai dan perub
 
 **Progress BE-02 (10 Oktober 2026):** schema Drizzle, migrasi versi, dan seed demo selesai. Migrasi dan seed lulus pada PostgreSQL lokal; constraint satu sesi aktif/meja dan satu payment/sesi diuji dalam transaksi rollback. Snapshot Neon `production` `pre-be02-20261010` dibuat sebelum migrasi; migrasi dan seed diterapkan, lalu seed ulang tanpa duplikasi (8 meja, 2 kategori, 4 menu, 1 settings). Kotak tetap kosong sampai perubahan di-commit sesuai aturan roadmap.
 
+**Progress BE-03 (10 Oktober 2026):** proxy Neon Auth, cookie secret server, guard `requireStaff`/`requireAdmin`, pemeriksaan Origin, endpoint `/api/staff/me` dan `/api/admin/me`, serta script bootstrap admin pertama telah dibuat. Bootstrap berhasil sekali dan menolak pengulangan pada PostgreSQL lokal. Aktivasi akhir menunggu email admin, `disable_sign_up=true`, dan penghapusan Google OAuth shared pada Neon `production`; pengujian login/logout dan penolakan Kasir via HTTP memerlukan akun nyata. Kotak tetap kosong sampai gate ini lulus dan perubahan di-commit.
+
 **Gate ke Phase 2:** BE-01 sampai BE-11 selesai. Backend dapat menjalankan alur QR → Pending → Preparing → Served → Paid → Available dan ALL_VOID melalui request HTTP tanpa UI. Kontrak request/response, role, error dan fixture tersedia untuk frontend. R0 **belum** tercapai pada gate ini karena alur pengguna dan E2E browser belum diuji.
 
 ### Phase 2 — Frontend

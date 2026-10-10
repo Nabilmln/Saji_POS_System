@@ -94,6 +94,8 @@ Neon Auth sudah diaktifkan dalam `neon.ts`; aplikasi Next.js akan memasang proxy
 
 **Setiap** endpoint `/api/staff/*` dan `/api/admin/*`: validasi sesi server, `staff_profiles.is_active`, lalu role. Admin boleh melakukan operasi cashier. Kasir tidak boleh menggunakan endpoint admin walaupun membuat HTTP request secara manual. `GET /api/staff/me` mengembalikan profil aman tanpa hash password atau token.
 
+**Implementasi BE-03:** proxy `/api/auth/[...path]` menggunakan SDK Neon Auth; `GET /api/staff/me` dan `GET /api/admin/me` memakai guard server yang mengecek profil aktif. Mutasi staff/admin memakai pemeriksaan Origin. Bootstrap pertama memakai CLI Neon Auth dan `npm run auth:bootstrap-admin`; konfigurasi disable signup pada branch Neon wajib diverifikasi sebelum login staff dirilis.
+
 ### 2.2 Alur nama pelanggan tanpa login/PIN (desain API)
 
 Tidak perlu PIN dan tidak perlu akun pelanggan. Agar **form nama muncul sebelum katalog** dan akses order personal tetap minimal, gunakan mekanisme ringan:
