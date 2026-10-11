@@ -1,6 +1,6 @@
 # Restaurant POS
 
-Single-outlet restaurant POS and QR table ordering app. Backend work comes first; feature scope and acceptance criteria are in [the development roadmap](docs/08-development-roadmap.md).
+Single-outlet restaurant POS and QR table ordering app. Backend work comes first. The development roadmap and design notes are kept locally in `docs/` and are not included in this repository.
 
 ## Local development
 
@@ -18,7 +18,7 @@ npm test
 npm run build
 ```
 
-BE-01 shared request schemas, API envelopes, money strings, and restaurant dates live in `src/lib/`. BE-02 database schema and connection live in `src/db/`, with a versioned migration in `drizzle/`. The [API contract](docs/06-api-specification.md) and [database design](docs/05-database-design.md) describe the intended backend. Feature endpoints are added in later tasks.
+BE-01 shared request schemas, API envelopes, money strings, and restaurant dates live in `src/lib/`. BE-02 database schema and connection live in `src/db/`, with a versioned migration in `drizzle/`. Keep a separate copy of the local `docs/` folder if you need the detailed API contract and database design after cloning.
 
 ## Neon setup
 
@@ -54,3 +54,9 @@ npm run auth:bootstrap-admin
 
 The bootstrap script verifies that the Auth user exists and refuses to create a second admin. It never stores or prints a password. The server guards revalidate privileged sessions with Neon Auth on each request, so a signed-out cookie cannot continue to access staff/admin routes. Do not use public signup for future staff provisioning.
 The Neon CLI's user-create command does not accept a password; complete credential setup with Neon Auth before expecting email/password sign-in for a newly created user.
+
+## Customer access (BE-05)
+
+Set `CUSTOMER_TOKEN_SECRET` to a separate random secret of at least 32 bytes on the app host. This workspace has one in `.env.local`; create a new one on a fresh clone. Never expose it with `NEXT_PUBLIC_`. Public table metadata is available at `/api/public/tables/{tableToken}`. A guest submits a name to `/guests` and sends the returned bearer token to `/menu`. Guest tokens expire after two hours. The `/api/public/orders/{orderId}` status route requires an order-scoped bearer token, valid for 24 hours; BE-06 checkout will issue that token.
+
+The HTTP integration test needs the local app and PostgreSQL running with the same `CUSTOMER_TOKEN_SECRET`. Set `TEST_DATABASE_URL` and `TEST_API_BASE_URL` to their localhost URLs before `npm test`.
