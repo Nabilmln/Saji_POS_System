@@ -50,8 +50,8 @@ export function issueGuestToken(tableId: string, cycleNumber: number, customerNa
   return { guestToken: sign({ kind: "guest", tableId, cycleNumber, customerName, exp }), expiresAt: new Date(exp * 1000).toISOString() };
 }
 
-export function issueOrderViewToken(orderId: string, tableId: string) {
-  return sign({ kind: "order", orderId, tableId, exp: Math.floor(Date.now() / 1000) + 24 * 60 * 60 });
+export function issueOrderViewToken(orderId: string, tableId: string, createdAt = new Date()) {
+  return sign({ kind: "order", orderId, tableId, exp: Math.floor(createdAt.getTime() / 1000) + 24 * 60 * 60 });
 }
 
 export function requireGuest(request: Request): GuestClaims | Response {
