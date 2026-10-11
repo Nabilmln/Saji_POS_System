@@ -105,6 +105,8 @@ Centang sebuah subtask hanya setelah bukti pada kolom Selesai tercapai dan perub
 
 **Progress BE-03 (11 Oktober 2026):** proxy Neon Auth, cookie secret server, guard `requireStaff`/`requireAdmin`, pemeriksaan Origin, endpoint `/api/staff/me` dan `/api/admin/me`, serta script bootstrap admin pertama telah dibuat. Bootstrap berhasil sekali dan menolak pengulangan pada PostgreSQL lokal. Admin pertama telah dibuat pada Neon `production`; `disable_sign_up=true` telah diverifikasi dan Google OAuth shared dihapus. HTTP sign-in → Admin/Staff 200 → sign-out → replay cookie 401 lulus. Penolakan Kasir pada route Admin tercakup unit test; HTTP Kasir menunggu akun Kasir dan endpoint fitur admin pada task berikutnya. Kotak tetap kosong sampai gate ini lulus dan perubahan di-commit.
 
+**Progress BE-04 (11 Oktober 2026):** API Admin kategori, menu/availability, meja/token QR, dan billing settings selesai. `orderUrl` relatif dipilih untuk pembuatan QR di frontend. Validasi kontrak, token QR unik, archive menu, dan stale `expectedVersion` diuji pada PostgreSQL lokal; lint, typecheck, dan build lulus. Kotak tetap kosong sampai perubahan di-commit sesuai aturan roadmap.
+
 **Gate ke Phase 2:** BE-01 sampai BE-11 selesai. Backend dapat menjalankan alur QR → Pending → Preparing → Served → Paid → Available dan ALL_VOID melalui request HTTP tanpa UI. Kontrak request/response, role, error dan fixture tersedia untuk frontend. R0 **belum** tercapai pada gate ini karena alur pengguna dan E2E browser belum diuji.
 
 ### Phase 2 — Frontend

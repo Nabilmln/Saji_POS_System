@@ -52,6 +52,14 @@ export function databaseConflict(error: unknown, code: string, message: string):
   throw error;
 }
 
+export function missingCategory(error: unknown): Response {
+  const pg = error as { code?: string; cause?: { code?: string } };
+  if (pg.code === "23503" || pg.cause?.code === "23503") {
+    return apiError(422, "CATEGORY_NOT_FOUND", "Category does not exist");
+  }
+  throw error;
+}
+
 export function menuData(item: {
   id: string; categoryId: string; name: string; description: string | null;
   imageUrl: string | null; priceIdr: bigint; isAvailable: boolean;

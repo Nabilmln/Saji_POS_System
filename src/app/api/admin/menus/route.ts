@@ -1,10 +1,10 @@
 import { and, asc, count, eq, ilike, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { categories, menuItems } from "@/db/schema";
-import { apiError, apiSuccess, apiValidationError } from "@/lib/api-response";
+import { menuItems } from "@/db/schema";
+import { apiSuccess, apiValidationError } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/auth/guards";
-import { idSchema, menuData, menuSchema, parseBody } from "@/lib/admin/master-data";
+import { idSchema, menuData, menuSchema, missingCategory, parseBody } from "@/lib/admin/master-data";
 
 const querySchema = z.strictObject({
   q: z.string().trim().max(160).optional(),
@@ -40,11 +40,12 @@ export async function POST(request: Request) {
   if (admin instanceof Response) return admin;
   const body = await parseBody(request, menuSchema);
   if (body instanceof Response) return body;
-  const [category] = await db.select({ id: categories.id }).from(categories)
-    .where(eq(categories.id, body.categoryId)).limit(1);
-  if (!category) return apiError(422, "CATEGORY_NOT_FOUND", "Category does not exist");
-  const [item] = await db.insert(menuItems).values({
-    ...body, priceIdr: BigInt(body.priceIdr),
-  }).returning();
-  return apiSuccess(menuData(item), 201);
+  try {
+    const [item] = await db.insert(menuItems).values({
+      ...body, priceIdr: BigInt(body.priceIdr),
+    }).returning();
+    return apiSuccess(menuData(item), 201);
+  } catch (error) {
+    return missingCategory(error);
+  }
 }
