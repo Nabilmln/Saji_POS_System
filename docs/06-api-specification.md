@@ -94,7 +94,7 @@ Neon Auth sudah diaktifkan dalam `neon.ts`; aplikasi Next.js akan memasang proxy
 
 **Setiap** endpoint `/api/staff/*` dan `/api/admin/*`: validasi sesi server, `staff_profiles.is_active`, lalu role. Admin boleh melakukan operasi cashier. Kasir tidak boleh menggunakan endpoint admin walaupun membuat HTTP request secara manual. `GET /api/staff/me` mengembalikan profil aman tanpa hash password atau token.
 
-**Implementasi BE-03:** proxy `/api/auth/[...path]` menggunakan SDK Neon Auth; `GET /api/staff/me` dan `GET /api/admin/me` memakai guard server yang mengecek profil aktif. Mutasi staff/admin memakai pemeriksaan Origin. Bootstrap pertama memakai CLI Neon Auth dan `npm run auth:bootstrap-admin`; konfigurasi disable signup pada branch Neon wajib diverifikasi sebelum login staff dirilis.
+**Implementasi BE-03:** proxy `/api/auth/[...path]` menggunakan SDK Neon Auth; `GET /api/staff/me` dan `GET /api/admin/me` memakai guard server yang mengecek profil aktif dan memvalidasi sesi langsung ke Neon Auth. Mutasi staff/admin memakai pemeriksaan Origin. Admin pertama dibuat melalui setup terkontrol dengan kredensial yang diberikan pemilik lalu profilnya di-link dengan `npm run auth:bootstrap-admin`. Setelah itu `disable_sign_up=true` diterapkan pada Neon `production` dan Google OAuth shared dihapus. Provisioning staf berikutnya tidak memakai signup publik.
 
 ### 2.2 Alur nama pelanggan tanpa login/PIN (desain API)
 
@@ -644,7 +644,7 @@ Tanpa `print`, `download PDF`, atau integrasi printer sebagai persyaratan MVP. T
 - `GET /api/admin/tables`: semua meja aktif/nonaktif, nomor, status, QR URL; tidak perlu menampilkan raw secret lain.
 - `POST /api/admin/tables` `{ "tableNumber":"05" }` → `201 {id,tableNumber,status:"AVAILABLE",orderUrl}`; server membuat `qr_token` acak tidak mudah ditebak.
 - `PATCH /api/admin/tables/{id}` `{ "tableNumber":"06", "isActive":true }` → `200`. Hanya ubah/nonaktifkan ketika **tidak** Occupied/Reserved dan tidak punya sesi aktif; menolak duplikasi nomor.
-- `GET /api/admin/tables/{id}/qr?format=svg` → `image/svg+xml` (bukan JSON) atau gunakan metadata `orderUrl` untuk generate QR client secara lokal. **Bukan QRIS**. Tidak menyediakan endpoint manual bebas untuk mengubah status meja tanpa menjalankan transaksi sesi/reservasi.
+- BE-04 memakai metadata `orderUrl` relatif (`/order/{tableToken}`) untuk generate QR client secara lokal menggunakan origin aplikasi; tidak ada endpoint SVG. **Bukan QRIS**. Tidak menyediakan endpoint manual bebas untuk mengubah status meja tanpa menjalankan transaksi sesi/reservasi.
 
 ### 8.3 Manajemen akun staff
 

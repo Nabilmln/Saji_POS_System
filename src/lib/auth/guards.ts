@@ -13,7 +13,8 @@ async function requireRole(request: Request, role: StaffRole): Promise<StaffIden
     return apiError(403, "INVALID_ORIGIN", "Same-origin request required");
   }
 
-  const { data: session, error } = await auth.getSession();
+  // The SDK bypasses its signed-cookie cache only when this query value is the string "true".
+  const { data: session, error } = await auth.getSession({ query: { disableCookieCache: "true" } });
   if (error) return apiError(503, "AUTH_UNAVAILABLE", "Authentication service unavailable");
   const userId = session?.user?.id;
   if (!userId) return authorizeStaff(undefined, undefined, role);
