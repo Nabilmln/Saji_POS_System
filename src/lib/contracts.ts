@@ -49,6 +49,22 @@ export const checkoutSchema = z
     });
   });
 
+export const manualOrderSchema = z.strictObject({
+  clientRequestKey: uuid,
+  customerName: z.string().trim().min(1).max(120),
+  note: note.optional(),
+  items: checkoutSchema.shape.items,
+}).superRefine(({ items }, context) => {
+  const ids = new Set<string>();
+  items.forEach(({ menuItemId }, index) => {
+    const id = menuItemId.toLowerCase();
+    if (ids.has(id)) context.addIssue({
+      code: "custom", path: ["items", index, "menuItemId"], message: "Menu item appears more than once",
+    });
+    ids.add(id);
+  });
+});
+
 export const paymentSchema = z.strictObject({
   idempotencyKey: uuid,
   expectedSessionRevision: revisionSchema,

@@ -3,6 +3,7 @@ import {
   billingSettingsSchema,
   checkoutSchema,
   decimalString,
+  manualOrderSchema,
   moneyIdrSchema,
   paymentSchema,
   revisionSchema,
@@ -44,6 +45,18 @@ describe("API contracts", () => {
     expect(checkoutSchema.safeParse({ ...base, subtotalIdr: "1" }).success).toBe(
       false,
     );
+  });
+
+  it("validates manual orders without accepting client prices", () => {
+    const base = {
+      clientRequestKey: requestKey, customerName: " Cashier customer ",
+      items: [{ menuItemId, quantity: 1 }],
+    };
+    expect(manualOrderSchema.parse(base).customerName).toBe("Cashier customer");
+    expect(manualOrderSchema.safeParse({ ...base, items: [...base.items, ...base.items] }).success).toBe(false);
+    expect(manualOrderSchema.safeParse({
+      ...base, items: [{ ...base.items[0], unitPriceIdr: "1" }],
+    }).success).toBe(false);
   });
 
   it("requires positive quote versions and valid billing settings", () => {
