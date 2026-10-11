@@ -1,0 +1,2 @@
+ALTER TABLE "table_sessions" DROP CONSTRAINT "table_sessions_reason_check";--> statement-breakpoint
+ALTER TABLE "table_sessions" ADD CONSTRAINT "table_sessions_reason_check" CHECK ("table_sessions"."closure_reason" IN ('PAID', 'ALL_VOID', 'EMPTY'));

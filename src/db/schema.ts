@@ -121,7 +121,7 @@ export const tableSessions = pgTable(
   },
   (table) => [
     check("table_sessions_revision_check", sql`${table.billRevision} >= 1`),
-    check("table_sessions_reason_check", sql`${table.closureReason} IN ('PAID', 'ALL_VOID')`),
+    check("table_sessions_reason_check", sql`${table.closureReason} IN ('PAID', 'ALL_VOID', 'EMPTY')`),
     check("table_sessions_closed_check", sql`(${table.closedAt} IS NULL AND ${table.closureReason} IS NULL) OR (${table.closedAt} IS NOT NULL AND ${table.closureReason} IS NOT NULL)`),
     check("table_sessions_closed_time_check", sql`${table.closedAt} IS NULL OR ${table.closedAt} >= ${table.openedAt}`),
     uniqueIndex("table_sessions_one_active_per_table")
