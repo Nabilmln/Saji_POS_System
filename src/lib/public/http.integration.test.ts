@@ -62,6 +62,17 @@ it.skipIf(!databaseUrl || !apiBaseUrl || !process.env.CUSTOMER_TOKEN_SECRET)("en
     })).json();
     expect(catalog.data.categories.flatMap((category: { items: { name: string }[] }) => category.items.map((item) => item.name)))
       .toEqual(["Visible dish"]);
+    const moreGuests = await Promise.all(Array.from({ length: 29 }, () => fetch(`${base}/guests`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ customerName: "Aulia", expectedCycleNumber: 0 }),
+    })));
+    expect(moreGuests.map((response) => response.status)).toEqual(Array(29).fill(200));
+    const limited = await fetch(`${base}/guests`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ customerName: "Aulia", expectedCycleNumber: 0 }),
+    });
+    expect(limited.status).toBe(429);
+    expect(limited.headers.get("Retry-After")).toBe("60");
     await client.query("UPDATE dining_tables SET cycle_number = 1 WHERE id = $1", [tableId]);
     const staleGuest = await fetch(`${base}/menu`, {
       headers: { Authorization: `Bearer ${guestToken}` },

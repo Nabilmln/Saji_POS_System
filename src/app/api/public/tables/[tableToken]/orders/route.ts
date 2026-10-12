@@ -6,6 +6,7 @@ import { apiError, apiSuccess, apiValidationError } from "@/lib/api-response";
 import { checkoutFingerprint } from "@/lib/checkout";
 import { checkoutSchema } from "@/lib/contracts";
 import { issueOrderViewToken, requireGuest } from "@/lib/public/tokens";
+import { limitPublicRequests } from "@/lib/public/rate-limit";
 
 function orderResponse(
   order: typeof orders.$inferSelect,
@@ -41,6 +42,9 @@ export async function POST(request: Request, context: { params: Promise<{ tableT
   if (key && (!z.uuid().safeParse(key).success || key.toLowerCase() !== body.clientRequestKey.toLowerCase())) {
     return apiError(422, "VALIDATION_ERROR", "Idempotency-Key must match clientRequestKey");
   }
+
+  const limited = await limitPublicRequests(guest.tableId, "order");
+  if (limited) return limited;
 
   try {
     return await db.transaction(async (tx) => {

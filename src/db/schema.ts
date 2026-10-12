@@ -7,6 +7,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   smallint,
   text,
   timestamp,
@@ -49,6 +50,20 @@ export const diningTables = pgTable(
   (table) => [
     check("dining_tables_status_check", sql`${table.status} IN ('AVAILABLE', 'OCCUPIED', 'RESERVED')`),
     check("dining_tables_cycle_check", sql`${table.cycleNumber} >= 0`),
+  ],
+);
+
+export const publicRateLimits = pgTable(
+  "public_rate_limits",
+  {
+    scope: varchar("scope", { length: 16 }).notNull(),
+    tableId: uuid("table_id").notNull().references(() => diningTables.id, { onDelete: "cascade" }),
+    windowStartedAt: timestamp("window_started_at", { withTimezone: true }).notNull(),
+    requestCount: integer("request_count").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.scope, table.tableId] }),
+    check("public_rate_limits_count_check", sql`${table.requestCount} > 0`),
   ],
 );
 

@@ -1,0 +1,65 @@
+name: Backend
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      DATABASE_URL_UNPOOLED: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+      NEON_AUTH_BASE_URL: https://example.invalid/neon-auth
+      NEON_AUTH_JWKS_URL: https://example.invalid/neon-auth/jwks
+      NEON_AUTH_COOKIE_SECRET: ci-only-cookie-secret-with-at-least-32-characters
+      CUSTOMER_TOKEN_SECRET: ci-only-customer-token-secret-with-at-least-32-characters
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: Prepare local PostgreSQL
+        run: |
+          PGPASSWORD=postgres psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f scripts/db/local-auth-stub.sql
+          npm run db:migrate
+          npm run db:seed
+          npm run db:health
+      - name: Start local API
+        run: |
+          npm run start > next.log 2>&1 &
+          for attempt in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then exit 0; fi
+            sleep 1
+          done
+          cat next.log
+          exit 1
+      - name: PostgreSQL and public HTTP integration
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+          TEST_API_BASE_URL: http://127.0.0.1:3000
+        run: npx vitest run src/db/schema.integration.test.ts src/lib/public/http.integration.test.ts src/lib/checkout.integration.test.ts

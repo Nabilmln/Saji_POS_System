@@ -32,6 +32,11 @@ it.skipIf(!testUrl)("enforces table status, one active session, and one payment 
     );
     const sessionId = session.rows[0].id;
 
+    await client.query("UPDATE table_sessions SET closed_at = now(), closure_reason = 'EMPTY' WHERE id = $1", [sessionId]);
+    const emptyClosure = await client.query("SELECT closure_reason FROM table_sessions WHERE id = $1", [sessionId]);
+    expect(emptyClosure.rows[0].closure_reason).toBe("EMPTY");
+    await client.query("UPDATE table_sessions SET closed_at = NULL, closure_reason = NULL WHERE id = $1", [sessionId]);
+
     await client.query("SAVEPOINT duplicate_session");
     await expect(
       client.query("INSERT INTO table_sessions (table_id) VALUES ($1)", [tableId]),

@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { diningTables } from "@/db/schema";
 import { apiError, apiSuccess, apiValidationError } from "@/lib/api-response";
 import { issueGuestToken } from "@/lib/public/tokens";
+import { limitPublicRequests } from "@/lib/public/rate-limit";
 
 const schema = z.strictObject({
   customerName: z.string().trim().min(1).max(120),
@@ -27,6 +28,8 @@ export async function POST(request: Request, context: { params: Promise<{ tableT
   if (table.cycleNumber !== parsed.data.expectedCycleNumber) {
     return apiError(409, "TABLE_CYCLE_CHANGED", "Refresh the table and enter your name again");
   }
+  const limited = await limitPublicRequests(table.id, "guest");
+  if (limited) return limited;
   return apiSuccess({
     customerName: parsed.data.customerName, tableNumber: table.tableNumber,
     cycleNumber: table.cycleNumber,
