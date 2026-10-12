@@ -2,13 +2,14 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { StaffShell } from "@/components/app-shells";
 import { adminApi, AdminApiError } from "@/lib/admin/client";
 import { authClient } from "@/lib/auth/client";
 
 export function PosFrame({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const pathname = usePathname();
   const [name, setName] = useState("");
   const [state, setState] = useState<"loading" | "ready" | "login" | "error">("loading");
   const [logoutError, setLogoutError] = useState("");
@@ -29,7 +30,8 @@ export function PosFrame({ children }: { children: ReactNode }) {
   </main>;
 
   const navigation = <>
-    <Link className="staff-nav-item active" href="/pos">Meja & Pesanan</Link>
+    <Link className={`staff-nav-item ${pathname.startsWith("/pos/transactions") ? "" : "active"}`} href="/pos" aria-current={pathname.startsWith("/pos/transactions") ? undefined : "page"}>Meja & Pesanan</Link>
+    <Link className={`staff-nav-item ${pathname.startsWith("/pos/transactions") ? "active" : ""}`} href="/pos/transactions" aria-current={pathname.startsWith("/pos/transactions") ? "page" : undefined}>Riwayat Transaksi</Link>
     <p className="staff-nav-label">AKUN</p>
     <p className="staff-account">{name}</p>
     <button className="staff-signout" onClick={async () => {
@@ -41,5 +43,5 @@ export function PosFrame({ children }: { children: ReactNode }) {
     }}>Keluar</button>
     {logoutError && <p className="inline-alert" role="alert">{logoutError}</p>}
   </>;
-  return <StaffShell role="Kasir" title="Meja & Pesanan" navigation={navigation}>{children}</StaffShell>;
+  return <StaffShell role="Kasir" title={pathname.startsWith("/pos/transactions") ? "Riwayat Transaksi" : pathname.startsWith("/pos/payments") ? "Pembayaran" : "Meja & Pesanan"} navigation={navigation}>{children}</StaffShell>;
 }

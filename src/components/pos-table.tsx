@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { adminApi, AdminApiError, jsonRequest } from "@/lib/admin/client";
 import { changeCart, cartSubtotal, formatIdr, type CartItem } from "@/lib/customer/cart";
+import { PosBillPreview } from "@/components/pos-bill";
 
 type Item = { id: string; menuName: string; quantity: number; lineTotalIdr: string; customerNote: string | null; served: boolean; voided: boolean };
 type Order = { id: string; customerName: string; source: "QR" | "MANUAL"; status: "PENDING" | "PREPARING" | "SERVED"; note: string | null; voidedAt: string | null; items: Item[] };
@@ -119,6 +120,7 @@ export function PosTable({ tableId }: { tableId: string }) {
         <div className="pos-summary"><div><span>Total tagihan saat ini</span><strong>{formatIdr(table.bill?.grandTotalIdr ?? "0")}</strong></div><div><span>Item tersaji</span><strong>{served} / {active}</strong></div></div>
         <div className="admin-actions"><button className="primary-button" disabled={table.status === "RESERVED"} onClick={() => setShowManual((current) => !current)}>{showManual ? "Tutup form order" : "Tambah order manual"}</button>{allVoid && <button className="secondary-button danger-text" onClick={() => setClosing(true)}>Tutup sesi tanpa pembayaran</button>}</div>
       </section>
+      {table.session && <PosBillPreview key={table.session.id} sessionId={table.session.id} />}
       {showManual && <section className="admin-panel"><h2>Order manual</h2><p className="muted">Order baru masuk status Menunggu dan perlu dikonfirmasi.</p>
         <form onSubmit={(event) => void submitManual(event)}>
           <div className="admin-form-grid"><label>Nama pelanggan / label<input className="text-field" required maxLength={120} value={draft.customerName} onChange={(event) => editDraft({ customerName: event.target.value })} /></label><label>Catatan order (opsional)<input className="text-field" maxLength={500} value={draft.note} onChange={(event) => editDraft({ note: event.target.value })} /></label></div>
