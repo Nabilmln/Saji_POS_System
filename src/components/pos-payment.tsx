@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { adminApi, AdminApiError, jsonRequest } from "@/lib/admin/client";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { BillBreakdown } from "@/components/pos-bill";
 import { formatIdr } from "@/lib/customer/cart";
 import { canSubmitPayment, cashChange, quoteChanged, type BillQuote } from "@/lib/staff/payment-ui";
@@ -90,8 +91,8 @@ export function PosPayment({ sessionId }: { sessionId: string }) {
         await refresh(true);
       } else if (cause instanceof AdminApiError && ["CASH_INSUFFICIENT", "ORDERS_NOT_SERVED", "VALIDATION_ERROR"].includes(cause.code)) {
         sessionStorage.removeItem(pendingKey); setPending(null); setReviewed(false);
-        setError("Pembayaran ditolak. Segarkan tagihan dan periksa uang serta status pesanan.");
         await refresh(true);
+        setError("Pembayaran ditolak. Segarkan tagihan dan periksa uang serta status pesanan.");
       } else if (cause instanceof AdminApiError && ["PAYMENT_ALREADY_RECORDED", "SESSION_NOT_ACTIVE"].includes(cause.code)) {
         sessionStorage.removeItem(pendingKey); setPending(null);
         setError("Sesi ini sudah ditutup. Periksa riwayat transaksi sebelum melakukan pembayaran lain.");
@@ -118,6 +119,6 @@ export function PosPayment({ sessionId }: { sessionId: string }) {
         <div className="admin-actions">{pending ? <button className="primary-button" disabled={busy} onClick={() => void sendPayment(pending)}>{busy ? "Memeriksa pembayaran…" : "Ulangi transaksi yang sama"}</button> : <button className="primary-button" disabled={!ready} onClick={() => setConfirming(true)}>Konfirmasi pembayaran</button>}</div>
       </>}
     </section>
-    {confirming && quote && <div className="pos-dialog-backdrop"><section className="pos-dialog" role="dialog" aria-modal="true" aria-labelledby="payment-confirm-title"><h2 id="payment-confirm-title">Konfirmasi pembayaran tunai</h2><p>Meja {quote.tableNumber} · Tagihan <strong>{formatIdr(quote.grandTotalIdr)}</strong></p><p>Uang diterima {formatIdr(cash)} · Kembalian {formatIdr(change ?? 0n)}</p><p className="muted">Pembayaran akan menutup sesi dan mengembalikan meja ke status Tersedia.</p><div className="admin-actions"><button className="secondary-button" onClick={() => setConfirming(false)}>Periksa lagi</button><button className="primary-button" disabled={!ready} onClick={() => void sendPayment({ idempotencyKey: crypto.randomUUID(), expectedSessionRevision: quote.sessionRevision, expectedSettingsVersion: quote.settingsVersion, cashReceivedIdr: cash })}>Bayar tunai</button></div></section></div>}
+    {confirming && quote && <ConfirmationDialog titleId="payment-confirm-title" onClose={() => setConfirming(false)}><h2 id="payment-confirm-title">Konfirmasi pembayaran tunai</h2><p>Meja {quote.tableNumber} · Tagihan <strong>{formatIdr(quote.grandTotalIdr)}</strong></p><p>Uang diterima {formatIdr(cash)} · Kembalian {formatIdr(change ?? 0n)}</p><p className="muted">Pembayaran akan menutup sesi dan mengembalikan meja ke status Tersedia.</p><div className="admin-actions"><button className="secondary-button" onClick={() => setConfirming(false)}>Periksa lagi</button><button className="primary-button" disabled={!ready} onClick={() => void sendPayment({ idempotencyKey: crypto.randomUUID(), expectedSessionRevision: quote.sessionRevision, expectedSettingsVersion: quote.settingsVersion, cashReceivedIdr: cash })}>Bayar tunai</button></div></ConfirmationDialog>}
   </div>;
 }

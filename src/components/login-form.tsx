@@ -11,11 +11,18 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [resetting, setResetting] = useState(false);
+  const [notice, setNotice] = useState("");
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setBusy(true); setError("");
     try {
+      if (resetting) {
+        const result = await authClient.requestPasswordReset({ email: email.trim(), redirectTo: `${window.location.origin}/reset-password` });
+        if (result.error) throw result.error;
+        setNotice("Jika akun ini terdaftar, tautan pengaturan kata sandi akan dikirim ke email Anda."); return;
+      }
       const result = await authClient.signIn.email({ email: email.trim(), password });
       if (result.error) { setError("Email atau kata sandi tidak sesuai."); return; }
       const staff = await adminApi<{ role: "ADMIN" | "CASHIER" }>("/api/staff/me");
@@ -33,10 +40,12 @@ export function LoginForm() {
     <form onSubmit={submit} className="login-form">
       <label className="field-label" htmlFor="staff-email">Email</label>
       <input className="text-field" id="staff-email" type="email" autoComplete="username" required value={email} onChange={(event) => setEmail(event.target.value)} />
-      <label className="field-label" htmlFor="staff-password">Kata sandi</label>
-      <input className="text-field" id="staff-password" type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} />
+      {!resetting && <><label className="field-label" htmlFor="staff-password">Kata sandi</label>
+      <input className="text-field" id="staff-password" type="password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} /></>}
       {error && <div className="inline-alert" role="alert">{error}</div>}
-      <button className="primary-button full-width" disabled={busy}>{busy ? "Memeriksa akun…" : "Masuk"}</button>
+      {notice && <div className="inline-alert info" role="status">{notice}</div>}
+      <button className="primary-button full-width" disabled={busy}>{busy ? "Memproses…" : resetting ? "Kirim tautan pengaturan" : "Masuk"}</button>
+      <button type="button" className="text-button" disabled={busy} onClick={() => { setResetting(!resetting); setError(""); setNotice(""); }}>{resetting ? "Kembali ke masuk" : "Lupa kata sandi?"}</button>
     </form>
   </main>;
 }

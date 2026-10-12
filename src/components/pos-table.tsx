@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { adminApi, AdminApiError, jsonRequest } from "@/lib/admin/client";
 import { changeCart, cartSubtotal, formatIdr, type CartItem } from "@/lib/customer/cart";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { PosBillPreview } from "@/components/pos-bill";
 
 type Item = { id: string; menuName: string; quantity: number; lineTotalIdr: string; customerNote: string | null; served: boolean; voided: boolean };
@@ -25,7 +26,7 @@ export function PosTable({ tableId }: { tableId: string }) {
   const [reasonType, setReasonType] = useState<"CUSTOMER_REQUEST" | "EMPLOYEE_ERROR">("CUSTOMER_REQUEST");
   const [reason, setReason] = useState("");
   const [closeReason, setCloseReason] = useState("");
-  const [closing, setClosing] = useState(false);
+  const [closing, setClosing] = useState<"EMPTY" | "ALL_VOID" | null>(null);
   const [showManual, setShowManual] = useState(false);
   const [search, setSearch] = useState("");
   const storageKey = `pos-manual:${tableId}`;
@@ -69,8 +70,8 @@ export function PosTable({ tableId }: { tableId: string }) {
     setBusy(action); setError(""); setNotice("");
     try { await adminApi(path, init); await refresh(); return true; }
     catch (cause) {
-      setError(cause instanceof AdminApiError && cause.code === "BILL_CHANGED" ? "Tagihan berubah. Periksa data terbaru sebelum mencoba lagi." : "Perubahan gagal. Segarkan data dan coba lagi.");
       await refresh();
+      setError(cause instanceof AdminApiError && cause.code === "BILL_CHANGED" ? "Tagihan berubah. Periksa data terbaru sebelum mencoba lagi." : "Perubahan gagal. Segarkan data dan coba lagi.");
       return false;
     } finally { setBusy(""); }
   }
@@ -87,8 +88,8 @@ export function PosTable({ tableId }: { tableId: string }) {
       sessionStorage.removeItem(storageKey); setDraft({ customerName: "", note: "", cart: [], key: "" }); setShowManual(false);
       setNotice("Pesanan tersimpan sebagai Menunggu. Konfirmasikan saat siap diproses."); await refresh();
     } catch (cause) {
-      setError(cause instanceof AdminApiError && cause.code === "MENU_UNAVAILABLE" ? "Menu berubah. Periksa ketersediaan sebelum mencoba lagi." : "Belum dapat memastikan pesanan tersimpan. Coba lagi tanpa mengubah isian untuk memakai kunci transaksi yang sama.");
       await refresh();
+      setError(cause instanceof AdminApiError && cause.code === "MENU_UNAVAILABLE" ? "Menu berubah. Periksa ketersediaan sebelum mencoba lagi." : "Belum dapat memastikan pesanan tersimpan. Coba lagi tanpa mengubah isian untuk memakai kunci transaksi yang sama.");
     } finally { setBusy(""); }
   }
   async function submitVoid(event: FormEvent<HTMLFormElement>) {
@@ -98,11 +99,11 @@ export function PosTable({ tableId }: { tableId: string }) {
       setVoidItem(null); setReason("");
     }
   }
-  async function closeAllVoid(event: FormEvent<HTMLFormElement>) {
+  async function closeSession(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!table?.session) return;
     const session = table.session;
-    if (await mutate(`/api/staff/table-sessions/${session.id}/close-all-void`, jsonRequest("POST", { expectedSessionRevision: session.billRevision, reason: closeReason.trim() }), "close")) {
-      setClosing(false); setCloseReason("");
+    if (await mutate(`/api/staff/table-sessions/${session.id}/${closing === "EMPTY" ? "close-empty" : "close-all-void"}`, jsonRequest("POST", { expectedSessionRevision: session.billRevision, reason: closeReason.trim() }), "close")) {
+      setClosing(null); setCloseReason("");
     }
   }
   const items = table?.orders.flatMap((order) => order.items) ?? [];
@@ -118,7 +119,7 @@ export function PosTable({ tableId }: { tableId: string }) {
         <div className="admin-section-head"><div><p className="eyebrow">DETAIL MEJA</p><h2>Meja {table.tableNumber}</h2></div><button className="secondary-button" onClick={() => void refresh()}>Segarkan</button></div>
         <p className="muted">{table.status === "AVAILABLE" ? "Tersedia" : table.status === "RESERVED" ? "Dipesan · check-in diperlukan sebelum order manual" : "Terisi"}{table.session ? ` · Sesi ${table.session.id.slice(0, 8)}` : ""}</p>
         <div className="pos-summary"><div><span>Total tagihan saat ini</span><strong>{formatIdr(table.bill?.grandTotalIdr ?? "0")}</strong></div><div><span>Item tersaji</span><strong>{served} / {active}</strong></div></div>
-        <div className="admin-actions"><button className="primary-button" disabled={table.status === "RESERVED"} onClick={() => setShowManual((current) => !current)}>{showManual ? "Tutup form order" : "Tambah order manual"}</button>{allVoid && <button className="secondary-button danger-text" onClick={() => setClosing(true)}>Tutup sesi tanpa pembayaran</button>}</div>
+        <div className="admin-actions"><button className="primary-button" disabled={table.status === "RESERVED"} onClick={() => setShowManual((current) => !current)}>{showManual ? "Tutup form order" : "Tambah order manual"}</button>{allVoid && <button className="secondary-button danger-text" onClick={() => setClosing("ALL_VOID")}>Tutup sesi tanpa pembayaran</button>}{table.session && !table.orders.length && <button className="secondary-button danger-text" onClick={() => setClosing("EMPTY")}>Tutup sesi kosong</button>}</div>
       </section>
       {table.session && <PosBillPreview key={table.session.id} sessionId={table.session.id} />}
       {showManual && <section className="admin-panel"><h2>Order manual</h2><p className="muted">Order baru masuk status Menunggu dan perlu dikonfirmasi.</p>
@@ -143,8 +144,8 @@ export function PosTable({ tableId }: { tableId: string }) {
           {order.items.map((item) => <div className={`pos-item ${item.voided ? "voided" : ""}`} key={item.id}><div><strong>{item.quantity}× {item.menuName}</strong><p className="muted">{item.voided ? "Dibatalkan" : item.served ? "Tersaji" : "Belum disajikan"} · {formatIdr(item.lineTotalIdr)}</p>{item.customerNote && <p className="muted">Catatan: {item.customerNote}</p>}</div><div className="pos-item-actions">{!item.voided && order.status !== "PENDING" && <label className="check-row"><input type="checkbox" checked={item.served} disabled={item.served || Boolean(busy)} onChange={() => void mutate(`/api/staff/order-items/${item.id}/served`, jsonRequest("PATCH", { served: true }), `served:${item.id}`)} aria-label={`Sudah disajikan: ${item.quantity} ${item.menuName}`} />Tersaji</label>}{!item.voided && <button className="text-button danger-text" disabled={Boolean(busy)} onClick={() => { setVoidItem(item); setReasonType(item.served ? "EMPLOYEE_ERROR" : "CUSTOMER_REQUEST"); setReason(""); }}>Batalkan item</button>}</div></div>)}
         </article>) : <p className="empty-state">Belum ada pesanan pada sesi ini.</p>}
       </section>
-      {voidItem && <div className="pos-dialog-backdrop"><section className="pos-dialog" role="dialog" aria-modal="true" aria-labelledby="void-title"><h2 id="void-title">Batalkan item</h2><p>{voidItem.quantity}× {voidItem.menuName}. Tagihan akan dihitung ulang.</p>{error && <div className="inline-alert" role="alert">{error}</div>}<form onSubmit={(event) => void submitVoid(event)}>{voidItem.served ? <p className="inline-alert">Item sudah tersaji. Hanya dapat dibatalkan karena kesalahan pegawai.</p> : <label>Alasan<select className="text-field" value={reasonType} onChange={(event) => setReasonType(event.target.value as typeof reasonType)}><option value="CUSTOMER_REQUEST">Permintaan pelanggan</option><option value="EMPLOYEE_ERROR">Kesalahan pegawai</option></select></label>}<label className="field-label">Penjelasan<textarea className="text-field" minLength={5} maxLength={500} required value={reason} onChange={(event) => setReason(event.target.value)} /></label><div className="admin-actions"><button type="button" className="secondary-button" onClick={() => setVoidItem(null)}>Kembali</button><button className="primary-button" disabled={Boolean(busy)}>Batalkan item</button></div></form></section></div>}
-      {closing && table.session && <div className="pos-dialog-backdrop"><section className="pos-dialog" role="dialog" aria-modal="true" aria-labelledby="close-title"><h2 id="close-title">Tutup sesi tanpa pembayaran?</h2><p>Semua item dibatalkan. Meja akan kembali tersedia tanpa membuat pembayaran.</p>{error && <div className="inline-alert" role="alert">{error}</div>}<form onSubmit={(event) => void closeAllVoid(event)}><label className="field-label">Alasan penutupan<textarea className="text-field" minLength={5} maxLength={500} required value={closeReason} onChange={(event) => setCloseReason(event.target.value)} /></label><div className="admin-actions"><button type="button" className="secondary-button" onClick={() => setClosing(false)}>Kembali</button><button className="primary-button" disabled={Boolean(busy)}>Tutup sesi</button></div></form></section></div>}
+      {voidItem && <ConfirmationDialog titleId="void-title" onClose={() => setVoidItem(null)}><h2 id="void-title">Batalkan item</h2><p>{voidItem.quantity}× {voidItem.menuName}. Tagihan akan dihitung ulang.</p>{error && <div className="inline-alert" role="alert">{error}</div>}<form onSubmit={(event) => void submitVoid(event)}>{voidItem.served ? <p className="inline-alert">Item sudah tersaji. Hanya dapat dibatalkan karena kesalahan pegawai.</p> : <label>Alasan<select className="text-field" value={reasonType} onChange={(event) => setReasonType(event.target.value as typeof reasonType)}><option value="CUSTOMER_REQUEST">Permintaan pelanggan</option><option value="EMPLOYEE_ERROR">Kesalahan pegawai</option></select></label>}<label className="field-label">Penjelasan<textarea className="text-field" minLength={5} maxLength={500} required value={reason} onChange={(event) => setReason(event.target.value)} /></label><div className="admin-actions"><button type="button" className="secondary-button" onClick={() => setVoidItem(null)}>Kembali</button><button className="primary-button" disabled={Boolean(busy)}>Batalkan item</button></div></form></ConfirmationDialog>}
+      {closing && table.session && <ConfirmationDialog titleId="close-title" onClose={() => setClosing(null)}><h2 id="close-title">Tutup sesi tanpa pembayaran?</h2><p>{closing === "EMPTY" ? "Sesi belum berisi pesanan." : "Semua item dibatalkan."} Meja akan kembali tersedia tanpa membuat pembayaran.</p>{error && <div className="inline-alert" role="alert">{error}</div>}<form onSubmit={(event) => void closeSession(event)}><label className="field-label">Alasan penutupan<textarea className="text-field" minLength={5} maxLength={500} required value={closeReason} onChange={(event) => setCloseReason(event.target.value)} /></label><div className="admin-actions"><button type="button" className="secondary-button" onClick={() => setClosing(null)}>Kembali</button><button className="primary-button" disabled={Boolean(busy)}>Tutup sesi</button></div></form></ConfirmationDialog>}
     </>}
   </div>;
 }

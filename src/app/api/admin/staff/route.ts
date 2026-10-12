@@ -57,7 +57,7 @@ export async function POST(request: Request) {
   }
   const userId = created.data.user.id;
   try {
-    const reset = await auth.requestPasswordReset({ email: body.email });
+    const reset = await auth.requestPasswordReset({ email: body.email, redirectTo: new URL("/reset-password", request.url).href });
     if (reset.error) throw new Error("Password setup email failed");
     const profile = await db.transaction(async (tx) => {
       const [saved] = await tx.insert(staffProfiles).values({

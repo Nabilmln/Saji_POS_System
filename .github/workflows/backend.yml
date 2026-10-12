@@ -1,4 +1,4 @@
-name: Backend
+name: Application checks
 
 on:
   push:
@@ -49,17 +49,13 @@ jobs:
           npm run db:migrate
           npm run db:seed
           npm run db:health
-      - name: Start local API
-        run: |
-          npm run start > next.log 2>&1 &
-          for attempt in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:3000/ > /dev/null; then exit 0; fi
-            sleep 1
-          done
-          cat next.log
-          exit 1
-      - name: PostgreSQL and public HTTP integration
+      - name: PostgreSQL and HTTP integration
         env:
-          TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
-          TEST_API_BASE_URL: http://127.0.0.1:3000
-        run: npx vitest run src/db/schema.integration.test.ts src/lib/public/http.integration.test.ts src/lib/checkout.integration.test.ts
+          TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/saji_e2e
+        run: npm run test:integration
+      - name: Install browser
+        run: npx playwright install --with-deps chromium --only-shell
+      - name: Browser workflows and accessibility
+        env:
+          TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/saji_e2e
+        run: npm run test:e2e

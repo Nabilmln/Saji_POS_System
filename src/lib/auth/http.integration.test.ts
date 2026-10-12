@@ -25,13 +25,15 @@ it.skipIf(!dbUrl || !baseUrl || !email || !password)("rejects cashier and inacti
   await client.connect();
   let authUserCreated = false;
   let profileCreated = false;
+  const previousProfile = (await client.query("SELECT role, is_active FROM staff_profiles WHERE user_id=$1", [user.id])).rows[0];
   try {
     const inserted = await client.query('INSERT INTO neon_auth."user" (id) VALUES ($1) ON CONFLICT DO NOTHING RETURNING id', [user.id]);
     authUserCreated = inserted.rowCount === 1;
     const profile = await client.query(
-      "INSERT INTO staff_profiles (user_id, display_name, role) VALUES ($1, 'Auth HTTP test', 'CASHIER') RETURNING user_id", [user.id],
+      "INSERT INTO staff_profiles (user_id, display_name, role) VALUES ($1, 'Auth HTTP test', 'CASHIER') ON CONFLICT DO NOTHING RETURNING user_id", [user.id],
     );
     profileCreated = profile.rowCount === 1;
+    await client.query("UPDATE staff_profiles SET role='CASHIER',is_active=true WHERE user_id=$1", [user.id]);
     const headers = { Cookie: cookie };
     expect((await fetch(`${baseUrl}/api/staff/me`, { headers })).status).toBe(200);
     expect((await fetch(`${baseUrl}/api/admin/me`, { headers })).status).toBe(403);
@@ -42,6 +44,7 @@ it.skipIf(!dbUrl || !baseUrl || !email || !password)("rejects cashier and inacti
     expect((await fetch(`${baseUrl}/api/staff/me`, { headers })).status).toBe(403);
     expect((await fetch(`${baseUrl}/api/admin/me`, { headers })).status).toBe(403);
   } finally {
+    if (previousProfile) await client.query("UPDATE staff_profiles SET role=$1,is_active=$2 WHERE user_id=$3", [previousProfile.role, previousProfile.is_active, user.id]);
     if (profileCreated) await client.query("DELETE FROM staff_profiles WHERE user_id = $1", [user.id]);
     if (authUserCreated) await client.query('DELETE FROM neon_auth."user" WHERE id = $1', [user.id]);
     await client.end();

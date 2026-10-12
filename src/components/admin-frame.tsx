@@ -9,9 +9,11 @@ import { authClient } from "@/lib/auth/client";
 
 type Identity = { displayName: string };
 const links = [
+  { href: "/admin/reports", label: "Laporan Penjualan" },
   { href: "/admin/menus", label: "Menu & Kategori" },
   { href: "/admin/tables", label: "Meja & QR" },
   { href: "/admin/settings", label: "Diskon & Pajak" },
+  { href: "/admin/staff", label: "Akun Staf" },
 ];
 
 export function AdminFrame({ children }: { children: ReactNode }) {
@@ -43,6 +45,7 @@ export function AdminFrame({ children }: { children: ReactNode }) {
 
   const navigation = <>
     {links.map((link) => <Link key={link.href} className={`staff-nav-item ${pathname.startsWith(link.href) ? "active" : ""}`} href={link.href} aria-current={pathname.startsWith(link.href) ? "page" : undefined}>{link.label}</Link>)}
+    <Link className="staff-nav-item" href="/pos">Operasional Kasir</Link>
     <p className="staff-nav-label">AKUN</p>
     <p className="staff-account">{identity?.displayName}</p>
     <button className="staff-signout" onClick={async () => {
@@ -54,6 +57,6 @@ export function AdminFrame({ children }: { children: ReactNode }) {
     }}>Keluar</button>
     {logoutError && <p className="inline-alert" role="alert">{logoutError}</p>}
   </>;
-  const title = pathname.startsWith("/admin/tables") ? "Meja & QR" : pathname.startsWith("/admin/settings") ? "Diskon & Pajak" : "Menu & Kategori";
+  const title = links.find((link) => pathname.startsWith(link.href))?.label ?? "Admin";
   return <StaffShell role="Admin" title={title} navigation={navigation}>{children}</StaffShell>;
 }

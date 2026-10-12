@@ -46,7 +46,7 @@ export function PosOverview() {
   async function confirm(order: Order) {
     setBusy(order.id); setError("");
     try { await adminApi(`/api/staff/orders/${order.id}/confirm`, jsonRequest("POST", {})); await refresh(); }
-    catch { setError("Pesanan gagal dikonfirmasi. Muat ulang untuk melihat status terbaru."); await refresh(); }
+    catch { await refresh(); setError("Pesanan gagal dikonfirmasi. Muat ulang untuk melihat status terbaru."); }
     finally { setBusy(""); }
   }
   return <div className="admin-stack">

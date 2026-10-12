@@ -11,12 +11,13 @@ export function PosFrame({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [name, setName] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
   const [state, setState] = useState<"loading" | "ready" | "login" | "error">("loading");
   const [logoutError, setLogoutError] = useState("");
   useEffect(() => {
     let active = true;
-    adminApi<{ displayName: string }>("/api/staff/me")
-      .then((user) => { if (active) { setName(user.displayName); setState("ready"); } })
+    adminApi<{ displayName: string; role: string }>("/api/staff/me")
+      .then((user) => { if (active) { setName(user.displayName); setIsAdmin(user.role === "ADMIN"); setState("ready"); } })
       .catch((error: unknown) => { if (active) setState(error instanceof AdminApiError && error.status === 401 ? "login" : "error"); });
     return () => { active = false; };
   }, []);
@@ -30,8 +31,10 @@ export function PosFrame({ children }: { children: ReactNode }) {
   </main>;
 
   const navigation = <>
-    <Link className={`staff-nav-item ${pathname.startsWith("/pos/transactions") ? "" : "active"}`} href="/pos" aria-current={pathname.startsWith("/pos/transactions") ? undefined : "page"}>Meja & Pesanan</Link>
+    <Link className={`staff-nav-item ${pathname.startsWith("/pos/transactions") || pathname.startsWith("/pos/reservations") ? "" : "active"}`} href="/pos">Meja & Pesanan</Link>
+    <Link className={`staff-nav-item ${pathname.startsWith("/pos/reservations") ? "active" : ""}`} href="/pos/reservations" aria-current={pathname.startsWith("/pos/reservations") ? "page" : undefined}>Reservasi</Link>
     <Link className={`staff-nav-item ${pathname.startsWith("/pos/transactions") ? "active" : ""}`} href="/pos/transactions" aria-current={pathname.startsWith("/pos/transactions") ? "page" : undefined}>Riwayat Transaksi</Link>
+    {isAdmin && <Link className="staff-nav-item" href="/admin/menus">Admin</Link>}
     <p className="staff-nav-label">AKUN</p>
     <p className="staff-account">{name}</p>
     <button className="staff-signout" onClick={async () => {
@@ -43,5 +46,5 @@ export function PosFrame({ children }: { children: ReactNode }) {
     }}>Keluar</button>
     {logoutError && <p className="inline-alert" role="alert">{logoutError}</p>}
   </>;
-  return <StaffShell role="Kasir" title={pathname.startsWith("/pos/transactions") ? "Riwayat Transaksi" : pathname.startsWith("/pos/payments") ? "Pembayaran" : "Meja & Pesanan"} navigation={navigation}>{children}</StaffShell>;
+  return <StaffShell role="Kasir" title={pathname.startsWith("/pos/transactions") ? "Riwayat Transaksi" : pathname.startsWith("/pos/payments") ? "Pembayaran" : pathname.startsWith("/pos/reservations") ? "Reservasi" : "Meja & Pesanan"} navigation={navigation}>{children}</StaffShell>;
 }
