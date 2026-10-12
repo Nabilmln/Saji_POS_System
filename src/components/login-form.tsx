@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth/client";
+import { adminApi } from "@/lib/admin/client";
 
 export function LoginForm() {
   const router = useRouter();
@@ -17,7 +18,8 @@ export function LoginForm() {
     try {
       const result = await authClient.signIn.email({ email: email.trim(), password });
       if (result.error) { setError("Email atau kata sandi tidak sesuai."); return; }
-      router.replace("/admin/menus");
+      const staff = await adminApi<{ role: "ADMIN" | "CASHIER" }>("/api/staff/me");
+      router.replace(staff.role === "ADMIN" ? "/admin/menus" : "/pos");
       router.refresh();
     } catch { setError("Tidak dapat masuk. Periksa koneksi dan coba lagi."); }
     finally { setBusy(false); }

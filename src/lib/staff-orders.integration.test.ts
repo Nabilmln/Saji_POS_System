@@ -48,6 +48,10 @@ it.skipIf(!dbUrl || !baseUrl || !email || !password)(
         await client.query("INSERT INTO menu_items (id, category_id, name, price_idr) VALUES ($1, $2, $3, 10000)",
           [id, categoryId, `Meal ${id.slice(0, 4)}`]);
       }
+      const staffMenu = await call("/menus");
+      expect(staffMenu.status).toBe(200);
+      expect((await staffMenu.json()).data.categories.find((category: { id: string }) => category.id === categoryId).items)
+        .toEqual(expect.arrayContaining(menuIds.map((id) => expect.objectContaining({ id, priceIdr: "10000" }))));
       const key = randomUUID();
       const body = {
         clientRequestKey: key, customerName: "Cashier customer",
