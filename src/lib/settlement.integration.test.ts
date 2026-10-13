@@ -71,14 +71,13 @@ it.skipIf(!dbUrl || !baseUrl || !email || !password)(
       })).status).toBe(404);
       expect((await call(`/orders/${voidOrder.orderId}/confirm`, "POST", {})).status).toBe(200);
       expect((await call(`/order-items/${voidOrder.items[0].id}/served`, "PATCH", { served: true })).status).toBe(200);
+      const missingReason = await call(`/order-items/${voidOrder.items[0].id}/void`, "POST", {});
+      expect(missingReason.status).toBe(422);
+      expect((await missingReason.json()).error.code).toBe("VOID_REASON_REQUIRED");
       const customerVoid = await call(`/order-items/${voidOrder.items[0].id}/void`, "POST", {
         reasonType: "CUSTOMER_REQUEST", reasonDetail: "Customer changed mind",
       });
-      expect(customerVoid.status).toBe(409);
-      expect((await customerVoid.json()).error.code).toBe("ITEM_ALREADY_SERVED");
-      expect((await call(`/order-items/${voidOrder.items[0].id}/void`, "POST", {
-        reasonType: "EMPLOYEE_ERROR", reasonDetail: "Wrong table served by employee",
-      })).status).toBe(200);
+      expect(customerVoid.status).toBe(200);
       expect((await call(`/order-items/${voidOrder.items[0].id}/void`, "POST", {
         reasonType: "EMPLOYEE_ERROR", reasonDetail: "Wrong table served by employee",
       })).status).toBe(409);
@@ -86,9 +85,7 @@ it.skipIf(!dbUrl || !baseUrl || !email || !password)(
       expect((await call(`/table-sessions/${voidOrder.sessionId}/close-all-void`, "POST", {
         expectedSessionRevision: partialBill.sessionRevision, reason: "One item still remains",
       })).status).toBe(409);
-      const lastVoid = await call(`/order-items/${voidOrder.items[1].id}/void`, "POST", {
-        reasonType: "CUSTOMER_REQUEST", reasonDetail: "Customer cancelled this item",
-      });
+      const lastVoid = await call(`/order-items/${voidOrder.items[1].id}/void`, "POST", {});
       expect(lastVoid.status).toBe(200);
       expect((await lastVoid.json()).data.orderVoided).toBe(true);
       const audit = await client.query("SELECT action, reason FROM audit_events WHERE table_id = $1 ORDER BY created_at", [tableId]);

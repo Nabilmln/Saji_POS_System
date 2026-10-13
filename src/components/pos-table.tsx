@@ -10,12 +10,13 @@ import { adminApi, AdminApiError, jsonRequest } from "@/lib/admin/client";
 import { changeCart, cartSubtotal, type CartItem } from "@/lib/customer/cart";
 import { usePagination } from "@/lib/use-pagination";
 import { MenuCard } from "@/components/menu-card";
-import { Selection, Alert, Button, LoadingState, EmptyState, Panel, Input, Textarea, Pagination } from "@/components/ui/controls";
+import { Alert, Button, LoadingState, EmptyState, Panel, Input, Textarea, Pagination } from "@/components/ui/controls";
 import { DetailPane } from "@/components/app-shells";
 import { OrderDetails, type OrderItem as Item, type StaffOrder as Order } from "@/components/order-details";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { PosBillPreview } from "@/components/pos-bill";
 import { ReceiptPreview } from "@/components/pos-receipt";
+import { OrderItemDeletion } from "@/components/order-item-deletion";
 
 type Table = { id: string; tableNumber: string; status: "AVAILABLE" | "OCCUPIED" | "RESERVED"; session: { id: string; billRevision: string } | null; orders: Order[]; bill: { grandTotalIdr: string } | null };
 type Menu = { categories: { id: string; name: string; items: { id: string; name: string; description: string | null; imageUrl: string | null; priceIdr: string }[] }[] };
@@ -31,8 +32,6 @@ export function PosTable({ tableId }: { tableId: string }) {
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState("");
   const [voidItem, setVoidItem] = useState<Item | null>(null);
-  const [reasonType, setReasonType] = useState<"CUSTOMER_REQUEST" | "EMPLOYEE_ERROR">("CUSTOMER_REQUEST");
-  const [reason, setReason] = useState("");
   const [closeReason, setCloseReason] = useState("");
   const [closing, setClosing] = useState<"EMPTY" | "ALL_VOID" | null>(null);
   const [showManual, setShowManual] = useState(false);
@@ -104,13 +103,6 @@ export function PosTable({ tableId }: { tableId: string }) {
       setError(cause instanceof AdminApiError && cause.code === "MENU_UNAVAILABLE" ? "Menu berubah. Periksa ketersediaan sebelum mencoba lagi." : "Belum dapat memastikan pesanan tersimpan. Coba lagi tanpa mengubah isian untuk memakai kunci transaksi yang sama.");
     } finally { manualInFlight.current = false; setBusy(""); }
   }
-  async function submitVoid(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); if (!voidItem) return;
-    const item = voidItem;
-    if (await mutate(`/api/staff/order-items/${item.id}/void`, jsonRequest("POST", { reasonType: item.served ? "EMPLOYEE_ERROR" : reasonType, reasonDetail: reason.trim() }), `void:${item.id}`)) {
-      setVoidItem(null); setReason("");
-    }
-  }
   async function closeSession(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!table?.session) return;
     const session = table.session;
@@ -157,9 +149,9 @@ export function PosTable({ tableId }: { tableId: string }) {
       <DetailPane>{table.session && receiptSessionId === table.session.id ? <ReceiptPreview key={table.session.id} sessionId={table.session.id} onClose={() => setReceiptSessionId("")} /> : <OrderDetails orders={table.orders} busy={busy}
         onConfirm={(id) => void mutate(`/api/staff/orders/${id}/confirm`, jsonRequest("POST", {}), `confirm:${id}`)}
         onServe={(id) => void mutate(`/api/staff/order-items/${id}/served`, jsonRequest("PATCH", { served: true }), `served:${id}`)}
-        onVoid={(item) => { setVoidItem(item); setReasonType(item.served ? "EMPLOYEE_ERROR" : "CUSTOMER_REQUEST"); setReason(""); }}
+        onVoid={setVoidItem}
       />}</DetailPane>
-      {voidItem && <ConfirmationDialog titleId="void-title" onClose={() => setVoidItem(null)}><h2 id="void-title">{t("Batalkan item")}</h2><p>{voidItem.quantity}× {voidItem.menuName}{t(". Tagihan akan dihitung ulang.")}</p>{error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}<form onSubmit={(event) => void submitVoid(event)}>{voidItem.served ? <p className="inline-alert">{t("Item sudah tersaji. Hanya dapat dibatalkan karena kesalahan pegawai.")}</p> : <Selection label={t("Alasan")} value={reasonType} onChange={(value) => setReasonType(value as typeof reasonType)} options={[{ value: "CUSTOMER_REQUEST", label: t("Permintaan pelanggan") }, { value: "EMPLOYEE_ERROR", label: t("Kesalahan pegawai") }]} />}<label className="field-label">{t("Penjelasan")}<Textarea className="text-field" minLength={5} maxLength={500} required value={reason} onChange={(event) => setReason(event.target.value)} /></label><div className="admin-actions"><Button type="button" className="secondary-button" onClick={() => setVoidItem(null)}>{t("Kembali")}</Button><Button className="primary-button" disabled={Boolean(busy)}>{t("Batalkan item")}</Button></div></form></ConfirmationDialog>}
+      {voidItem && <OrderItemDeletion key={voidItem.id} item={voidItem} onClose={() => setVoidItem(null)} onDeleted={refresh} />}
       {closing && table.session && <ConfirmationDialog titleId="close-title" onClose={() => setClosing(null)}><h2 id="close-title">{t("Tutup sesi tanpa pembayaran?")}</h2><p>{closing === "EMPTY" ? t("Sesi belum berisi pesanan.") : t("Semua item dibatalkan.")} {" "}{t("Meja akan kembali tersedia tanpa membuat pembayaran.")}</p>{error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}<form onSubmit={(event) => void closeSession(event)}><label className="field-label">{t("Alasan penutupan")}<Textarea className="text-field" minLength={5} maxLength={500} required value={closeReason} onChange={(event) => setCloseReason(event.target.value)} /></label><div className="admin-actions"><Button type="button" className="secondary-button" onClick={() => setClosing(null)}>{t("Kembali")}</Button><Button className="primary-button" disabled={Boolean(busy)}>{t("Tutup sesi")}</Button></div></form></ConfirmationDialog>}
     </>}
   </div>;

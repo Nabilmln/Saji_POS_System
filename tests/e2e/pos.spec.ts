@@ -72,19 +72,19 @@ test("manual order can be voided with a reason and closed without a payment", as
   await page.getByRole("button", { name: "Konfirmasi", exact: true }).click();
   await page.getByRole("checkbox", { name: /Sudah disajikan/ }).click();
   await expect(page.getByRole("checkbox", { name: /Sudah disajikan/ })).toBeChecked();
-  await page.getByRole("button", { name: "Batalkan item", exact: true }).click();
-  await expect(page.getByRole("dialog")).toContainText("Hanya dapat dibatalkan karena kesalahan pegawai");
+  await page.getByRole("button", { name: "Hapus", exact: true }).click();
+  await expect(page.getByRole("dialog")).toContainText("Alasan retur atau pembatalan wajib diisi");
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await expect(page.getByRole("button", { name: "Batalkan item", exact: true })).toBeFocused();
-  await page.getByRole("button", { name: "Batalkan item", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Hapus", exact: true })).toBeFocused();
+  await page.getByRole("button", { name: "Hapus", exact: true }).click();
   await page.getByLabel("Penjelasan").fill("Pegawai salah memasukkan pesanan");
-  await page.getByRole("dialog").getByRole("button", { name: "Batalkan item", exact: true }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Hapus", exact: true }).click();
   await page.getByRole("button", { name: "Tutup sesi tanpa pembayaran" }).click();
   await page.getByLabel("Alasan penutupan").fill("Seluruh pesanan salah input");
   await page.getByRole("button", { name: "Tutup sesi", exact: true }).click();
   await expect(page.getByText("Belum ada pesanan pada sesi ini.")).toBeVisible();
-  expect((await data.pool.query("SELECT closure_reason FROM table_sessions WHERE table_id=$1", [data.tableId])).rows[0].closure_reason).toBe("ALL_VOID");
+  await expect.poll(async () => (await data.pool.query("SELECT closure_reason FROM table_sessions WHERE table_id=$1", [data.tableId])).rows[0].closure_reason).toBe("ALL_VOID");
   expect((await data.pool.query("SELECT count(*)::int AS n FROM payments p JOIN table_sessions s ON s.id=p.session_id WHERE s.table_id=$1", [data.tableId])).rows[0].n).toBe(0);
 });
 

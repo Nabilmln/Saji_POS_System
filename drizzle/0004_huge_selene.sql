@@ -1,0 +1,1 @@
+ALTER TABLE "order_items" DROP CONSTRAINT "order_items_served_void_check";

@@ -229,7 +229,6 @@ export const orderItems = pgTable(
     check("order_items_void_type_check", sql`${table.voidReasonType} IN ('CUSTOMER_REQUEST', 'EMPLOYEE_ERROR')`),
     check("order_items_void_metadata_check", sql`(${table.voidedAt} IS NULL AND ${table.voidReasonType} IS NULL AND ${table.voidReasonDetail} IS NULL AND ${table.voidedByUserId} IS NULL) OR (${table.voidedAt} IS NOT NULL AND ${table.voidReasonType} IS NOT NULL AND ${table.voidReasonDetail} IS NOT NULL AND length(btrim(${table.voidReasonDetail})) > 0 AND ${table.voidedByUserId} IS NOT NULL)`),
     check("order_items_served_metadata_check", sql`(${table.servedAt} IS NULL AND ${table.servedByUserId} IS NULL) OR (${table.servedAt} IS NOT NULL AND ${table.servedByUserId} IS NOT NULL)`),
-    check("order_items_served_void_check", sql`${table.voidedAt} IS NULL OR ${table.servedAt} IS NULL OR ${table.voidReasonType} = 'EMPLOYEE_ERROR'`),
     index("order_items_order_idx").on(table.orderId),
     index("order_items_menu_idx").on(table.menuItemId),
   ],

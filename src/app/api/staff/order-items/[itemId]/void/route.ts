@@ -35,13 +35,15 @@ export async function POST(request: Request, context: { params: Promise<{ itemId
       return apiError(409, "SESSION_NOT_ACTIVE", "Session is closed or paid");
     }
     if (item.voidedAt) return apiError(409, "ITEM_ALREADY_VOIDED", "Item is already voided");
-    if (item.servedAt && body.reasonType !== "EMPLOYEE_ERROR") {
-      return apiError(409, "ITEM_ALREADY_SERVED", "Served items require an employee error reason");
+    if (item.servedAt && (!body.reasonType || !body.reasonDetail)) {
+      return apiError(422, "VOID_REASON_REQUIRED", "Served items require a cancellation reason");
     }
+    const reasonType = body.reasonType ?? "CUSTOMER_REQUEST";
+    const reasonDetail = body.reasonDetail ?? "Cancelled before serving";
     const now = new Date();
     await tx.update(orderItems).set({
       voidedAt: now, voidedByUserId: staff.userId,
-      voidReasonType: body.reasonType, voidReasonDetail: body.reasonDetail,
+      voidReasonType: reasonType, voidReasonDetail: reasonDetail,
     }).where(eq(orderItems.id, itemId));
     const remaining = await tx.select({ servedAt: orderItems.servedAt }).from(orderItems)
       .where(and(eq(orderItems.orderId, item.orderId), isNull(orderItems.voidedAt)));
@@ -57,8 +59,8 @@ export async function POST(request: Request, context: { params: Promise<{ itemId
     await tx.insert(auditEvents).values({
       actorUserId: staff.userId, actorType: "STAFF", action: "ORDER_ITEM_VOIDED",
       entityType: "ORDER_ITEM", entityId: itemId, tableId: target.tableId, sessionId: item.sessionId,
-      reason: body.reasonDetail,
-      details: { reasonType: body.reasonType, wasServed: !!item.servedAt, orderVoided },
+      reason: reasonDetail,
+      details: { reasonType, wasServed: !!item.servedAt, orderVoided },
     });
     return apiSuccess({
       itemId, voided: true, orderVoided, billRevision: session.billRevision.toString(),

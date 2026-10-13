@@ -7,6 +7,7 @@ import {
   moneyIdrSchema,
   paymentSchema,
   revisionSchema,
+  voidSchema,
 } from "./contracts";
 import { apiValidationError } from "./api-response";
 import { restaurantDate } from "./time";
@@ -15,6 +16,12 @@ const requestKey = "29cd46bc-c351-4512-87a4-8d4e7a416104";
 const menuItemId = "c53016f5-d01e-4c66-8bd9-912739776045";
 
 describe("API contracts", () => {
+  it("allows no reason before serving and rejects incomplete or blank reasons", () => {
+    expect(voidSchema.safeParse({}).success).toBe(true);
+    expect(voidSchema.safeParse({ reasonType: "CUSTOMER_REQUEST" }).success).toBe(false);
+    expect(voidSchema.safeParse({ reasonType: "CUSTOMER_REQUEST", reasonDetail: "  " }).success).toBe(false);
+    expect(voidSchema.safeParse({ reasonType: "CUSTOMER_REQUEST", reasonDetail: "Customer returned the item" }).success).toBe(true);
+  });
   it("accepts decimal rupiah strings without losing bigint precision", () => {
     expect(moneyIdrSchema.safeParse("9000000000000000").success).toBe(true);
     expect(moneyIdrSchema.safeParse("9000000000000001").success).toBe(false);

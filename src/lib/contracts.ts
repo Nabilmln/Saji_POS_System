@@ -81,8 +81,10 @@ export const billingSettingsSchema = z.strictObject({
 });
 
 export const voidSchema = z.strictObject({
-  reasonType: z.enum(["CUSTOMER_REQUEST", "EMPLOYEE_ERROR"]),
-  reasonDetail: z.string().trim().min(5).max(500),
+  reasonType: z.enum(["CUSTOMER_REQUEST", "EMPLOYEE_ERROR"]).optional(),
+  reasonDetail: z.string().trim().min(5).max(500).optional(),
+}).refine((value) => Boolean(value.reasonType) === Boolean(value.reasonDetail), {
+  message: "Provide both reason type and detail", path: ["reasonDetail"],
 });
 
 export function decimalString(value: bigint): string {
