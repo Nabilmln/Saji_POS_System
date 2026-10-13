@@ -1,0 +1,110 @@
+import { randomUUID } from "node:crypto";
+import AxeBuilder from "@axe-core/playwright";
+import { test, expect, signIn, call } from "./fixtures";
+
+test("cashier previews and prints a fresh unpaid receipt without collecting payment", async ({ browser, page, data }, testInfo) => {
+  await signIn(page);
+  const key = randomUUID();
+  const created = await call(page.request, `/staff/tables/${data.tableId}/orders`, "POST", {
+    clientRequestKey: key, customerName: "Receipt guest", items: [{ menuItemId: data.menuId, quantity: 2 }, { menuItemId: data.secondMenuId, quantity: 1 }],
+  }, key);
+  expect(created.status()).toBe(201);
+  const order = (await created.json()).data;
+  const receiptPath = `/staff/table-sessions/${order.sessionId}/receipt`;
+  const receipt = (await (await call(page.request, receiptPath)).json()).data;
+  expect(receipt).toMatchObject({ status: "UNPAID", paymentId: null, paidAt: null, cashReceivedIdr: null, changeIdr: null, subtotalIdr: "60000", grandTotalIdr: "60000" });
+  expect((await call(page.request, "/staff/table-sessions/not-a-uuid/receipt")).status()).toBe(404);
+  expect((await call(page.request, `/staff/table-sessions/${randomUUID()}/receipt`)).status()).toBe(404);
+  const anonymous = await browser.newContext();
+  const owner = await browser.newContext();
+  try {
+    expect((await anonymous.request.get(`http://localhost:3100/api${receiptPath}`)).status()).toBe(401);
+    const ownerPage = await owner.newPage(); await signIn(ownerPage, "admin");
+    expect((await call(ownerPage.request, receiptPath)).status()).toBe(403);
+  } finally { await anonymous.close(); await owner.close(); }
+
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.goto(`/pos/tables/${data.tableId}`);
+  await page.getByRole("button", { name: "Lihat struk", exact: true }).click();
+  const preview = page.locator(".workspace-detail .receipt-preview");
+  await expect(preview).toContainText("Belum lunas");
+  await expect(preview).toContainText(/Rp\s*60\.000/);
+  await expect(preview).not.toContainText("Tunai diterima");
+  await expect(page.locator(".staff-content .pos-receipt")).toHaveCount(0);
+  const content = await page.locator(".staff-content").boundingBox();
+  const pane = await page.locator(".workspace-detail").boundingBox();
+  expect(pane!.x).toBeGreaterThanOrEqual(content!.x + content!.width);
+  await page.evaluate(() => { window.print = () => { (window as unknown as { printedReceipt: string }).printedReceipt = document.querySelector(".pos-receipt")?.textContent ?? ""; }; });
+  await data.pool.query("UPDATE store_settings SET discount_enabled=true,discount_amount_idr=5000,tax_enabled=true,tax_rate_bps=1000,version=version+1 WHERE id=1");
+  await preview.getByRole("button", { name: "Cetak struk" }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { printedReceipt: string }).printedReceipt)).toMatch(/Rp\s*61\.000/);
+  expect((await data.pool.query("SELECT count(*)::int AS total FROM payments WHERE session_id=$1", [order.sessionId])).rows[0].total).toBe(0);
+  expect((await data.pool.query("SELECT closed_at FROM table_sessions WHERE id=$1", [order.sessionId])).rows[0].closed_at).toBeNull();
+  await page.emulateMedia({ media: "print" });
+  await expect(page.locator(".staff-sidebar")).toBeHidden();
+  await expect(page.locator(".staff-content")).toBeHidden();
+  await expect(preview.locator(".receipt-toolbar")).toBeHidden();
+  await expect(preview.locator(".pos-receipt")).toBeVisible();
+  const pdf = await page.pdf({ path: testInfo.outputPath("unpaid-receipt.pdf"), format: "A4" });
+  expect(pdf.length).toBeGreaterThan(1000);
+  await page.emulateMedia({ media: "screen" });
+  await page.screenshot({ path: testInfo.outputPath("unpaid-receipt-right.png"), fullPage: true });
+
+  await preview.getByRole("button", { name: "Tutup", exact: true }).click();
+  await expect(page.locator(".workspace-detail").getByRole("button", { name: "Konfirmasi", exact: true })).toBeVisible();
+  await call(page.request, `/staff/orders/${order.orderId}/confirm`, "POST", {});
+  const tea = order.items.find((item: { menuName: string }) => item.menuName === "Teh Demo");
+  expect((await call(page.request, `/staff/order-items/${tea.id}/void`, "POST", { reasonType: "EMPLOYEE_ERROR", reasonDetail: "Remove the extra tea item" })).status()).toBe(200);
+  const revised = (await (await call(page.request, receiptPath)).json()).data;
+  expect(revised).toMatchObject({ subtotalIdr: "50000", discountIdr: "5000", grandTotalIdr: "50000" });
+  expect(revised.orders[0].items).toHaveLength(1);
+  await page.getByRole("button", { name: "Lihat struk", exact: true }).click();
+  await expect(preview).toContainText(/Rp\s*50\.000/);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "English", exact: true }).click();
+  await expect(preview).toContainText("Unpaid");
+  await expect(preview.getByRole("button", { name: "Print receipt" })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("unpaid-receipt-mobile-en.png"), fullPage: true });
+  await page.goto(`/pos/payments/${order.sessionId}`);
+  await page.getByRole("button", { name: "View receipt", exact: true }).click();
+  await expect(page.locator(".workspace-detail .pos-receipt")).toContainText("Unpaid");
+  await expect(page.getByRole("button", { name: "Confirm payment", exact: true })).toBeDisabled();
+});
+
+test("paid receipts stay in the right panel across history, reload, and printing", async ({ page, data }, testInfo) => {
+  await signIn(page);
+  const key = randomUUID();
+  const order = (await (await call(page.request, `/staff/tables/${data.tableId}/orders`, "POST", { clientRequestKey: key, customerName: "Paid receipt guest", items: [{ menuItemId: data.menuId, quantity: 1 }] }, key)).json()).data;
+  await call(page.request, `/staff/orders/${order.orderId}/confirm`, "POST", {});
+  await call(page.request, `/staff/order-items/${order.items[0].id}/served`, "PATCH", { served: true });
+  const quote = (await (await call(page.request, `/staff/table-sessions/${order.sessionId}/bill`)).json()).data;
+  const paymentKey = randomUUID();
+  const result = await call(page.request, `/staff/table-sessions/${order.sessionId}/payments`, "POST", { idempotencyKey: paymentKey, expectedSessionRevision: quote.sessionRevision, expectedSettingsVersion: quote.settingsVersion, cashReceivedIdr: "50000" }, paymentKey);
+  expect(result.status()).toBe(201);
+  const payment = (await result.json()).data;
+  const paidPath = `/staff/payments/${payment.paymentId}/receipt`;
+  const saved = (await (await call(page.request, paidPath)).json()).data;
+  await page.setViewportSize({ width: 1440, height: 1000 }); await page.goto("/pos/transactions");
+  await page.getByRole("row").filter({ hasText: payment.paymentId.slice(0, 8) }).getByRole("button", { name: "Lihat struk" }).click();
+  await expect(page).toHaveURL(/\/pos\/transactions$/);
+  const pane = page.locator(".workspace-detail");
+  await expect(pane.locator(".pos-receipt")).toContainText("Lunas");
+  await expect(pane.locator(".pos-receipt")).toContainText("Tunai diterima");
+  const before = await pane.locator(".pos-receipt").innerText();
+  await data.pool.query("UPDATE store_settings SET tax_enabled=true,tax_rate_bps=1000,version=version+1 WHERE id=1");
+  await data.pool.query("UPDATE menu_items SET price_idr=99000 WHERE id=$1", [data.menuId]);
+  expect((await (await call(page.request, `/staff/table-sessions/${order.sessionId}/receipt`)).json()).data).toEqual(saved);
+  await page.evaluate(() => { window.print = () => { (window as unknown as { printedReceipt: string }).printedReceipt = document.querySelector(".pos-receipt")?.textContent ?? ""; }; });
+  await pane.getByRole("button", { name: "Cetak struk" }).click();
+  await expect.poll(() => page.evaluate(() => (window as unknown as { printedReceipt: string }).printedReceipt)).toContain("Lunas");
+  await expect(pane.locator(".pos-receipt")).toHaveText(before, { useInnerText: true });
+  await page.goto(`/pos/transactions/${payment.paymentId}`); await page.reload();
+  await expect(pane.locator(".pos-receipt")).toHaveText(before, { useInnerText: true });
+  await expect(page.getByRole("heading", { name: "Riwayat pembayaran" })).toBeVisible();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("paid-receipt-history-right.png"), fullPage: true });
+  await pane.getByRole("button", { name: "Tutup", exact: true }).click();
+  await expect(pane.locator(".pos-receipt")).toHaveCount(0);
+});

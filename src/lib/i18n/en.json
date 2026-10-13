@@ -598,5 +598,14 @@
   "Metode": "Method",
   "Tunai": "Cash",
   "Data per halaman": "Items per page",
-  "{0} data per halaman": "{0} items per page"
+  "{0} data per halaman": "{0} items per page",
+  "Pratinjau struk": "Receipt preview",
+  "Cetak struk": "Print receipt",
+  "Belum lunas": "Unpaid",
+  "Dihitung": "Calculated",
+  "Belum dibayar. Total dapat berubah jika ada tambahan pesanan, pembatalan item, atau perubahan diskon dan pajak.": "Unpaid. The total may change with additional orders, voided items, or changes to discount and tax settings.",
+  "Cetakan ini menunjukkan tagihan belum lunas.": "This printout shows an unpaid bill.",
+  "Terima kasih. Pembayaran telah dikonfirmasi.": "Thank you. Payment has been confirmed.",
+  "Detail kasir": "Cashier details",
+  "Pilih meja atau transaksi untuk melihat pesanan, tagihan, atau struk.": "Select a table or transaction to view orders, the bill, or a receipt."
 }

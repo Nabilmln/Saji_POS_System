@@ -15,6 +15,7 @@ import { DetailPane } from "@/components/app-shells";
 import { OrderDetails, type OrderItem as Item, type StaffOrder as Order } from "@/components/order-details";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { PosBillPreview } from "@/components/pos-bill";
+import { ReceiptPreview } from "@/components/pos-receipt";
 
 type Table = { id: string; tableNumber: string; status: "AVAILABLE" | "OCCUPIED" | "RESERVED"; session: { id: string; billRevision: string } | null; orders: Order[]; bill: { grandTotalIdr: string } | null };
 type Menu = { categories: { id: string; name: string; items: { id: string; name: string; description: string | null; imageUrl: string | null; priceIdr: string }[] }[] };
@@ -35,6 +36,7 @@ export function PosTable({ tableId }: { tableId: string }) {
   const [closeReason, setCloseReason] = useState("");
   const [closing, setClosing] = useState<"EMPTY" | "ALL_VOID" | null>(null);
   const [showManual, setShowManual] = useState(false);
+  const [receiptSessionId, setReceiptSessionId] = useState("");
   const { page: menuPage, setPage: setMenuPage, pageSize: menuPageSize, setPageSize: setMenuPageSize } = usePagination();
   const [search, setSearch] = useState("");
   const filteredMenuItems = menu?.categories.flatMap((category) => category.items).filter((item) => item.name.toLocaleLowerCase("id-ID").includes(search.trim().toLocaleLowerCase("id-ID"))) ?? [];
@@ -123,7 +125,7 @@ export function PosTable({ tableId }: { tableId: string }) {
         <div className="admin-section-head"><div><h2>{t("Meja")}{" "}{table.tableNumber}</h2></div><Button className="secondary-button" onClick={() => void refresh()}>{t("Segarkan")}</Button></div>
         <p className="muted">{table.status === "AVAILABLE" ? t("Tersedia") : table.status === "RESERVED" ? t("Dipesan · check-in diperlukan sebelum order manual") : t("Terisi")}{table.session ? t(" · Sesi {0}", { "0": table.session.id.slice(0, 8) }) : ""}</p>
         <div className="pos-summary"><div><span>{t("Total tagihan saat ini")}</span><strong>{money(table.bill?.grandTotalIdr ?? "0")}</strong></div><div><span>{t("Item tersaji")}</span><strong>{served} / {active}</strong></div></div>
-        <div className="admin-actions"><Button className="primary-button" disabled={table.status === "RESERVED"} onClick={() => setShowManual((current) => !current)}>{showManual ? t("Tutup form order") : t("Tambah order manual")}</Button>{allVoid && <Button className="secondary-button danger-text" onClick={() => setClosing("ALL_VOID")}>{t("Tutup sesi tanpa pembayaran")}</Button>}{table.session && !table.orders.length && <Button className="secondary-button danger-text" onClick={() => setClosing("EMPTY")}>{t("Tutup sesi kosong")}</Button>}</div>
+        <div className="admin-actions"><Button className="primary-button" disabled={table.status === "RESERVED"} onClick={() => setShowManual((current) => !current)}>{showManual ? t("Tutup form order") : t("Tambah order manual")}</Button>{table.session && <Button className="secondary-button" onClick={() => setReceiptSessionId(table.session?.id ?? "")}>{t("Lihat struk")}</Button>}{allVoid && <Button className="secondary-button danger-text" onClick={() => setClosing("ALL_VOID")}>{t("Tutup sesi tanpa pembayaran")}</Button>}{table.session && !table.orders.length && <Button className="secondary-button danger-text" onClick={() => setClosing("EMPTY")}>{t("Tutup sesi kosong")}</Button>}</div>
       </Panel>
       {table.session && <PosBillPreview key={table.session.id} sessionId={table.session.id} />}
       {showManual && <Panel className="admin-panel"><h2>{t("Order manual")}</h2><p className="muted">{t("Order baru masuk status Menunggu dan perlu dikonfirmasi.")}</p>
@@ -143,11 +145,11 @@ export function PosTable({ tableId }: { tableId: string }) {
           <div className="admin-actions"><Button className="primary-button" disabled={busy === "manual" || !draft.cart.length || !menu}>{busy === "manual" ? t("Menyimpan…") : t("Simpan order Menunggu")}</Button></div>
         </form>
       </Panel>}
-      <DetailPane><OrderDetails orders={table.orders} busy={busy}
+      <DetailPane>{table.session && receiptSessionId === table.session.id ? <ReceiptPreview key={table.session.id} sessionId={table.session.id} onClose={() => setReceiptSessionId("")} /> : <OrderDetails orders={table.orders} busy={busy}
         onConfirm={(id) => void mutate(`/api/staff/orders/${id}/confirm`, jsonRequest("POST", {}), `confirm:${id}`)}
         onServe={(id) => void mutate(`/api/staff/order-items/${id}/served`, jsonRequest("PATCH", { served: true }), `served:${id}`)}
         onVoid={(item) => { setVoidItem(item); setReasonType(item.served ? "EMPLOYEE_ERROR" : "CUSTOMER_REQUEST"); setReason(""); }}
-      /></DetailPane>
+      />}</DetailPane>
       {voidItem && <ConfirmationDialog titleId="void-title" onClose={() => setVoidItem(null)}><h2 id="void-title">{t("Batalkan item")}</h2><p>{voidItem.quantity}× {voidItem.menuName}{t(". Tagihan akan dihitung ulang.")}</p>{error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}<form onSubmit={(event) => void submitVoid(event)}>{voidItem.served ? <p className="inline-alert">{t("Item sudah tersaji. Hanya dapat dibatalkan karena kesalahan pegawai.")}</p> : <Selection label={t("Alasan")} value={reasonType} onChange={(value) => setReasonType(value as typeof reasonType)} options={[{ value: "CUSTOMER_REQUEST", label: t("Permintaan pelanggan") }, { value: "EMPLOYEE_ERROR", label: t("Kesalahan pegawai") }]} />}<label className="field-label">{t("Penjelasan")}<Textarea className="text-field" minLength={5} maxLength={500} required value={reason} onChange={(event) => setReason(event.target.value)} /></label><div className="admin-actions"><Button type="button" className="secondary-button" onClick={() => setVoidItem(null)}>{t("Kembali")}</Button><Button className="primary-button" disabled={Boolean(busy)}>{t("Batalkan item")}</Button></div></form></ConfirmationDialog>}
       {closing && table.session && <ConfirmationDialog titleId="close-title" onClose={() => setClosing(null)}><h2 id="close-title">{t("Tutup sesi tanpa pembayaran?")}</h2><p>{closing === "EMPTY" ? t("Sesi belum berisi pesanan.") : t("Semua item dibatalkan.")} {" "}{t("Meja akan kembali tersedia tanpa membuat pembayaran.")}</p>{error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}<form onSubmit={(event) => void closeSession(event)}><label className="field-label">{t("Alasan penutupan")}<Textarea className="text-field" minLength={5} maxLength={500} required value={closeReason} onChange={(event) => setCloseReason(event.target.value)} /></label><div className="admin-actions"><Button type="button" className="secondary-button" onClick={() => setClosing(null)}>{t("Kembali")}</Button><Button className="primary-button" disabled={Boolean(busy)}>{t("Tutup sesi")}</Button></div></form></ConfirmationDialog>}
     </>}

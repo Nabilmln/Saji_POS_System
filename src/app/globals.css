@@ -72,3 +72,22 @@ h1,h2,h3,p{overflow-wrap:break-word}h1,h2,h3{letter-spacing:-.025em;line-height:
 
 .admin-stack>.pagination-panel{margin-top:0}
 .pagination-size{flex:none;margin:0}.pagination-size legend{font-size:11px}.pagination-size .segment-option span{min-width:36px;min-height:32px;padding:5px 9px;font-size:12px}
+
+.receipt-preview{min-width:0}.receipt-toolbar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:22px}
+.receipt-toolbar .button{font-size:12px;min-height:36px;padding:7px 10px}
+.receipt-preview .pos-receipt{width:100%;margin:0}.receipt-preview .pos-receipt-head h2{font-size:16px}
+.receipt-unpaid-note{padding:10px;background:var(--warning-soft);color:var(--warning);border-radius:6px;font-size:12px}
+.status-chip.unpaid{background:var(--warning-soft);color:var(--warning)}
+.pos-receipt-line{flex-wrap:wrap}.pos-receipt-line>span{flex:1;min-width:0;overflow-wrap:anywhere}
+.pos-receipt-line>strong{max-width:100%;overflow-wrap:anywhere}.pos-receipt .money-row{flex-wrap:wrap}
+.pos-receipt .money-row strong{white-space:normal;overflow-wrap:anywhere}
+@media print {
+  .staff-shell:has(.receipt-preview){display:block;width:100%;min-height:0;margin:0;background:#fff;color:#000}
+  .staff-shell:has(.receipt-preview)>.staff-sidebar,.staff-shell:has(.receipt-preview)>.staff-content{display:none}
+  .staff-shell:has(.receipt-preview)>.workspace-detail{position:static;display:block;width:100%;height:auto;max-height:none;margin:0;padding:0;border:0;overflow:visible;background:#fff;color:#000}
+  .receipt-preview>.detail-heading,.receipt-preview>.receipt-toolbar,.receipt-preview>.inline-alert,.receipt-preview>.loading-block{display:none}
+  .receipt-preview .pos-receipt{max-width:80mm;margin:0 auto;padding:0;background:#fff;color:#000}
+  .receipt-preview .pos-receipt .muted,.receipt-preview .pos-receipt-meta,.receipt-preview .pos-receipt-line small,.receipt-preview .brand-caption{color:#333}
+  .receipt-preview .receipt-unpaid-note,.receipt-preview .status-chip{color:#000;background:#fff;border:1px solid #333}
+  .receipt-preview .pos-receipt-line,.receipt-preview .pos-receipt-totals{break-inside:avoid}
+}
