@@ -1,6 +1,11 @@
 import { test, expect, guestOrder, signIn, call } from "./fixtures";
 
 test("additional guest orders send only the new cart and combine session quantities", async ({ page, data }) => {
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  page.on("console", (message) => {
+    if (message.type() === "error" && /async Client Component|uncached promise/.test(message.text())) errors.push(message.text());
+  });
   await guestOrder(page, data.token, "Guest", data.menuName);
   await page.getByRole("button", { name: "Tambah pesanan", exact: true }).click();
   await expect(page.getByRole("button", { name: /Lihat Keranjang/ })).toHaveCount(0);
@@ -22,6 +27,7 @@ test("additional guest orders send only the new cart and combine session quantit
   await page.goto(`/pos/tables/${data.tableId}`);
   await expect(page.locator(".session-tally")).toContainText(`2\u00d7 ${data.menuName}`);
   await expect(page.locator(".session-tally")).toContainText(/Rp\s*60\.000/);
+  expect(errors).toEqual([]);
 });
 
 test("manual additions keep an uncertain submission locked and replay it once", async ({ page, data }) => {
