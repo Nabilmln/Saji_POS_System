@@ -15,6 +15,54 @@ async function confirmDelete(page: Page, name: string) {
   await expect(dialog).toHaveCount(0);
 }
 
+test("segmented labels fit their controls and containers in Indonesian and English", async ({ page, data }, testInfo) => {
+  await data.pool.query("UPDATE categories SET name='Makanan dan minuman' WHERE id=$1", [data.categoryId]);
+  for (const target of [
+    { path: "/admin/menus", role: "admin" as const },
+    { path: "/admin/reports", role: "admin" as const },
+    { path: "/pos", role: "cashier" as const },
+    { path: "/pos/reservations", role: "cashier" as const },
+    { path: `/order/${data.token}`, role: "guest" as const },
+  ]) {
+    if (target.role !== "guest") await signIn(page, target.role);
+    await page.goto(target.path);
+    if (target.role === "guest") {
+      await page.getByLabel("Nama pemesan").fill("Toggle sizing guest");
+      await page.getByRole("button", { name: "Lihat Menu", exact: true }).click();
+    }
+    await expect(page.locator(".loading-block")).toHaveCount(0);
+    await expect(page.locator(".segmented-control").first()).toBeVisible();
+    for (const language of ["Bahasa Indonesia", "English"]) {
+      await page.getByRole("button", { name: language, exact: true }).click();
+      for (const width of [1440, 1024, 768, 640, 390, 320]) {
+        await page.setViewportSize({ width, height: 900 });
+        const issues = await page.locator(".segmented-control").evaluateAll((controls) => {
+          const errors: string[] = [];
+          const inside = (child: DOMRect, parent: DOMRect) => child.left >= parent.left - 1 && child.right <= parent.right + 1 && child.top >= parent.top - 1 && child.bottom <= parent.bottom + 1;
+          for (const control of controls) {
+            const bounds = control.getBoundingClientRect();
+            const fieldset = control.closest("fieldset")!;
+            const container = fieldset.parentElement!.getBoundingClientRect();
+            if (!inside(bounds, fieldset.getBoundingClientRect())) errors.push(`Group overflows its fieldset: ${fieldset.textContent}`);
+            if (!inside(bounds, container)) errors.push(`Group overflows its container: ${fieldset.textContent}`);
+            for (const label of control.querySelectorAll(".segment-option span")) {
+              if (!inside(label.getBoundingClientRect(), bounds) || label.scrollWidth > label.clientWidth + 1 || label.scrollHeight > label.clientHeight + 1) errors.push(`Option overflows: ${label.textContent}`);
+            }
+            const legend = fieldset.querySelector("legend")!;
+            const legendBounds = legend.getBoundingClientRect();
+            if (legendBounds.left < container.left - 1 || legendBounds.right > container.right + 1) errors.push(`Legend overflows: ${legend.textContent}`);
+          }
+          return errors;
+        });
+        expect(issues, `${target.path}, ${language}, ${width}px`).toEqual([]);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), `${target.path}, ${language}, ${width}px`).toBe(true);
+      }
+      if (target.path === "/pos") await page.screenshot({ path: testInfo.outputPath(`cashier-toggles-${language}.png`), fullPage: true });
+    }
+    await page.getByRole("button", { name: "Bahasa Indonesia", exact: true }).click();
+  }
+});
+
 test("owner sees cashier email, resets credentials, and deletes access with two confirmations", async ({ browser, page, data }, testInfo) => {
   await signIn(page, "admin");
   const email = `revision-${randomUUID()}@example.test`, password = "initial-cashier-password", newPassword = "updated-cashier-password";
