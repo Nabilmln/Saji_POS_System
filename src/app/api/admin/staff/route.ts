@@ -1,22 +1,23 @@
-import { asc } from "drizzle-orm";
+import { asc, isNull } from "drizzle-orm";
 import { z } from "zod";
+import { LIST_PAGE_SIZE } from "@/lib/pagination";
 import { db } from "@/db";
 import { auditEvents, staffProfiles } from "@/db/schema";
 import { parseBody } from "@/lib/admin/master-data";
-import { apiError, apiSuccess, apiValidationError } from "@/lib/api-response";
+import { apiPage, apiError, apiSuccess, apiValidationError } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/auth/guards";
 import { auth } from "@/lib/auth/server";
 import { cashierAccountSchema } from "@/lib/admin/staff-contracts";
 
 const querySchema = z.strictObject({
   page: z.coerce.number().int().min(1).max(100_000).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  pageSize: z.coerce.number().int().min(1).max(LIST_PAGE_SIZE).default(LIST_PAGE_SIZE),
 });
 
-function staffData(profile: typeof staffProfiles.$inferSelect) {
+function staffData(profile: typeof staffProfiles.$inferSelect, email: string | null) {
   return {
     userId: profile.userId, displayName: profile.displayName, role: profile.role,
-    isActive: profile.isActive, createdAt: profile.createdAt,
+    isActive: profile.isActive, createdAt: profile.createdAt, email,
   };
 }
 
@@ -27,9 +28,20 @@ export async function GET(request: Request) {
   if (!parsed.success) return apiValidationError(parsed.error);
   const { page, pageSize } = parsed.data;
   const rows = await db.select().from(staffProfiles)
+    .where(isNull(staffProfiles.deletedAt))
     .orderBy(asc(staffProfiles.createdAt), asc(staffProfiles.userId))
-    .limit(pageSize).offset((page - 1) * pageSize);
-  return apiSuccess(rows.map(staffData));
+    .limit(pageSize + 1).offset((page - 1) * pageSize);
+  if (!rows.length) return apiPage([], page, pageSize);
+  try {
+    const users = await auth.admin.listUsers({ query: {
+      filterField: "id", filterOperator: "in", filterValue: rows.map((row) => row.userId), limit: pageSize + 1,
+    } });
+    if (users.error || !users.data) return apiError(503, "AUTH_UNAVAILABLE", "Staff identities could not be loaded");
+    const emails = new Map(users.data.users.map((user) => [user.id, user.email]));
+    return apiPage(rows.map((row) => staffData(row, emails.get(row.userId) ?? null)), page, pageSize);
+  } catch {
+    return apiError(503, "AUTH_UNAVAILABLE", "Staff identities could not be loaded");
+  }
 }
 
 export async function POST(request: Request) {
@@ -63,7 +75,7 @@ export async function POST(request: Request) {
       });
       return saved;
     });
-    return apiSuccess(staffData(profile), 201);
+    return apiSuccess(staffData(profile, body.email), 201);
   } catch {
     try {
       const removed = await auth.admin.removeUser({ userId });

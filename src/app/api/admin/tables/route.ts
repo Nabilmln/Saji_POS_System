@@ -1,5 +1,5 @@
 import { randomBytes } from "node:crypto";
-import { asc } from "drizzle-orm";
+import { asc, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { diningTables } from "@/db/schema";
 import { apiSuccess } from "@/lib/api-response";
@@ -9,7 +9,7 @@ import { databaseConflict, parseBody, tableData, tableSchema } from "@/lib/admin
 export async function GET(request: Request) {
   const admin = await requireAdmin(request);
   if (admin instanceof Response) return admin;
-  const rows = await db.select().from(diningTables).orderBy(asc(diningTables.tableNumber));
+  const rows = await db.select().from(diningTables).where(isNull(diningTables.deletedAt)).orderBy(asc(diningTables.tableNumber), asc(diningTables.id));
   return apiSuccess(rows.map(tableData));
 }
 

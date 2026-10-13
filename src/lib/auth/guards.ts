@@ -1,5 +1,5 @@
 import "server-only";
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { connection } from "next/server";
 import { apiError } from "@/lib/api-response";
 import { db } from "@/db";
@@ -20,7 +20,7 @@ async function requireRole(request: Request, role: StaffRole): Promise<StaffIden
   if (!userId) return authorizeStaff(undefined, undefined, role);
 
   const profile = await db.query.staffProfiles.findFirst({
-    where: eq(staffProfiles.userId, userId),
+    where: and(eq(staffProfiles.userId, userId), isNull(staffProfiles.deletedAt)),
     columns: { userId: true, displayName: true, role: true, isActive: true },
   });
   return authorizeStaff(userId, profile as StaffIdentity | undefined, role);

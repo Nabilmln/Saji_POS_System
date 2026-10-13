@@ -1,15 +1,16 @@
 import { and, desc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
+import { LIST_PAGE_SIZE } from "@/lib/pagination";
 import { db } from "@/db";
 import { auditEvents, diningTables, reservations, tableSessions } from "@/db/schema";
 import { parseBody } from "@/lib/admin/master-data";
-import { apiError, apiSuccess, apiValidationError } from "@/lib/api-response";
+import { apiPage, apiError, apiSuccess, apiValidationError } from "@/lib/api-response";
 import { requireStaff } from "@/lib/auth/guards";
 
 const querySchema = z.strictObject({
   status: z.enum(["RESERVED", "CHECKED_IN", "CANCELLED"]).optional(),
   page: z.coerce.number().int().min(1).max(100_000).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  pageSize: z.coerce.number().int().min(1).max(LIST_PAGE_SIZE).default(LIST_PAGE_SIZE),
 });
 const createSchema = z.strictObject({
   tableId: z.uuid(),
@@ -35,8 +36,8 @@ export async function GET(request: Request) {
   }).from(reservations).innerJoin(diningTables, eq(reservations.tableId, diningTables.id))
     .where(status ? eq(reservations.status, status) : undefined)
     .orderBy(desc(reservations.createdAt), desc(reservations.id))
-    .limit(pageSize).offset((page - 1) * pageSize);
-  return apiSuccess(rows);
+    .limit(pageSize + 1).offset((page - 1) * pageSize);
+  return apiPage(rows, page, pageSize);
 }
 
 export async function POST(request: Request) {

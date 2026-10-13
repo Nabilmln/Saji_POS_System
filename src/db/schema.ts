@@ -29,6 +29,7 @@ export const staffProfiles = pgTable(
     displayName: varchar("display_name", { length: 120 }).notNull(),
     role: varchar("role", { length: 12 }).notNull(),
     isActive: boolean("is_active").notNull().default(true),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
@@ -39,17 +40,19 @@ export const diningTables = pgTable(
   "dining_tables",
   {
     id: id(),
-    tableNumber: varchar("table_number", { length: 30 }).notNull().unique(),
+    tableNumber: varchar("table_number", { length: 30 }).notNull(),
     qrToken: varchar("qr_token", { length: 128 }).notNull().unique(),
     status: varchar("status", { length: 12 }).notNull().default("AVAILABLE"),
     cycleNumber: integer("cycle_number").notNull().default(0),
     isActive: boolean("is_active").notNull().default(true),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: createdAt(),
     updatedAt: updatedAt(),
   },
   (table) => [
     check("dining_tables_status_check", sql`${table.status} IN ('AVAILABLE', 'OCCUPIED', 'RESERVED')`),
     check("dining_tables_cycle_check", sql`${table.cycleNumber} >= 0`),
+    uniqueIndex("dining_tables_live_number_uniq").on(table.tableNumber).where(sql`${table.deletedAt} IS NULL`),
   ],
 );
 

@@ -29,6 +29,7 @@ const users = new Map([
 ]);
 const sessions = new Map<string, string>();
 const passwords = new Map([...users.keys()].map((email) => [email, "e2e-only-password"]));
+const banned = new Set<string>();
 const cookieName = "__Secure-neon-auth.session_token";
 
 // Provider fixture is bound to loopback; application authorization and SQL stay real.
@@ -45,7 +46,7 @@ const authServer = createServer(async (request, response) => {
       send(user ? { user: { ...user, emailVerified: true, createdAt: new Date(), updatedAt: new Date() }, session: { id: randomUUID(), token, userId, expiresAt: new Date(Date.now() + 86_400_000), createdAt: new Date(), updatedAt: new Date() } } : null);
     } else if (path === "/sign-in/email") {
       const signedIn = users.get(body.email);
-      if (!signedIn || body.password !== passwords.get(body.email)) { send({ message: "Invalid credentials" }, 401); return; }
+      if (!signedIn || banned.has(signedIn.id) || body.password !== passwords.get(body.email)) { send({ message: "Invalid credentials" }, 401); return; }
       const sessionToken = randomUUID(); sessions.set(sessionToken, signedIn.id);
       response.setHeader("Set-Cookie", `${cookieName}=${sessionToken}; Path=/; HttpOnly; Secure; SameSite=Lax`);
       send({ user: signedIn, token: sessionToken, redirect: false });
@@ -56,6 +57,20 @@ const authServer = createServer(async (request, response) => {
       if (users.has(body.email)) { send({ message: "Email already exists" }, 422); return; }
       const created = { id: randomUUID(), name: body.name, email: body.email, role: "user" };
       await pool.query('INSERT INTO neon_auth."user" (id) VALUES ($1)', [created.id]); users.set(created.email, created); passwords.set(created.email, body.password); send({ user: created });
+    } else if (path === "/admin/list-users" && user?.id === adminId) {
+      const query = new URL(request.url!, "http://127.0.0.1:3101").searchParams;
+      const ids = (query.get("filterValue") ?? "").split(",");
+      const matching = [...users.values()].filter((entry) => ids.includes(entry.id));
+      send({ users: matching, total: matching.length, limit: Number(query.get("limit") ?? 25), offset: 0 });
+    } else if (["/admin/set-user-password", "/admin/revoke-user-sessions", "/admin/ban-user"].includes(path) && user?.id === adminId) {
+      const target = [...users.values()].find((entry) => entry.id === body.userId);
+      if (!target || target.id === adminId) { send({ message: "User not found" }, 404); return; }
+      if (path === "/admin/set-user-password") passwords.set(target.email, body.newPassword);
+      else {
+        if (path === "/admin/ban-user") banned.add(target.id);
+        for (const [sessionToken, id] of sessions) if (id === target.id) sessions.delete(sessionToken);
+      }
+      send({ success: true, user: target });
     } else if (path === "/request-password-reset") {
       send({ status: true, message: "Test provider accepted password setup request" });
     } else if (path === "/reset-password" && body.token === "e2e-reset-token" && body.newPassword?.length >= 8) {

@@ -1,9 +1,15 @@
 import type { ZodError } from "zod";
+import type { PageInfo } from "./pagination";
 
 const noStore = { "Cache-Control": "no-store" };
 
 export function apiSuccess<T>(data: T, status = 200): Response {
   return Response.json({ data }, { status, headers: noStore });
+}
+
+export function apiPage<T>(rows: T[], page: number, pageSize: number): Response {
+  const pagination: PageInfo = { page, pageSize, hasNext: rows.length > pageSize };
+  return Response.json({ data: rows.slice(0, pageSize), pagination }, { headers: noStore });
 }
 
 export function apiError(

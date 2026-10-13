@@ -1,5 +1,6 @@
 import { and, asc, count, eq, ilike, isNull } from "drizzle-orm";
 import { z } from "zod";
+import { LIST_PAGE_SIZE } from "@/lib/pagination";
 import { db } from "@/db";
 import { menuItems } from "@/db/schema";
 import { apiSuccess, apiValidationError } from "@/lib/api-response";
@@ -12,7 +13,7 @@ const querySchema = z.strictObject({
   available: z.enum(["true", "false"]).optional(),
   includeArchived: z.enum(["true", "false"]).optional(),
   page: z.coerce.number().int().min(1).max(1_000_000).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  pageSize: z.coerce.number().int().min(1).max(LIST_PAGE_SIZE).default(LIST_PAGE_SIZE),
 });
 
 export async function GET(request: Request) {

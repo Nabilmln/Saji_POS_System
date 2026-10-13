@@ -1,15 +1,16 @@
 import { and, desc, eq, gte, lt } from "drizzle-orm";
 import { z } from "zod";
+import { LIST_PAGE_SIZE } from "@/lib/pagination";
 import { db } from "@/db";
 import { diningTables, payments, tableSessions } from "@/db/schema";
-import { apiError, apiSuccess, apiValidationError } from "@/lib/api-response";
+import { apiPage, apiError, apiValidationError } from "@/lib/api-response";
 import { requireStaff } from "@/lib/auth/guards";
 
 const querySchema = z.strictObject({
   from: z.iso.date().optional(),
   to: z.iso.date().optional(),
   page: z.coerce.number().int().min(1).max(100_000).default(1),
-  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  pageSize: z.coerce.number().int().min(1).max(LIST_PAGE_SIZE).default(LIST_PAGE_SIZE),
 });
 
 export async function GET(request: Request) {
@@ -33,9 +34,9 @@ export async function GET(request: Request) {
     .where(and(fromDate ? gte(payments.paidAt, fromDate) : undefined,
       toDate ? lt(payments.paidAt, toDate) : undefined))
     .orderBy(desc(payments.paidAt), desc(payments.id))
-    .limit(pageSize).offset((page - 1) * pageSize);
-  return apiSuccess(rows.map((row) => ({
+    .limit(pageSize + 1).offset((page - 1) * pageSize);
+  return apiPage(rows.map((row) => ({
     ...row, grandTotalIdr: row.grandTotalIdr.toString(),
     cashReceivedIdr: row.cashReceivedIdr.toString(), changeIdr: row.changeIdr.toString(),
-  })));
+  })), page, pageSize);
 }
