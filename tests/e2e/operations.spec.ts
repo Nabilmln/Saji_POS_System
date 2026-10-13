@@ -12,7 +12,7 @@ test("reservation creation, cancellation, check-in and empty-session closure wor
     await page.getByRole("option", { name: `Meja ${data.tableNumber}`, exact: true }).click();
     await page.getByLabel("Waktu reservasi (WIB)").fill("2026-10-20T12:30");
     await page.getByRole("button", { name: "Simpan reservasi" }).click();
-    await expect(page.locator(".reservation-row")).toContainText("Nadia Reservasi");
+    await expect(page.locator(".data-table tbody tr")).toContainText("Nadia Reservasi");
   }
   await reserve();
   await page.getByRole("button", { name: "Batalkan reservasi", exact: true }).click();
@@ -44,7 +44,7 @@ test("owner creates cashier credentials, protects own account and sees Paid-only
   const audit = (await data.pool.query("SELECT details FROM audit_events WHERE entity_id=$1", [created.userId])).rows;
   expect(JSON.stringify(audit)).not.toContain(password);
   await expect(page.getByRole("status")).toContainText("Bagikan email dan kata sandi secara pribadi");
-  const ownerRow = page.locator(".admin-list-row").filter({ hasText: "Test Admin" });
+  const ownerRow = page.getByRole("row").filter({ hasText: "Test Admin" });
   await expect(ownerRow.getByRole("button", { name: "Nonaktifkan" })).toHaveCount(0);
   const ownerId = "00000000-0000-4000-8000-000000000001";
   const protection = await call(page.request, `/admin/staff/${ownerId}`, "PATCH", { isActive: false });
@@ -61,7 +61,7 @@ test("owner creates cashier credentials, protects own account and sees Paid-only
   await expect(cashier).toHaveURL(/\/pos$/);
   expect((await call(cashier.request, "/admin/me")).status()).toBe(403);
   await expect(cashier.locator(".staff-sidebar a[href^='/admin']")).toHaveCount(0);
-  const row = page.locator(".admin-list-row").filter({ hasText: "Kasir Baru Demo" });
+  const row = page.getByRole("row").filter({ hasText: "Kasir Baru Demo" });
   page.once("dialog", (dialog) => dialog.accept()); await row.getByRole("button", { name: "Nonaktifkan" }).click();
   await expect(row.getByRole("button", { name: "Aktifkan", exact: true })).toBeVisible();
   expect((await data.pool.query("SELECT is_active FROM staff_profiles WHERE user_id=$1", [created.userId])).rows[0].is_active).toBe(false);
@@ -193,7 +193,7 @@ test("shared dropdown supports keyboards and desktop panes keep QR and orders at
   await availability.getByRole("radio", { name: "Tersedia", exact: true }).check();
   await expect(availability.getByRole("radio", { name: "Tersedia", exact: true })).toBeChecked();
   await page.goto("/admin/tables");
-  await page.locator(".admin-table-card").filter({ hasText: data.tableNumber }).getByRole("button", { name: "Lihat QR" }).click();
+  await page.getByRole("row").filter({ hasText: data.tableNumber }).getByRole("button", { name: "Lihat QR" }).click();
   await expect(page.locator(".workspace-detail").getByRole("img", { name: `Kode QR untuk pemesanan Meja ${data.tableNumber}` })).toBeVisible();
   const sidebar = await page.locator(".staff-sidebar").boundingBox();
   const content = await page.locator(".staff-content").boundingBox();

@@ -4,7 +4,10 @@ import { useLocale } from "@/components/locale-provider";
 
 import { StatusBadge } from "@/components/ui/status-badge";
 
-import { Alert, Panel, Button, Input, EmptyState } from "@/components/ui/controls";
+import { Alert, Panel, Button, Input, EmptyState, Pagination } from "@/components/ui/controls";
+import { DataTable } from "@/components/ui/data-table";
+import { ConfirmDelete } from "@/components/ui/confirm-delete";
+import { LIST_PAGE_SIZE } from "@/lib/pagination";
 
 import { useEffect, useState, type FormEvent } from "react";
 import { DetailPane } from "@/components/app-shells";
@@ -18,6 +21,8 @@ type Table = { id: string; tableNumber: string; status: "AVAILABLE" | "OCCUPIED"
 export function TableManager() {
   const { t } = useLocale();
   const [tables, setTables] = useState<Table[]>([]);
+  const [page, setPage] = useState(1);
+  const [deleting, setDeleting] = useState<Table | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -33,7 +38,7 @@ export function TableManager() {
   useEffect(() => {
     let active = true;
     adminApi<Table[]>("/api/admin/tables")
-      .then((data) => { if (active) { setTables(data); setLoading(false); setError(""); } })
+      .then((data) => { if (active) { setTables(data); setPage((current) => Math.min(current, Math.max(1, Math.ceil(data.length / LIST_PAGE_SIZE)))); setLoading(false); setError(""); } })
       .catch((cause: Error) => { if (active) { setError(cause.message); setLoading(false); } });
     return () => { active = false; };
   }, [revision]);
@@ -53,7 +58,7 @@ export function TableManager() {
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setError(""); setFields({});
+    event.preventDefault(); setBusy(true); setError(""); setNotice(""); setFields({});
     try {
       await adminApi<Table>(editing === "new" ? "/api/admin/tables" : `/api/admin/tables/${editing}`,
         jsonRequest(editing === "new" ? "POST" : "PATCH", { tableNumber: number.trim() }));
@@ -77,11 +82,21 @@ export function TableManager() {
 
   function openQr(table: Table) { setQrSvg(""); setPreview(table); setError(""); }
 
+  async function remove(table: Table) {
+    setBusy(true); setNotice(""); setError("");
+    try {
+      await adminApi(`/api/admin/tables/${table.id}`, { method: "DELETE" });
+      if (preview?.id === table.id) setPreview(null);
+      if (editing === table.id) setEditing(null);
+      setNotice("Meja dihapus. Riwayat transaksi tetap tersimpan."); reload();
+    } finally { setBusy(false); }
+  }
+
   const qrUrl = preview ? new URL(preview.orderUrl, typeof window === "undefined" ? "http://localhost" : window.location.origin).href : "";
   const downloadHref = qrSvg ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qrSvg)}` : "";
   return <div className="admin-stack">
     <p className="section-intro">{t("Atur nomor meja dan unduh kode QR unik untuk meja yang aktif.")}</p>
-    {notice && <Alert className="inline-alert info" role="status">{t(notice)}</Alert>}
+    {notice && <Alert toast className="inline-alert info" role="status">{t(notice)}</Alert>}
     {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
     <Panel className="admin-panel">
       <div className="admin-section-head"><div><h2>{t("Daftar meja")}</h2></div><Button className="primary-button" disabled={busy} onClick={() => begin()}>{t("Tambah Meja")}</Button></div>
@@ -90,16 +105,20 @@ export function TableManager() {
         <label>{t("Nomor meja *")}<Input className="text-field" required maxLength={30} value={number} onChange={(event) => setNumber(event.target.value)} />{fields.tableNumber && <small className="field-error">{fields.tableNumber.join(", ")}</small>}</label>
         <div className="admin-actions"><Button className="primary-button" disabled={busy}>{busy ? t("Menyimpan…") : t("Simpan Meja")}</Button><Button className="secondary-button" type="button" disabled={busy} onClick={() => setEditing(null)}>{t("Batal")}</Button></div>
       </form>}
-      {loading ? <p className="loading-block" role="status">{t("Memuat meja…")}</p> : !tables.length ? <EmptyState className="empty-state"><h2>{t("Belum ada meja")}</h2><p>{t("Tambahkan meja untuk membuat kode QR.")}</p></EmptyState> : <div className="admin-table-grid">{tables.map((table) => <article className="admin-table-card" key={table.id}>
-        <div className="admin-section-head"><div><p className="context-label">{t("MEJA")}</p><h3>{table.tableNumber}</h3></div><StatusBadge status={table.isActive ? table.status : "INACTIVE"} /></div>
-        <p className="muted">{table.status === "AVAILABLE" ? t("Siap untuk pemesanan") : table.status === "OCCUPIED" ? t("Sedang digunakan") : t("Menunggu check-in kasir")}</p>
-        <div className="admin-row-actions">
+    </Panel>
+    <Panel><h2>{t("Daftar meja")}</h2>
+      {loading ? <p className="loading-block" role="status">{t("Memuat meja…")}</p> : !tables.length ? <EmptyState className="empty-state"><h2>{t("Belum ada meja")}</h2><p>{t("Tambahkan meja untuk membuat kode QR.")}</p></EmptyState> : <DataTable caption={t("Daftar meja")} columns={[t("Nomor meja"), t("Status"), t("Pemesanan QR"), t("Tindakan")]}>{tables.slice((page - 1) * LIST_PAGE_SIZE, page * LIST_PAGE_SIZE).map((table) => <tr key={table.id}>
+        <th scope="row">{table.tableNumber}</th><td><StatusBadge status={table.status} /></td><td><StatusBadge status={table.isActive ? "ACTIVE" : "INACTIVE"} /></td>
+        <td><div className="admin-row-actions">
           <Button className="text-button" disabled={busy || table.status !== "AVAILABLE"} onClick={() => begin(table)}>{t("Ubah nomor")}</Button>
           <Button className="text-button" disabled={busy || table.status !== "AVAILABLE"} onClick={() => void toggle(table)}>{table.isActive ? t("Nonaktifkan") : t("Aktifkan")}</Button>
           {table.isActive && <Button className="text-button" onClick={() => openQr(table)}>{t("Lihat QR")}</Button>}
-        </div>
-      </article>)}</div>}
+          <Button className="text-button danger-text" disabled={busy || table.status !== "AVAILABLE"} onClick={() => setDeleting(table)}>{t("Hapus")}</Button>
+        </div></td>
+      </tr>)}</DataTable>}
     </Panel>
+    <Pagination page={page} hasNext={page * LIST_PAGE_SIZE < tables.length} total={tables.length} onChange={setPage} disabled={busy || loading} />
+    {deleting && <ConfirmDelete name={t("Meja {0}", { "0": deleting.tableNumber })} description={t("Meja ini dihapus dari daftar. Kode QR lama berhenti menerima pesanan; riwayat transaksi tetap tersimpan.")} onClose={() => setDeleting(null)} onConfirm={() => remove(deleting)} />}
     {preview && <DetailPane><Panel className="admin-panel qr-section" aria-labelledby="qr-title">
       <div className="admin-section-head"><div><h2 id="qr-title">{t("Meja")}{" "}{preview.tableNumber}</h2></div><Button className="text-button" onClick={() => setPreview(null)}>{t("Tutup")}</Button></div>
       <div className="qr-template">

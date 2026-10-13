@@ -6,6 +6,9 @@ import { StatusBadge } from "@/components/ui/status-badge";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { adminApi, AdminApiError, jsonRequest } from "@/lib/admin/client";
+import { ConfirmDelete } from "@/components/ui/confirm-delete";
+import { DataTable } from "@/components/ui/data-table";
+import { LIST_PAGE_SIZE } from "@/lib/pagination";
 import { Photo } from "@/components/ui/photo";
 import { MenuCard } from "@/components/menu-card";
 import { Section, SectionNav } from "@/components/ui/section";
@@ -22,6 +25,8 @@ const emptyCategory = { name: "", sortOrder: 0, isActive: true };
 
 export function MenuManager() {
   const { t } = useLocale();
+  const [deleting, setDeleting] = useState<{ kind: "menu"; item: Menu } | { kind: "category"; item: Category } | null>(null);
+  const [categoryPage, setCategoryPage] = useState(1);
   const [categories, setCategories] = useState<Category[]>([]);
   const [list, setList] = useState<MenuList | null>(null);
   const [search, setSearch] = useState("");
@@ -42,7 +47,7 @@ export function MenuManager() {
 
   const reload = () => setRevision((value) => value + 1);
   const load = useCallback(async () => {
-    const query = new URLSearchParams({ page: String(page), pageSize: "20" });
+    const query = new URLSearchParams({ page: String(page), pageSize: String(LIST_PAGE_SIZE) });
     if (search.trim()) query.set("q", search.trim());
     if (categoryFilter) query.set("categoryId", categoryFilter);
     if (availability) query.set("available", availability);
@@ -75,7 +80,7 @@ export function MenuManager() {
   }
 
   async function saveMenu(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setError(""); setFields({});
+    event.preventDefault(); setBusy(true); setError(""); setNotice(""); setFields({});
     const body = {
       categoryId: draft.categoryId, name: draft.name.trim(), description: draft.description.trim() || null,
       imageUrl: draft.imageUrl.trim() || null, priceIdr: draft.priceIdr.trim(), isAvailable: draft.isAvailable,
@@ -99,13 +104,12 @@ export function MenuManager() {
     finally { setBusy(false); }
   }
 
-  async function archiveMenu(item: Menu) {
-    if (!window.confirm(t("Arsipkan menu \"{0}\"? Menu akan hilang dari katalog pelanggan, tetapi riwayat pesanan tetap tersimpan.", { "0": item.name }))) return;
+  async function deleteMenu(item: Menu) {
     setBusy(true); setError(""); setNotice("");
     try {
       await adminApi<unknown>(`/api/admin/menus/${item.id}`, { method: "DELETE" });
-      setNotice(`Menu ${item.name} diarsipkan.`); reload();
-    } catch (cause) { setError((cause as Error).message); }
+      setNotice(`Menu ${item.name} dihapus.`); setEditing(null); if (list?.items.length === 1 && page > 1) setPage(page - 1); else reload();
+    } catch (cause) { setError((cause as Error).message); throw cause; }
     finally { setBusy(false); }
   }
 
@@ -116,7 +120,7 @@ export function MenuManager() {
   }
 
   async function saveCategory(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setError(""); setFields({});
+    event.preventDefault(); setBusy(true); setError(""); setNotice(""); setFields({});
     try {
       await adminApi<Category>(categoryEditing === "new" ? "/api/admin/categories" : `/api/admin/categories/${categoryEditing}`,
         jsonRequest(categoryEditing === "new" ? "POST" : "PATCH", categoryDraft));
@@ -139,25 +143,25 @@ export function MenuManager() {
   }
 
   async function deleteCategory(category: Category) {
-    if (!window.confirm(t("Hapus kategori kosong \"{0}\" secara permanen?", { "0": category.name }))) return;
     setBusy(true); setError(""); setNotice("");
     try {
       await adminApi<unknown>(`/api/admin/categories/${category.id}`, { method: "DELETE" });
       setNotice("Kategori dihapus."); reload();
-    } catch (cause) { setError((cause as Error).message); }
+    } catch (cause) { setError((cause as Error).message); throw cause; }
     finally { setBusy(false); }
   }
 
   const categoryName = new Map(categories.map((category) => [category.id, category.name]));
   const visibleCategories = categories.filter((category) => category.name.toLocaleLowerCase("id-ID").includes(categorySearch.toLocaleLowerCase("id-ID")));
+  const currentCategoryPage = Math.min(categoryPage, Math.max(1, Math.ceil(visibleCategories.length / LIST_PAGE_SIZE)));
   return <div className="admin-stack">
     <p className="section-intro">{t("Kelola menu yang tampil di QR meja dan susun kategori katalog.")}</p>
-    {notice && <Alert className="inline-alert info" role="status">{t(notice)}</Alert>}
+    {notice && <Alert toast className="inline-alert info" role="status">{t(notice)}</Alert>}
     {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
 
     <SectionNav sections={[{ id: "menu-filters", label: t("Temukan menu") }, { id: "menu-items", label: t("Daftar menu") }, { id: "menu-categories", label: t("Kategori") }]} />
     <Section id="menu-filters" title={t("Temukan menu")} description={t("Filter menu berdasarkan nama, kategori, dan ketersediaan.")}>
-      <div className="admin-filters">
+      <div className="admin-filters menu-filters">
         <label>{t("Cari menu")}<Input className="text-field" type="search" maxLength={160} value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder={t("Nama menu")} /></label>
         <Selection label={t("Kategori")} kind="dropdown" value={categoryFilter} onChange={(value) => { setCategoryFilter(value); setPage(1); }} options={[{ value: "", label: t("Semua kategori") }, ...categories.map((category) => ({ value: category.id, label: category.name }))]} />
         <Selection label={t("Ketersediaan")} value={availability} onChange={(value) => { setAvailability(value); setPage(1); }} options={[{ value: "", label: t("Semua") }, { value: "true", label: t("Tersedia") }, { value: "false", label: t("Tidak tersedia") }]} />
@@ -180,14 +184,14 @@ export function MenuManager() {
       </form></DetailPane>}
       {loading ? <p className="loading-block" role="status">{t("Memuat menu…")}</p> : !list?.items.length ? <EmptyState className="empty-state"><h2>{t("Menu tidak ditemukan")}</h2><p>{t("Ubah pencarian atau tambahkan menu baru.")}</p></EmptyState> : <>
         <div className="admin-menu-grid">{list.items.map((item) => <MenuCard menu={item} category={categoryName.get(item.categoryId) ?? "Kategori tidak aktif"} className="admin-list-row admin-menu-card" key={item.id} badge={<StatusBadge status={item.isAvailable ? "AVAILABLE" : "INACTIVE"}>{item.isAvailable ? t("Tersedia") : t("Tidak tersedia")}</StatusBadge>}>
-          <div className="admin-row-actions"><Button className="text-button" disabled={busy} onClick={() => beginMenu(item)}>{t("Edit")}</Button><Button className="text-button" disabled={busy} onClick={() => void toggleMenu(item)}>{item.isAvailable ? t("Nonaktifkan") : t("Aktifkan")}</Button><Button className="text-button danger-text" disabled={busy} onClick={() => void archiveMenu(item)}>{t("Arsipkan")}</Button></div>
+          <div className="admin-row-actions"><Button className="text-button" disabled={busy} onClick={() => beginMenu(item)}>{t("Edit")}</Button><Button className="text-button" disabled={busy} onClick={() => void toggleMenu(item)}>{item.isAvailable ? t("Nonaktifkan") : t("Aktifkan")}</Button><Button className="text-button danger-text" disabled={busy} onClick={() => setDeleting({ kind: "menu", item })}>{t("Hapus")}</Button></div>
         </MenuCard>)}</div>
-        <Pagination page={page} hasNext={page * list.pageSize < list.total} onChange={setPage} />
+        <Pagination label="Navigasi menu" page={page} hasNext={page * list.pageSize < list.total} total={list.total} onChange={setPage} disabled={busy || loading} />
       </>}
     </Section>
 
     <Section id="menu-categories" title={t("Kategori")} description={t("Susun kategori untuk memudahkan pelanggan menemukan menu.")} actions={<Button className="secondary-button" disabled={busy} onClick={() => beginCategory()}>{t("Tambah Kategori")}</Button>}>
-      <label className="category-search">{t("Cari kategori")}<Input className="text-field" type="search" maxLength={120} value={categorySearch} onChange={(event) => setCategorySearch(event.target.value)} placeholder={t("Nama kategori")} /></label>
+      <label className="category-search">{t("Cari kategori")}<Input className="text-field" type="search" maxLength={120} value={categorySearch} onChange={(event) => { setCategorySearch(event.target.value); setCategoryPage(1); }} placeholder={t("Nama kategori")} /></label>
       {categoryEditing && <form className="admin-form" onSubmit={saveCategory}>
         <div className="admin-section-head"><h3>{categoryEditing === "new" ? t("Kategori baru") : t("Edit kategori")}</h3><Button className="text-button" type="button" onClick={() => setCategoryEditing(null)}>{t("Tutup")}</Button></div>
         <div className="admin-form-grid">
@@ -197,11 +201,12 @@ export function MenuManager() {
         </div>
         <div className="admin-actions"><Button className="primary-button" disabled={busy}>{busy ? t("Menyimpan…") : t("Simpan Kategori")}</Button><Button className="secondary-button" type="button" disabled={busy} onClick={() => setCategoryEditing(null)}>{t("Batal")}</Button></div>
       </form>}
-      {!visibleCategories.length && !loading ? <EmptyState className="empty-state"><h2>{categories.length ? t("Kategori tidak ditemukan") : t("Belum ada kategori")}</h2><p>{categories.length ? t("Coba nama kategori lain.") : t("Tambahkan kategori untuk menyusun menu.")}</p></EmptyState> : <div className="admin-list">{visibleCategories.map((category) => <div className="admin-list-row" key={category.id}>
-        <div className="admin-list-main"><strong>{category.name}</strong><p>{t("Urutan")}{" "}{category.sortOrder} · {category.menuCount} {" "}{t("menu")}</p></div>
-        <StatusBadge status={category.isActive ? "ACTIVE" : "INACTIVE"} />
-        <div className="admin-row-actions"><Button className="text-button" disabled={busy} onClick={() => beginCategory(category)}>{t("Edit")}</Button><Button className="text-button" disabled={busy} onClick={() => void changeCategory(category)}>{category.isActive ? t("Nonaktifkan") : t("Aktifkan")}</Button>{category.menuCount === 0 && <Button className="text-button danger-text" disabled={busy} onClick={() => void deleteCategory(category)}>{t("Hapus")}</Button>}</div>
-      </div>)}</div>}
+      {!visibleCategories.length && !loading ? <EmptyState className="empty-state"><h2>{categories.length ? t("Kategori tidak ditemukan") : t("Belum ada kategori")}</h2><p>{categories.length ? t("Coba nama kategori lain.") : t("Tambahkan kategori untuk menyusun menu.")}</p></EmptyState> : <DataTable caption={t("Kategori")} columns={[t("Nama kategori"), t("Urutan"), t("Jumlah menu"), t("Status"), t("Tindakan")]}>{visibleCategories.slice((currentCategoryPage - 1) * LIST_PAGE_SIZE, currentCategoryPage * LIST_PAGE_SIZE).map((category) => <tr key={category.id}>
+        <th scope="row">{category.name}</th><td>{category.sortOrder}</td><td>{category.menuCount}</td><td><StatusBadge status={category.isActive ? "ACTIVE" : "INACTIVE"} /></td>
+        <td><div className="admin-row-actions"><Button className="text-button" disabled={busy} onClick={() => beginCategory(category)}>{t("Edit")}</Button><Button className="text-button" disabled={busy} onClick={() => void changeCategory(category)}>{category.isActive ? t("Nonaktifkan") : t("Aktifkan")}</Button>{category.menuCount === 0 && <Button className="text-button danger-text" disabled={busy} onClick={() => setDeleting({ kind: "category", item: category })}>{t("Hapus")}</Button>}</div></td>
+      </tr>)}</DataTable>}
+      <Pagination label="Navigasi kategori" page={currentCategoryPage} hasNext={currentCategoryPage * LIST_PAGE_SIZE < visibleCategories.length} total={visibleCategories.length} onChange={setCategoryPage} disabled={busy || loading} />
     </Section>
+    {deleting && <ConfirmDelete name={deleting.item.name} description={t(deleting.kind === "menu" ? "Menu ini dihapus dari katalog. Riwayat pesanan dan penjualan tetap tersimpan." : "Kategori kosong ini dihapus secara permanen.")} onClose={() => setDeleting(null)} onConfirm={() => deleting.kind === "menu" ? deleteMenu(deleting.item) : deleteCategory(deleting.item)} />}
   </div>;
 }
