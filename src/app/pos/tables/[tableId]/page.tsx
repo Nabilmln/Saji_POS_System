@@ -1,3 +1,4 @@
+import { Text } from "@/components/locale-provider";
 import { LoadingState } from "@/components/ui/controls";
 import { Suspense } from "react";
 import { PosTable } from "@/components/pos-table";
@@ -8,5 +9,5 @@ async function Content({ params }: { params: Promise<{ tableId: string }> }) {
 }
 
 export default function PosTablePage({ params }: { params: Promise<{ tableId: string }> }) {
-  return <Suspense fallback={<LoadingState className="loading-block" role="status">Menyiapkan meja…</LoadingState>}><Content params={params} /></Suspense>;
+  return <Suspense fallback={<LoadingState className="loading-block" role="status"><Text value="Menyiapkan meja…" /></LoadingState>}><Content params={params} /></Suspense>;
 }

@@ -1,13 +1,15 @@
 "use client";
 
+import { useLocale } from "@/components/locale-provider";
+
 import { StatusBadge } from "@/components/ui/status-badge";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Photo } from "@/components/ui/photo";
+import { MenuCard } from "@/components/menu-card";
 import { Selection, LoadingState, EmptyState, Button, Alert, Input } from "@/components/ui/controls";
 import { CustomerShell } from "@/components/app-shells";
-import { cartSubtotal, changeCart, formatIdr, type CartItem } from "@/lib/customer/cart";
+import { cartSubtotal, changeCart, type CartItem } from "@/lib/customer/cart";
 
 type Table = { tableNumber: string; cycleNumber: number; status: string };
 type MenuItem = { id: string; name: string; description: string | null; imageUrl: string | null; priceIdr: string };
@@ -52,6 +54,7 @@ function readSession<T>(key: string, fallback: T): T {
 }
 
 export function CustomerApp({ tableToken, view }: { tableToken: string; view: View }) {
+  const { t, money, locale } = useLocale();
   const router = useRouter();
   const base = `/order/${encodeURIComponent(tableToken)}`;
   const storage = `customer:${tableToken}`;
@@ -195,81 +198,80 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
     } finally { setBusy(false); }
   }
 
-  if (loading) return <CustomerShell><LoadingState className="loading-block" role="status">Memeriksa kode QR meja…</LoadingState></CustomerShell>;
-  if (!table && view !== "status") return <CustomerShell><EmptyState className="empty-state"><h1>Meja tidak ditemukan</h1><p>{error || "Kode QR tidak valid."}</p></EmptyState></CustomerShell>;
+  if (loading) return <CustomerShell><LoadingState className="loading-block" role="status">{t("Memeriksa kode QR meja…")}</LoadingState></CustomerShell>;
+  if (!table && view !== "status") return <CustomerShell><EmptyState className="empty-state"><h1>{t("Meja tidak ditemukan")}</h1><p>{error || t("Kode QR tidak valid.")}</p></EmptyState></CustomerShell>;
 
   const footer = view === "menu" && guest && cart.length > 0
-    ? <div className="sticky-action"><Button className="primary-button full-width" onClick={() => router.push(`${base}/cart`)}><span>Lihat Keranjang · {cart.reduce((n, item) => n + item.quantity, 0)} item</span><span>{formatIdr(cartSubtotal(cart))}</span></Button></div>
+    ? <div className="sticky-action"><Button className="primary-button full-width" onClick={() => router.push(`${base}/cart`)}><span>{t("Lihat Keranjang ·")}{" "}{cart.reduce((n, item) => n + item.quantity, 0)} {" "}{t("item")}</span><span>{money(cartSubtotal(cart))}</span></Button></div>
     : null;
 
   return <CustomerShell tableNumber={table?.tableNumber} footer={footer}>
     {view === "status" ? <>
-      {placed && <div className="success-panel" role="status"><h1>Terima kasih!</h1><p>Pesanan Anda telah dikirim ke kasir dan menunggu konfirmasi.</p></div>}
-      <h1>Status pesanan</h1>
-      <p className="section-intro">Status diperbarui otomatis. Hanya pesanan dari browser ini yang ditampilkan.</p>
-      {error && <Alert className="inline-alert" role="alert">{error} <Button className="text-button" onClick={() => void refreshStatuses()}>Coba lagi</Button></Alert>}
-      {!orders.length ? <EmptyState className="empty-state"><h2>Belum ada pesanan</h2><p>Pesanan yang Anda kirim dari browser ini akan muncul di sini.</p></EmptyState>
+      {placed && <div className="success-panel" role="status"><h1>{t("Terima kasih!")}</h1><p>{t("Pesanan Anda telah dikirim ke kasir dan menunggu konfirmasi.")}</p></div>}
+      <h1>{t("Status pesanan")}</h1>
+      <p className="section-intro">{t("Status diperbarui otomatis. Hanya pesanan dari browser ini yang ditampilkan.")}</p>
+      {error && <Alert className="inline-alert" role="alert">{t(error)} <Button className="text-button" onClick={() => void refreshStatuses()}>{t("Coba lagi")}</Button></Alert>}
+      {!orders.length ? <EmptyState className="empty-state"><h2>{t("Belum ada pesanan")}</h2><p>{t("Pesanan yang Anda kirim dari browser ini akan muncul di sini.")}</p></EmptyState>
         : orders.map((order) => {
           const status = statuses[order.id];
           return <article className="status-card" key={order.id}>
-            <div className="status-top"><div><p className="context-label">PESANAN #{order.id.slice(0, 8).toUpperCase()}</p><h2>{status ? status.customerName : "Memuat pesanan…"}</h2></div>
+            <div className="status-top"><div><p className="context-label">{t("PESANAN #")}{order.id.slice(0, 8).toUpperCase()}</p><h2>{status ? status.customerName : t("Memuat pesanan…")}</h2></div>
               {status && <StatusBadge status={status.voided ? "VOID" : status.status} />}</div>
-            {status && <><ul>{status.items.map((item, index) => <li key={index}>{item.quantity}× {item.menuName} <span className="muted">· {item.voided ? "Dibatalkan" : item.served ? "Sudah disajikan" : "Belum disajikan"}</span></li>)}</ul>
-              <p className="muted" style={{ marginTop: 14 }}>{status.items.filter((item) => item.served && !item.voided).length} dari {status.items.filter((item) => !item.voided).length} jenis item disajikan</p></>}
+            {status && <><ul>{status.items.map((item, index) => <li key={index}>{item.quantity}× {item.menuName} <span className="muted">· {item.voided ? t("Dibatalkan") : item.served ? t("Sudah disajikan") : t("Belum disajikan")}</span></li>)}</ul>
+              <p className="muted" style={{ marginTop: 14 }}>{status.items.filter((item) => item.served && !item.voided).length} {" "}{t("dari")}{" "}{status.items.filter((item) => !item.voided).length} {" "}{t("jenis item disajikan")}</p></>}
           </article>;
         })}
-      {updatedAt && <p className="muted">Terakhir diperbarui {updatedAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</p>}
-      <p className="muted" style={{ marginTop: 24 }}>Perlu membatalkan pesanan? Silakan hubungi kasir.</p>
-      <Button className="secondary-button full-width" style={{ marginTop: 24 }} onClick={() => router.push(base)}>Tambah pesanan</Button>
+      {updatedAt && <p className="muted">{t("Terakhir diperbarui")}{" "}{updatedAt.toLocaleTimeString(locale === "en" ? "en-GB" : "id-ID", {timeZone: "Asia/Jakarta",  hour: "2-digit", minute: "2-digit" })}</p>}
+      <p className="muted" style={{ marginTop: 24 }}>{t("Perlu membatalkan pesanan? Silakan hubungi kasir.")}</p>
+      <Button className="secondary-button full-width" style={{ marginTop: 24 }} onClick={() => router.push(base)}>{t("Tambah pesanan")}</Button>
     </> : !table ? null : !guest ? <>
-      <div className="hero-panel"><p className="context-label">SELAMAT DATANG DI MEJA {table.tableNumber}</p><h1>Mau pesan apa hari ini?</h1><p>Isi nama Anda dulu, lalu pilih hidangan yang Anda suka.</p></div>
+      <div className="hero-panel"><p className="context-label">{t("SELAMAT DATANG DI MEJA")}{" "}{table.tableNumber}</p><h1>{t("Mau pesan apa hari ini?")}</h1><p>{t("Isi nama Anda dulu, lalu pilih hidangan yang Anda suka.")}</p></div>
       <form onSubmit={submitName}>
-        <label className="field-label" htmlFor="customer-name">Nama pemesan *</label>
-        <Input className="text-field" id="customer-name" name="customerName" placeholder="Contoh: Nadia" autoComplete="name" maxLength={120} required value={name} onChange={(event) => setName(event.target.value)} />
-        {error && <Alert className="inline-alert" role="alert">{error}</Alert>}
-        {table.status === "RESERVED" && <Alert className="inline-alert info">Meja ini sedang direservasi. Kasir perlu melakukan check-in sebelum pesanan dapat dikirim.</Alert>}
-        <Button className="primary-button full-width" style={{ marginTop: 20 }} disabled={busy || !name.trim()}>{busy ? "Menyiapkan menu…" : "Lihat Menu"}</Button>
+        <label className="field-label" htmlFor="customer-name">{t("Nama pemesan *")}</label>
+        <Input className="text-field" id="customer-name" name="customerName" placeholder={t("Contoh: Nadia")} autoComplete="name" maxLength={120} required value={name} onChange={(event) => setName(event.target.value)} />
+        {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
+        {table.status === "RESERVED" && <Alert className="inline-alert info">{t("Meja ini sedang direservasi. Kasir perlu melakukan check-in sebelum pesanan dapat dikirim.")}</Alert>}
+        <Button className="primary-button full-width" style={{ marginTop: 20 }} disabled={busy || !name.trim()}>{busy ? t("Menyiapkan menu…") : t("Lihat Menu")}</Button>
       </form>
     </> : view === "cart" ? <>
-      <p className="context-label">MEJA {table.tableNumber} · {guest.customerName}</p><h1>Keranjang Anda</h1>
-      <p className="section-intro">Periksa pesanan sebelum dikirim ke kasir.</p>
-      {!cart.length ? <EmptyState className="empty-state"><h2>Keranjang masih kosong</h2><p>Pilih menu favorit Anda untuk mulai memesan.</p><Button className="secondary-button" onClick={() => router.push(base)}>Lihat Menu</Button></EmptyState> : <>
+      <p className="context-label">{t("MEJA")}{" "}{table.tableNumber} · {guest.customerName}</p><h1>{t("Keranjang Anda")}</h1>
+      <p className="section-intro">{t("Periksa pesanan sebelum dikirim ke kasir.")}</p>
+      {!cart.length ? <EmptyState className="empty-state"><h2>{t("Keranjang masih kosong")}</h2><p>{t("Pilih menu favorit Anda untuk mulai memesan.")}</p><Button className="secondary-button" onClick={() => router.push(base)}>{t("Lihat Menu")}</Button></EmptyState> : <>
         {cart.map((item) => <div className="cart-row" key={item.id}>
-          <div className="cart-row-head"><strong>{item.name}</strong><span>{formatIdr(BigInt(item.priceIdr) * BigInt(item.quantity))}</span></div>
-          <p className="muted">{formatIdr(item.priceIdr)} per item</p>
+          <div className="cart-row-head"><strong>{item.name}</strong><span>{money(BigInt(item.priceIdr) * BigInt(item.quantity))}</span></div>
+          <p className="muted">{money(item.priceIdr)} {" "}{t("per item")}</p>
           <div className="cart-controls"><div className="stepper">
-            <Button type="button" aria-label={`Kurangi ${item.name}`} disabled={uncertain} onClick={() => editCart(item, item.quantity - 1)}>−</Button>
+            <Button type="button" aria-label={t("Kurangi {0}", { "0": item.name })} disabled={uncertain} onClick={() => editCart(item, item.quantity - 1)}>−</Button>
             <strong>{item.quantity}</strong>
-            <Button type="button" aria-label={`Tambah ${item.name}`} disabled={uncertain || item.quantity >= 99} onClick={() => editCart(item, item.quantity + 1)}>+</Button>
-          </div><Button className="text-button" disabled={uncertain} onClick={() => editCart(item, 0)}>Hapus</Button></div>
-          <Input className="text-field cart-note" aria-label={`Catatan untuk ${item.name}`} placeholder="Catatan untuk item ini (opsional)" maxLength={500} disabled={uncertain} value={item.note} onChange={(event) => editCart({ ...item, note: event.target.value }, item.quantity)} />
+            <Button type="button" aria-label={t("Tambah {0}", { "0": item.name })} disabled={uncertain || item.quantity >= 99} onClick={() => editCart(item, item.quantity + 1)}>+</Button>
+          </div><Button className="text-button" disabled={uncertain} onClick={() => editCart(item, 0)}>{t("Hapus")}</Button></div>
+          <Input className="text-field cart-note" aria-label={t("Catatan untuk {0}", { "0": item.name })} placeholder={t("Catatan untuk item ini (opsional)")} maxLength={500} disabled={uncertain} value={item.note} onChange={(event) => editCart({ ...item, note: event.target.value }, item.quantity)} />
         </div>)}
-        <div className="summary-card"><div className="money-row"><span>Subtotal menu</span><strong>{formatIdr(cartSubtotal(cart))}</strong></div><p className="muted">Belum termasuk pajak atau diskon yang dihitung kasir pada tagihan akhir.</p></div>
-        {error && <Alert className="inline-alert" role="alert">{error}</Alert>}
-        {table.status === "RESERVED" && <Alert className="inline-alert info">Kasir perlu melakukan check-in meja reservasi sebelum Anda dapat memesan.</Alert>}
-        <Button className="primary-button full-width" disabled={busy || table.status === "RESERVED"} onClick={() => void checkout()}>{busy ? "Mengirim pesanan…" : uncertain ? "Coba Lagi dengan Aman" : "Konfirmasi Pesanan"}</Button>
-        <Button className="secondary-button full-width" style={{ marginTop: 10 }} disabled={busy || uncertain} onClick={() => router.push(base)}>Kembali ke Menu</Button>
+        <div className="summary-card"><div className="money-row"><span>{t("Subtotal menu")}</span><strong>{money(cartSubtotal(cart))}</strong></div><p className="muted">{t("Belum termasuk pajak atau diskon yang dihitung kasir pada tagihan akhir.")}</p></div>
+        {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
+        {table.status === "RESERVED" && <Alert className="inline-alert info">{t("Kasir perlu melakukan check-in meja reservasi sebelum Anda dapat memesan.")}</Alert>}
+        <Button className="primary-button full-width" disabled={busy || table.status === "RESERVED"} onClick={() => void checkout()}>{busy ? t("Mengirim pesanan…") : uncertain ? t("Coba Lagi dengan Aman") : t("Konfirmasi Pesanan")}</Button>
+        <Button className="secondary-button full-width" style={{ marginTop: 10 }} disabled={busy || uncertain} onClick={() => router.push(base)}>{t("Kembali ke Menu")}</Button>
       </>}
     </> : <>
-      <p className="context-label">MEJA {table.tableNumber} · HAI, {guest.customerName.toUpperCase()}</p><h1>Pilih yang Anda suka.</h1><p className="section-intro">Menu yang tersedia hari ini. Tambahkan pilihan Anda ke keranjang.</p>
-      {uncertain && <Alert className="inline-alert" role="alert">Pengiriman pesanan sebelumnya belum pasti. Buka keranjang dan coba lagi sebelum mengubah pesanan. <Button className="text-button" onClick={() => router.push(`${base}/cart`)}>Buka keranjang</Button></Alert>}
-      {orders.length > 0 && <Button className="text-button" onClick={() => router.push(`${base}/status`)}>Lihat status pesanan saya →</Button>}
-      <div className="menu-tools"><label htmlFor="menu-search" className="field-label">Cari menu</label><Input id="menu-search" className="text-field" type="search" placeholder="Cari nama hidangan…" value={search} onChange={(event) => setSearch(event.target.value)} />
-        {menu && <Selection label="Kategori" value={categoryId} onChange={setCategoryId} options={[{ value: "", label: "Semua" }, ...menu.categories.map((category) => ({ value: category.id, label: category.name }))]} />}</div>
-      {error && <Alert className="inline-alert" role="alert">{error}<Button className="text-button" onClick={() => guest && void loadMenu(guest.guestToken)}>Coba lagi</Button></Alert>}
-      {!menu && !error && <LoadingState className="loading-block" role="status">Memuat menu…</LoadingState>}
+      <p className="context-label">{t("MEJA")}{" "}{table.tableNumber} {" "}{t("· HAI,")}{" "}{guest.customerName.toUpperCase()}</p><h1>{t("Pilih yang Anda suka.")}</h1><p className="section-intro">{t("Menu yang tersedia hari ini. Tambahkan pilihan Anda ke keranjang.")}</p>
+      {uncertain && <Alert className="inline-alert" role="alert">{t("Pengiriman pesanan sebelumnya belum pasti. Buka keranjang dan coba lagi sebelum mengubah pesanan.")}{" "}<Button className="text-button" onClick={() => router.push(`${base}/cart`)}>{t("Buka keranjang")}</Button></Alert>}
+      {orders.length > 0 && <Button className="text-button" onClick={() => router.push(`${base}/status`)}>{t("Lihat status pesanan saya →")}</Button>}
+      <div className="menu-tools"><label htmlFor="menu-search" className="field-label">{t("Cari menu")}</label><Input id="menu-search" className="text-field" type="search" placeholder={t("Cari nama hidangan…")} value={search} onChange={(event) => setSearch(event.target.value)} />
+        {menu && <Selection label={t("Kategori")} value={categoryId} onChange={setCategoryId} options={[{ value: "", label: t("Semua") }, ...menu.categories.map((category) => ({ value: category.id, label: category.name }))]} />}</div>
+      {error && <Alert className="inline-alert" role="alert">{t(error)}<Button className="text-button" onClick={() => guest && void loadMenu(guest.guestToken)}>{t("Coba lagi")}</Button></Alert>}
+      {!menu && !error && <LoadingState className="loading-block" role="status">{t("Memuat menu…")}</LoadingState>}
       {menu && menu.categories.filter((category) => !categoryId || category.id === categoryId).map((category) => {
         const items = category.items.filter((item) => item.name.toLocaleLowerCase("id-ID").includes(search.toLocaleLowerCase("id-ID")));
         if (!items.length) return null;
-        return <section className="menu-section" key={category.id}><div className="menu-section-heading"><h2>{category.name}</h2><span className="muted">{items.length} menu</span></div><div className="menu-list">{items.map((item) => {
+        return <section className="menu-section" key={category.id}><div className="menu-section-heading"><h2>{category.name}</h2><span className="muted">{items.length} {" "}{t("menu")}</span></div><div className="menu-list menu-grid">{items.map((item) => {
           const current = cart.find((entry) => entry.id === item.id);
-          return <article className="menu-card" key={item.id}><div className="menu-card-copy"><h3>{item.name}</h3>{item.description && <p>{item.description}</p>}<p className="menu-price">{formatIdr(item.priceIdr)}</p></div><div className="menu-card-end">
-            <Photo src={item.imageUrl} alt={item.name} />
-            <Button className="add-button" disabled={uncertain || current?.quantity === 99} onClick={() => editCart(current ?? { id: item.id, name: item.name, priceIdr: item.priceIdr, quantity: 0, note: "" }, (current?.quantity ?? 0) + 1)} aria-label={`Tambahkan ${item.name} ke keranjang`}>{current ? `Tambah · ${current.quantity}` : "Tambah +"}</Button>
-          </div></article>;
+          return <MenuCard key={item.id} menu={item}>
+            <Button className="add-button" disabled={uncertain || current?.quantity === 99} onClick={() => editCart(current ?? { id: item.id, name: item.name, priceIdr: item.priceIdr, quantity: 0, note: "" }, (current?.quantity ?? 0) + 1)} aria-label={t("Tambahkan {0} ke keranjang", { "0": item.name })}>{current ? t("Tambah · {0}", { "0": current.quantity }) : t("Tambah +")}</Button>
+          </MenuCard>;
         })}</div></section>;
       })}
-      {menu && !menu.categories.some((category) => (!categoryId || category.id === categoryId) && category.items.some((item) => item.name.toLocaleLowerCase("id-ID").includes(search.toLocaleLowerCase("id-ID")))) && <EmptyState className="empty-state"><h2>Menu tidak ditemukan</h2><p>Coba kata lain atau pilih kategori berbeda.</p></EmptyState>}
+      {menu && !menu.categories.some((category) => (!categoryId || category.id === categoryId) && category.items.some((item) => item.name.toLocaleLowerCase("id-ID").includes(search.toLocaleLowerCase("id-ID")))) && <EmptyState className="empty-state"><h2>{t("Menu tidak ditemukan")}</h2><p>{t("Coba kata lain atau pilih kategori berbeda.")}</p></EmptyState>}
     </>}
   </CustomerShell>;
 }

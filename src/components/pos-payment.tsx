@@ -1,5 +1,7 @@
 "use client";
 
+import { useLocale } from "@/components/locale-provider";
+
 import { Panel, Button, Alert, EmptyState, Input } from "@/components/ui/controls";
 
 import { usePolling } from "@/lib/use-polling";
@@ -11,7 +13,7 @@ import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { DetailPane } from "@/components/app-shells";
 import { OrderDetails, type StaffOrder } from "@/components/order-details";
 import { BillBreakdown } from "@/components/pos-bill";
-import { formatIdr } from "@/lib/customer/cart";
+
 import { canSubmitPayment, cashChange, quoteChanged, type BillQuote } from "@/lib/staff/payment-ui";
 
 type TableDetail = { session: { id: string; billRevision: string } | null; orders: StaffOrder[] };
@@ -19,6 +21,7 @@ type Payload = { idempotencyKey: string; expectedSessionRevision: string; expect
 type Payment = { paymentId: string; changeIdr: string; grandTotalIdr: string; cashReceivedIdr: string; paidAt: string; receiptUrl: string };
 
 export function PosPayment({ sessionId }: { sessionId: string }) {
+  const { t, money, locale } = useLocale();
   const [quote, setQuote] = useState<BillQuote | null>(null);
   const [table, setTable] = useState<TableDetail | null>(null);
   const [cash, setCash] = useState("");
@@ -103,22 +106,23 @@ export function PosPayment({ sessionId }: { sessionId: string }) {
   }
   const change = cashChange(quote, cash);
   const ready = canSubmitPayment(quote, cash, reviewed) && !pending && !busy && !error && !!table;
-  if (payment) return <div className="admin-stack"><Panel className="admin-panel success-panel" role="status"><p className="context-label">LUNAS</p><h2>Pembayaran berhasil</h2><p>Total {formatIdr(payment.grandTotalIdr)} · Tunai {formatIdr(payment.cashReceivedIdr)} · Kembalian {formatIdr(payment.changeIdr)}</p><p className="muted">Meja kembali tersedia setelah pembayaran dikonfirmasi server.</p><div className="admin-actions"><Link className="primary-button" href={payment.receiptUrl}>Lihat struk digital</Link><Link className="secondary-button" href="/pos">Kembali ke meja</Link></div></Panel></div>;
+  if (payment) return <div className="admin-stack"><Panel className="admin-panel success-panel" role="status"><p className="context-label">{t("LUNAS")}</p><h2>{t("Pembayaran berhasil")}</h2><p>{t("Total")}{" "}{money(payment.grandTotalIdr)} {" "}{t("· Tunai")}{" "}{money(payment.cashReceivedIdr)} {" "}{t("· Kembalian")}{" "}{money(payment.changeIdr)}</p><p className="muted">{t("Meja kembali tersedia setelah pembayaran dikonfirmasi server.")}</p><div className="admin-actions"><Link className="primary-button" href={payment.receiptUrl}>{t("Lihat struk digital")}</Link><Link className="secondary-button" href="/pos">{t("Kembali ke meja")}</Link></div></Panel></div>;
   return <div className="admin-stack">
-    <Link className="text-button" href={quote ? `/pos/tables/${quote.tableId}` : "/pos"}>← Kembali ke meja</Link>
-    <Panel className="admin-panel"><div className="admin-section-head"><div><h2>{quote ? `Meja ${quote.tableNumber}` : "Tagihan sesi"}</h2></div><Button className="secondary-button" disabled={busy} onClick={() => void refresh()}>Segarkan</Button></div>
-      {notice && <Alert className="inline-alert info" role="status">{notice}</Alert>}{error && <Alert className="inline-alert" role="alert">{error} {pending && <Link href="/pos/transactions">Periksa riwayat</Link>}</Alert>}
-      {!loaded ? <p className="loading-block" role="status">Memuat tagihan…</p> : !quote ? <EmptyState className="empty-state"><p>Tagihan tidak tersedia.</p>{pending && <Button className="primary-button" disabled={busy} onClick={() => void sendPayment(pending)}>{busy ? "Memeriksa pembayaran…" : "Ulangi transaksi yang sama"}</Button>} <Link href="/pos/transactions">Lihat riwayat transaksi</Link></EmptyState> : <>
-        <p className="muted">Sesi {sessionId.slice(0, 8)} · Revisi {quote.sessionRevision} · Pengaturan {quote.settingsVersion} · Dihitung {new Date(quote.calculatedAt).toLocaleTimeString("id-ID")}</p>
-        {table ? <DetailPane><OrderDetails orders={table.orders.filter((order) => order.items.some((item) => !item.voided))} /></DetailPane> : <p className="muted">Rincian pesanan sedang disinkronkan. Segarkan sebelum membayar.</p>}
+    <Link className="text-button" href={quote ? `/pos/tables/${quote.tableId}` : "/pos"}>{t("← Kembali ke meja")}</Link>
+    <Panel className="admin-panel"><div className="admin-section-head"><div><h2>{quote ? t("Meja {0}", { "0": quote.tableNumber }) : t("Tagihan sesi")}</h2></div><Button className="secondary-button" disabled={busy} onClick={() => void refresh()}>{t("Segarkan")}</Button></div>
+      {notice && <Alert className="inline-alert info" role="status">{t(notice)}</Alert>}{error && <Alert className="inline-alert" role="alert">{t(error)} {pending && <Link href="/pos/transactions">{t("Periksa riwayat")}</Link>}</Alert>}
+      {!loaded ? <p className="loading-block" role="status">{t("Memuat tagihan…")}</p> : !quote ? <EmptyState className="empty-state"><p>{t("Tagihan tidak tersedia.")}</p>{pending && <Button className="primary-button" disabled={busy} onClick={() => void sendPayment(pending)}>{busy ? t("Memeriksa pembayaran…") : t("Ulangi transaksi yang sama")}</Button>} <Link href="/pos/transactions">{t("Lihat riwayat transaksi")}</Link></EmptyState> : <>
+        <p className="muted">{t("Sesi")}{" "}{sessionId.slice(0, 8)} {" "}{t("· Revisi")}{" "}{quote.sessionRevision} {" "}{t("· Pengaturan")}{" "}{quote.settingsVersion} {" "}{t("· Dihitung")}{" "}{new Date(quote.calculatedAt).toLocaleTimeString(locale === "en" ? "en-GB" : "id-ID", { timeZone: "Asia/Jakarta" })}</p>
+        {table ? <DetailPane><OrderDetails orders={table.orders.filter((order) => order.items.some((item) => !item.voided))} /></DetailPane> : <p className="muted">{t("Rincian pesanan sedang disinkronkan. Segarkan sebelum membayar.")}</p>}
         <BillBreakdown quote={quote} />
-        {!quote.paymentEligible && <Alert className="inline-alert info">{quote.blockingOrders.length ? `${quote.blockingOrders.length} pesanan belum tersaji seluruhnya. Selesaikan checklist di detail meja.` : "Belum ada item aktif untuk dibayar."}</Alert>}
-        <label className="field-label" htmlFor="cash-received">Uang diterima (Rp)</label><Input className="text-field" id="cash-received" inputMode="numeric" autoComplete="off" value={cash} disabled={Boolean(pending) || busy} maxLength={16} onChange={(event) => { setCash(event.target.value.replace(/\D/g, "")); setConfirming(false); }} placeholder="Contoh: 200000" />
-        <p className="muted">Kembalian: <strong>{formatIdr(change ?? 0n)}</strong>{cash && change === null ? " · Uang diterima belum cukup atau tidak valid." : ""}</p>
-        <label className="check-row"><Input type="checkbox" checked={reviewed} disabled={Boolean(pending) || busy || !quote.paymentEligible || !table || Boolean(error)} onChange={(event) => setReviewed(event.target.checked)} />Saya sudah memeriksa tagihan terbaru dan uang diterima</label>
-        <div className="admin-actions">{pending ? <Button className="primary-button" disabled={busy} onClick={() => void sendPayment(pending)}>{busy ? "Memeriksa pembayaran…" : "Ulangi transaksi yang sama"}</Button> : <Button className="primary-button" disabled={!ready} onClick={() => setConfirming(true)}>Konfirmasi pembayaran</Button>}</div>
+        {!quote.paymentEligible && <Alert className="inline-alert info">{quote.blockingOrders.length ? t("{0} pesanan belum tersaji seluruhnya. Selesaikan checklist di detail meja.", { "0": quote.blockingOrders.length }) : t("Belum ada item aktif untuk dibayar.")}</Alert>}
+        <fieldset className="payment-entry"><legend>{t("Pembayaran tunai")}</legend><label className="field-label" htmlFor="cash-received">{t("Uang diterima (Rp)")}</label><Input className="text-field" id="cash-received" inputMode="numeric" autoComplete="off" value={cash} disabled={Boolean(pending) || busy} maxLength={16} onChange={(event) => { setCash(event.target.value.replace(/\D/g, "")); setConfirming(false); }} placeholder={t("Contoh: 200000")} />
+        <p className="muted">{t("Kembalian:")}{" "}<strong>{money(change ?? 0n)}</strong>{cash && change === null ? t(" · Uang diterima belum cukup atau tidak valid.") : ""}</p>
+        <label className="check-row"><Input type="checkbox" checked={reviewed} disabled={Boolean(pending) || busy || !quote.paymentEligible || !table || Boolean(error)} onChange={(event) => setReviewed(event.target.checked)} />{t("Saya sudah memeriksa tagihan terbaru dan uang diterima")}</label>
+        <div className="admin-actions">{pending ? <Button className="primary-button" disabled={busy} onClick={() => void sendPayment(pending)}>{busy ? t("Memeriksa pembayaran…") : t("Ulangi transaksi yang sama")}</Button> : <Button className="primary-button" disabled={!ready} onClick={() => setConfirming(true)}>{t("Konfirmasi pembayaran")}</Button>}</div>
+        </fieldset>
       </>}
     </Panel>
-    {confirming && quote && <ConfirmationDialog titleId="payment-confirm-title" onClose={() => setConfirming(false)}><h2 id="payment-confirm-title">Konfirmasi pembayaran tunai</h2><p>Meja {quote.tableNumber} · Tagihan <strong>{formatIdr(quote.grandTotalIdr)}</strong></p><p>Uang diterima {formatIdr(cash)} · Kembalian {formatIdr(change ?? 0n)}</p><p className="muted">Pembayaran akan menutup sesi dan mengembalikan meja ke status Tersedia.</p><div className="admin-actions"><Button className="secondary-button" onClick={() => setConfirming(false)}>Periksa lagi</Button><Button className="primary-button" disabled={!ready} onClick={() => void sendPayment({ idempotencyKey: crypto.randomUUID(), expectedSessionRevision: quote.sessionRevision, expectedSettingsVersion: quote.settingsVersion, cashReceivedIdr: cash })}>Bayar tunai</Button></div></ConfirmationDialog>}
+    {confirming && quote && <ConfirmationDialog titleId="payment-confirm-title" onClose={() => setConfirming(false)}><h2 id="payment-confirm-title">{t("Konfirmasi pembayaran tunai")}</h2><p>{t("Meja")}{" "}{quote.tableNumber} {" "}{t("· Tagihan")}{" "}<strong>{money(quote.grandTotalIdr)}</strong></p><p>{t("Uang diterima")}{" "}{money(cash)} {" "}{t("· Kembalian")}{" "}{money(change ?? 0n)}</p><p className="muted">{t("Pembayaran akan menutup sesi dan mengembalikan meja ke status Tersedia.")}</p><div className="admin-actions"><Button className="secondary-button" onClick={() => setConfirming(false)}>{t("Periksa lagi")}</Button><Button className="primary-button" disabled={!ready} onClick={() => void sendPayment({ idempotencyKey: crypto.randomUUID(), expectedSessionRevision: quote.sessionRevision, expectedSettingsVersion: quote.settingsVersion, cashReceivedIdr: cash })}>{t("Bayar tunai")}</Button></div></ConfirmationDialog>}
   </div>;
 }

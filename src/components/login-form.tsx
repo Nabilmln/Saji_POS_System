@@ -1,13 +1,16 @@
 "use client";
 
+import { useLocale } from "@/components/locale-provider";
+
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { authClient } from "@/lib/auth/client";
 import { adminApi, AdminApiError } from "@/lib/admin/client";
-import { Brand } from "@/components/ui/brand";
+import { EntryHeader } from "@/components/ui/entry-header";
 import { PasswordInput, Input, Alert, Button } from "@/components/ui/controls";
 
 export function LoginForm({ role = "CASHIER" }: { role?: "ADMIN" | "CASHIER" }) {
+  const { t } = useLocale();
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -32,26 +35,26 @@ export function LoginForm({ role = "CASHIER" }: { role?: "ADMIN" | "CASHIER" }) 
       router.refresh();
     } catch (cause) {
       if (cause instanceof AdminApiError && cause.status === 403) {
-        await authClient.signOut(); setError(`Akun ini tidak memiliki akses ${role === "ADMIN" ? "pemilik" : "kasir"}.`);
+        await authClient.signOut(); setError(role === "ADMIN" ? "Akun ini tidak memiliki akses pemilik." : "Akun ini tidak memiliki akses kasir.");
       } else setError("Tidak dapat masuk. Periksa koneksi dan coba lagi.");
     }
     finally { setBusy(false); }
   }
 
   return <main className="entry-page login-page">
-    <Brand />
-    <h1>Masuk {role === "ADMIN" ? "Pemilik" : "Kasir"}</h1>
-    <p className="muted">{role === "ADMIN" ? "Kelola menu, tim, dan penjualan restoran Anda." : "Gunakan email dan kata sandi yang diberikan pemilik."}</p>
+    <EntryHeader />
+    <h1>{t(role === "ADMIN" ? "Masuk Pemilik" : "Masuk Kasir")}</h1>
+    <p className="muted">{role === "ADMIN" ? t("Kelola menu, tim, dan penjualan restoran Anda.") : t("Gunakan email dan kata sandi yang diberikan pemilik.")}</p>
     <form onSubmit={submit} className="login-form">
-      <label className="field-label" htmlFor="staff-email">Email</label>
+      <label className="field-label" htmlFor="staff-email">{t("Email")}</label>
       <Input className="text-field" id="staff-email" type="email" autoComplete="username" required value={email} onChange={(event) => setEmail(event.target.value)} />
-      {!resetting && <><label className="field-label" htmlFor="staff-password">Kata sandi</label>
+      {!resetting && <><label className="field-label" htmlFor="staff-password">{t("Kata sandi")}</label>
       <PasswordInput id="staff-password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} /></>}
-      {error && <Alert className="inline-alert" role="alert">{error}</Alert>}
-      {notice && <Alert className="inline-alert info" role="status">{notice}</Alert>}
-      <Button className="primary-button full-width" disabled={busy}>{busy ? "Memproses…" : resetting ? "Kirim tautan pengaturan" : "Masuk"}</Button>
-      <Button type="button" className="text-button" disabled={busy} onClick={() => { setResetting(!resetting); setError(""); setNotice(""); }}>{resetting ? "Kembali ke masuk" : "Lupa kata sandi?"}</Button>
+      {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
+      {notice && <Alert className="inline-alert info" role="status">{t(notice)}</Alert>}
+      <Button className="primary-button full-width" disabled={busy}>{busy ? t("Memproses…") : resetting ? t("Kirim tautan pengaturan") : t("Masuk")}</Button>
+      <Button type="button" className="text-button" disabled={busy} onClick={() => { setResetting(!resetting); setError(""); setNotice(""); }}>{resetting ? t("Kembali ke masuk") : t("Lupa kata sandi?")}</Button>
     </form>
-    <p className="login-footnote">{role === "ADMIN" ? "Akun pemilik disiapkan secara eksklusif." : "Tidak ada pendaftaran mandiri untuk kasir."}</p>
+    <p className="login-footnote">{role === "ADMIN" ? t("Akun pemilik disiapkan secara eksklusif.") : t("Tidak ada pendaftaran mandiri untuk kasir.")}</p>
   </main>;
 }

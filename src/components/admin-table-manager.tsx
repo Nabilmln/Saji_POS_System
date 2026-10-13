@@ -1,5 +1,7 @@
 "use client";
 
+import { useLocale } from "@/components/locale-provider";
+
 import { StatusBadge } from "@/components/ui/status-badge";
 
 import { Alert, Panel, Button, Input, EmptyState } from "@/components/ui/controls";
@@ -14,6 +16,7 @@ import { adminApi, AdminApiError, jsonRequest } from "@/lib/admin/client";
 type Table = { id: string; tableNumber: string; status: "AVAILABLE" | "OCCUPIED" | "RESERVED"; isActive: boolean; orderUrl: string };
 
 export function TableManager() {
+  const { t } = useLocale();
   const [tables, setTables] = useState<Table[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -62,11 +65,11 @@ export function TableManager() {
   }
 
   async function toggle(table: Table) {
-    if (!window.confirm(`${table.isActive ? "Nonaktifkan" : "Aktifkan"} Meja ${table.tableNumber}? ${table.isActive ? "Kode QR meja tidak akan menerima pesanan baru." : ""}`)) return;
+    if (!window.confirm(t("{0} Meja {1}? {2}", { "0": table.isActive ? t("Nonaktifkan") : t("Aktifkan"), "1": table.tableNumber, "2": table.isActive ? t("Kode QR meja tidak akan menerima pesanan baru.") : "" }))) return;
     setBusy(true); setError(""); setNotice("");
     try {
       await adminApi<Table>(`/api/admin/tables/${table.id}`, jsonRequest("PATCH", { isActive: !table.isActive }));
-      setNotice(`Meja ${table.tableNumber} ${table.isActive ? "dinonaktifkan" : "diaktifkan"}.`); reload();
+      setNotice(table.isActive ? `Meja ${table.tableNumber} dinonaktifkan.` : `Meja ${table.tableNumber} diaktifkan.`); reload();
       if (preview?.id === table.id) setPreview(null);
     } catch (cause) { setError((cause as Error).message); }
     finally { setBusy(false); }
@@ -77,35 +80,35 @@ export function TableManager() {
   const qrUrl = preview ? new URL(preview.orderUrl, typeof window === "undefined" ? "http://localhost" : window.location.origin).href : "";
   const downloadHref = qrSvg ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qrSvg)}` : "";
   return <div className="admin-stack">
-    <p className="section-intro">Atur nomor meja dan unduh kode QR unik untuk meja yang aktif.</p>
-    {notice && <Alert className="inline-alert info" role="status">{notice}</Alert>}
-    {error && <Alert className="inline-alert" role="alert">{error}</Alert>}
+    <p className="section-intro">{t("Atur nomor meja dan unduh kode QR unik untuk meja yang aktif.")}</p>
+    {notice && <Alert className="inline-alert info" role="status">{t(notice)}</Alert>}
+    {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
     <Panel className="admin-panel">
-      <div className="admin-section-head"><div><h2>Daftar meja</h2></div><Button className="primary-button" disabled={busy} onClick={() => begin()}>Tambah Meja</Button></div>
+      <div className="admin-section-head"><div><h2>{t("Daftar meja")}</h2></div><Button className="primary-button" disabled={busy} onClick={() => begin()}>{t("Tambah Meja")}</Button></div>
       {editing && <form className="admin-form" onSubmit={save}>
-        <div className="admin-section-head"><h3>{editing === "new" ? "Meja baru" : "Ubah nomor meja"}</h3><Button className="text-button" type="button" onClick={() => setEditing(null)}>Tutup</Button></div>
-        <label>Nomor meja *<Input className="text-field" required maxLength={30} value={number} onChange={(event) => setNumber(event.target.value)} />{fields.tableNumber && <small className="field-error">{fields.tableNumber.join(", ")}</small>}</label>
-        <div className="admin-actions"><Button className="primary-button" disabled={busy}>{busy ? "Menyimpan…" : "Simpan Meja"}</Button><Button className="secondary-button" type="button" disabled={busy} onClick={() => setEditing(null)}>Batal</Button></div>
+        <div className="admin-section-head"><h3>{editing === "new" ? t("Meja baru") : t("Ubah nomor meja")}</h3><Button className="text-button" type="button" onClick={() => setEditing(null)}>{t("Tutup")}</Button></div>
+        <label>{t("Nomor meja *")}<Input className="text-field" required maxLength={30} value={number} onChange={(event) => setNumber(event.target.value)} />{fields.tableNumber && <small className="field-error">{fields.tableNumber.join(", ")}</small>}</label>
+        <div className="admin-actions"><Button className="primary-button" disabled={busy}>{busy ? t("Menyimpan…") : t("Simpan Meja")}</Button><Button className="secondary-button" type="button" disabled={busy} onClick={() => setEditing(null)}>{t("Batal")}</Button></div>
       </form>}
-      {loading ? <p className="loading-block" role="status">Memuat meja…</p> : !tables.length ? <EmptyState className="empty-state"><h2>Belum ada meja</h2><p>Tambahkan meja untuk membuat kode QR.</p></EmptyState> : <div className="admin-table-grid">{tables.map((table) => <article className="admin-table-card" key={table.id}>
-        <div className="admin-section-head"><div><p className="context-label">MEJA</p><h3>{table.tableNumber}</h3></div><StatusBadge status={table.isActive ? table.status : "INACTIVE"} /></div>
-        <p className="muted">{table.status === "AVAILABLE" ? "Siap untuk pemesanan" : table.status === "OCCUPIED" ? "Sedang digunakan" : "Menunggu check-in kasir"}</p>
+      {loading ? <p className="loading-block" role="status">{t("Memuat meja…")}</p> : !tables.length ? <EmptyState className="empty-state"><h2>{t("Belum ada meja")}</h2><p>{t("Tambahkan meja untuk membuat kode QR.")}</p></EmptyState> : <div className="admin-table-grid">{tables.map((table) => <article className="admin-table-card" key={table.id}>
+        <div className="admin-section-head"><div><p className="context-label">{t("MEJA")}</p><h3>{table.tableNumber}</h3></div><StatusBadge status={table.isActive ? table.status : "INACTIVE"} /></div>
+        <p className="muted">{table.status === "AVAILABLE" ? t("Siap untuk pemesanan") : table.status === "OCCUPIED" ? t("Sedang digunakan") : t("Menunggu check-in kasir")}</p>
         <div className="admin-row-actions">
-          <Button className="text-button" disabled={busy || table.status !== "AVAILABLE"} onClick={() => begin(table)}>Ubah nomor</Button>
-          <Button className="text-button" disabled={busy || table.status !== "AVAILABLE"} onClick={() => void toggle(table)}>{table.isActive ? "Nonaktifkan" : "Aktifkan"}</Button>
-          {table.isActive && <Button className="text-button" onClick={() => openQr(table)}>Lihat QR</Button>}
+          <Button className="text-button" disabled={busy || table.status !== "AVAILABLE"} onClick={() => begin(table)}>{t("Ubah nomor")}</Button>
+          <Button className="text-button" disabled={busy || table.status !== "AVAILABLE"} onClick={() => void toggle(table)}>{table.isActive ? t("Nonaktifkan") : t("Aktifkan")}</Button>
+          {table.isActive && <Button className="text-button" onClick={() => openQr(table)}>{t("Lihat QR")}</Button>}
         </div>
       </article>)}</div>}
     </Panel>
     {preview && <DetailPane><Panel className="admin-panel qr-section" aria-labelledby="qr-title">
-      <div className="admin-section-head"><div><h2 id="qr-title">Meja {preview.tableNumber}</h2></div><Button className="text-button" onClick={() => setPreview(null)}>Tutup</Button></div>
+      <div className="admin-section-head"><div><h2 id="qr-title">{t("Meja")}{" "}{preview.tableNumber}</h2></div><Button className="text-button" onClick={() => setPreview(null)}>{t("Tutup")}</Button></div>
       <div className="qr-template">
-        <Brand /><h3>Meja {preview.tableNumber}</h3>
-        {qrSvg ? <Image unoptimized src={downloadHref} alt={`Kode QR untuk pemesanan Meja ${preview.tableNumber}`} width={280} height={280} /> : <p role="status">Membuat QR…</p>}
-        <p>Scan untuk memesan</p>
+        <Brand /><h3>{t("Meja")}{" "}{preview.tableNumber}</h3>
+        {qrSvg ? <Image unoptimized src={downloadHref} alt={t("Kode QR untuk pemesanan Meja {0}", { "0": preview.tableNumber })} width={280} height={280} /> : <p role="status">{t("Membuat QR…")}</p>}
+        <p>{t("Scan untuk memesan")}</p>
       </div>
-      <label className="qr-url-label">Tautan tujuan<Input className="text-field" readOnly value={qrUrl} onFocus={(event) => event.target.select()} /></label>
-      {qrSvg && <a className="primary-button" download={`meja-${preview.tableNumber.replace(/[^A-Za-z0-9_-]/g, "-")}-qr.svg`} href={downloadHref}>Unduh QR (SVG)</a>}
+      <label className="qr-url-label">{t("Tautan tujuan")}<Input className="text-field" readOnly value={qrUrl} onFocus={(event) => event.target.select()} /></label>
+      {qrSvg && <a className="primary-button" download={`meja-${preview.tableNumber.replace(/[^A-Za-z0-9_-]/g, "-")}-qr.svg`} href={downloadHref}>{t("Unduh QR (SVG)")}</a>}
     </Panel></DetailPane>}
   </div>;
 }

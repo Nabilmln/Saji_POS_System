@@ -92,3 +92,9 @@ npx vitest run src/db/schema.integration.test.ts src/lib/public/http.integration
 For staff, payment, reservation, and report HTTP tests, additionally set `TEST_ADMIN_EMAIL` and `TEST_ADMIN_PASSWORD` for an existing Neon Auth account, then run `npm test`. Those tests mutate only `TEST_DATABASE_URL`, never the linked Neon database, and clean up their fixtures. Do not point `TEST_DATABASE_URL` or `TEST_API_BASE_URL` at production. The GitHub workflow is configured to run lint, typecheck, unit tests, build, migration, repeatable seed, database health, and the public HTTP suite against a PostgreSQL service. Auth-backed HTTP tests need the login variables and are run locally.
 
 Application limitations: cash is the only payment method; no split bills, printing, inventory, or online booking. The owner creates cashier email/password in `/admin/staff` and shares credentials privately. Public signup is blocked and the exclusive owner cannot be deactivated. Live Neon credential provisioning and optional reset email delivery still need a deployment smoke test. The per-table public rate limit can temporarily affect other guests at the same table during an abuse burst.
+
+## Interface languages and menu images
+
+Use EN/ID in the page header or staff sidebar to select English or Indonesian. The preference persists in the browser. App controls, messages, reports and receipts are translated; restaurant-entered menu names/descriptions and customer notes stay as written. Amounts remain integer IDR in the API/database; language changes only their display.
+
+Menu management separates filters, dishes and categories. Public, owner and cashier catalogues reuse the same MenuCard. Four bundled white-background illustrations appear for starter menu names when no image URL is supplied; owner photos take precedence. Generated asset paths, prompts and provenance: [menu image notes](public/images/menu/README.md).
