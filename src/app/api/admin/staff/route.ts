@@ -1,4 +1,3 @@
-import { randomBytes } from "node:crypto";
 import { asc } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
@@ -7,15 +6,11 @@ import { parseBody } from "@/lib/admin/master-data";
 import { apiError, apiSuccess, apiValidationError } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/auth/guards";
 import { auth } from "@/lib/auth/server";
+import { cashierAccountSchema } from "@/lib/admin/staff-contracts";
 
 const querySchema = z.strictObject({
   page: z.coerce.number().int().min(1).max(100_000).default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
-});
-const createSchema = z.strictObject({
-  email: z.email().max(254).transform((value) => value.toLowerCase()),
-  displayName: z.string().trim().min(1).max(120),
-  role: z.literal("CASHIER"),
 });
 
 function staffData(profile: typeof staffProfiles.$inferSelect) {
@@ -40,13 +35,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const admin = await requireAdmin(request);
   if (admin instanceof Response) return admin;
-  const body = await parseBody(request, createSchema);
+  const body = await parseBody(request, cashierAccountSchema);
   if (body instanceof Response) return body;
   let created;
   try {
     created = await auth.admin.createUser({
       email: body.email, name: body.displayName,
-      password: randomBytes(32).toString("base64url"), role: "user",
+      password: body.password, role: "user",
     });
   } catch {
     return apiError(503, "AUTH_USER_CREATE_FAILED", "Neon Auth could not create the cashier account");
@@ -57,8 +52,6 @@ export async function POST(request: Request) {
   }
   const userId = created.data.user.id;
   try {
-    const reset = await auth.requestPasswordReset({ email: body.email, redirectTo: new URL("/reset-password", request.url).href });
-    if (reset.error) throw new Error("Password setup email failed");
     const profile = await db.transaction(async (tx) => {
       const [saved] = await tx.insert(staffProfiles).values({
         userId, displayName: body.displayName, role: "CASHIER",
@@ -70,7 +63,7 @@ export async function POST(request: Request) {
       });
       return saved;
     });
-    return apiSuccess({ ...staffData(profile), setupEmailSent: true }, 201);
+    return apiSuccess(staffData(profile), 201);
   } catch {
     try {
       const removed = await auth.admin.removeUser({ userId });
@@ -79,6 +72,6 @@ export async function POST(request: Request) {
       return apiError(503, "AUTH_CLEANUP_FAILED",
         "Cashier setup failed; the unused Auth account needs administrator cleanup");
     }
-    return apiError(503, "STAFF_SETUP_FAILED", "Cashier setup failed; retry after checking Auth email delivery");
+    return apiError(503, "STAFF_SETUP_FAILED", "Cashier account setup failed; retry after checking Auth availability");
   }
 }

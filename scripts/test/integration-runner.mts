@@ -6,6 +6,8 @@ const env = {
   TEST_API_BASE_URL: "http://localhost:3100",
   TEST_ADMIN_EMAIL: "admin@example.test",
   TEST_ADMIN_PASSWORD: "e2e-only-password",
+  TEST_CASHIER_EMAIL: "cashier@example.test",
+  TEST_CASHIER_PASSWORD: "e2e-only-password",
   CUSTOMER_TOKEN_SECRET: "local-browser-test-customer-secret-at-least-32-chars",
 };
 let occupied = false;

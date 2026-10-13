@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { Pagination, Panel, Button, Input, Alert, LoadingState } from "@/components/ui/controls";
 import { adminApi } from "@/lib/admin/client";
 import { formatIdr } from "@/lib/customer/cart";
 
@@ -28,12 +29,12 @@ export function PosTransactions() {
     const initial = window.setTimeout(() => void refresh(), 0);
     return () => window.clearTimeout(initial);
   }, [refresh]);
-  return <div className="admin-stack"><section className="admin-panel">
-    <div className="admin-section-head"><div><p className="eyebrow">TRANSAKSI LUNAS</p><h2>Riwayat pembayaran</h2></div><button className="secondary-button" onClick={() => void refresh()}>Segarkan</button></div>
+  return <div className="admin-stack"><Panel className="admin-panel">
+    <div className="admin-section-head"><div><p className="context-label">TRANSAKSI LUNAS</p><h2>Riwayat pembayaran</h2></div><Button className="secondary-button" onClick={() => void refresh()}>Segarkan</Button></div>
     <p className="muted">Hanya pembayaran yang telah dikonfirmasi server. Struk menggunakan data transaksi saat pembayaran.</p>
-    <div className="admin-filters"><label>Dari tanggal<input className="text-field" type="date" value={from} onChange={(event) => { setFrom(event.target.value); setPage(1); }} /></label><label>Sampai tanggal<input className="text-field" type="date" value={to} onChange={(event) => { setTo(event.target.value); setPage(1); }} /></label></div>
-    {error && <div className="inline-alert" role="alert">{error}</div>}
-    {!loaded ? <div className="loading-block" role="status">Memuat transaksi…</div> : rows.length ? <div className="admin-list">{rows.map((row) => <div className="admin-list-row" key={row.id}><div className="admin-list-main"><strong>Meja {row.tableNumber} · {formatIdr(row.grandTotalIdr)}</strong><p>{new Date(row.paidAt).toLocaleString("id-ID")} · Transaksi {row.id.slice(0, 8)} · Tunai</p></div><Link className="secondary-button" href={`/pos/transactions/${row.id}`}>Lihat struk</Link></div>)}</div> : <p className="empty-state">Belum ada transaksi lunas pada rentang ini.</p>}
-    <div className="pagination"><span>Halaman {page}</span><div><button className="secondary-button" disabled={page === 1} onClick={() => setPage((current) => current - 1)}>Sebelumnya</button><button className="secondary-button" disabled={rows.length < pageSize} onClick={() => setPage((current) => current + 1)}>Berikutnya</button></div></div>
-  </section></div>;
+    <div className="admin-filters"><label>Dari tanggal<Input className="text-field" type="date" value={from} onChange={(event) => { setFrom(event.target.value); setPage(1); }} /></label><label>Sampai tanggal<Input className="text-field" type="date" value={to} onChange={(event) => { setTo(event.target.value); setPage(1); }} /></label></div>
+    {error && <Alert className="inline-alert" role="alert">{error}</Alert>}
+    {!loaded ? <LoadingState className="loading-block" role="status">Memuat transaksi…</LoadingState> : rows.length ? <div className="admin-list">{rows.map((row) => <div className="admin-list-row" key={row.id}><div className="admin-list-main"><strong>Meja {row.tableNumber} · {formatIdr(row.grandTotalIdr)}</strong><p>{new Date(row.paidAt).toLocaleString("id-ID")} · Transaksi {row.id.slice(0, 8)} · Tunai</p></div><Link className="secondary-button" href={`/pos/transactions/${row.id}`}>Lihat struk</Link></div>)}</div> : <p className="empty-state">Belum ada transaksi lunas pada rentang ini.</p>}
+    <Pagination page={page} hasNext={rows.length === pageSize} onChange={setPage} />
+  </Panel></div>;
 }

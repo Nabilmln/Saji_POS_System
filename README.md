@@ -9,7 +9,7 @@ npm ci
 npm run dev
 ```
 
-Open <http://localhost:3000>. The user interface is scheduled for Phase 2; Phase 1 API routes are available now.
+Open <http://localhost:3000>. Customer QR ordering, cashier operations and the owner workspace are available. Cashiers use `/login`; the exclusive owner uses `/owner-login`.
 
 ```bash
 npm run lint
@@ -42,7 +42,7 @@ The seed adds fictional menu items, tables, and settings and can be repeated. To
 
 ## Staff authentication (BE-03)
 
-Neon Managed Auth is proxied at `/api/auth/*`; the browser SDK is in `src/lib/auth/client.ts`. Email/password sign-in, sign-out, and session requests use that SDK. `/api/staff/me` and `/api/admin/me` verify the session and an active `staff_profiles` row on the server. The admin endpoint also requires the `ADMIN` role. Future staff and admin handlers must call `requireStaff(request)` or `requireAdmin(request)` before reading or changing protected data; those guards also reject cross-origin mutations.
+Neon Managed Auth is proxied at `/api/auth/*`; the browser SDK is in `src/lib/auth/client.ts`. Email/password sign-in, sign-out, and session requests use that SDK. `/api/staff/me` and `/api/admin/me` verify the session and an active `staff_profiles` row on the server. The admin endpoint requires `ADMIN`; staff endpoints require `CASHIER`. The roles cannot use each other's workspace or APIs. Owner login is `/owner-login`; cashier login is `/login`. Future staff and admin handlers must call `requireStaff(request)` or `requireAdmin(request)` before reading or changing protected data; those guards also reject cross-origin mutations.
 
 Set `NEON_AUTH_BASE_URL` and a unique `NEON_AUTH_COOKIE_SECRET` (at least 32 characters) in `.env.local` and on the app host. Do not expose the cookie secret to the browser. On the linked Neon `production` branch, public email signup is disabled and the shared Google OAuth provider has been removed. Verify those settings before deploying staff login or after changing Auth configuration:
 
@@ -74,8 +74,8 @@ To run the optional BE-03 role test as well, set `TEST_ADMIN_EMAIL` and `TEST_AD
 | Area | Routes | Access |
 |---|---|---|
 | Table QR, guest, menu, checkout, order status | `/api/public/tables/*`, `/api/public/orders/*` | Public with scoped guest or order token where required |
-| Table overview, order progress, bill, payment, receipt | `/api/staff/tables/*`, `/api/staff/orders/*`, `/api/staff/order-items/*`, `/api/staff/table-sessions/*`, `/api/staff/payments/*` | Active Cashier or Admin |
-| Reservation and check-in | `/api/staff/reservations/*` | Active Cashier or Admin |
+| Table overview, order progress, bill, payment, receipt | `/api/staff/tables/*`, `/api/staff/orders/*`, `/api/staff/order-items/*`, `/api/staff/table-sessions/*`, `/api/staff/payments/*` | Active Cashier only |
+| Reservation and check-in | `/api/staff/reservations/*` | Active Cashier only |
 | Categories, menus, tables, billing settings | `/api/admin/categories/*`, `/api/admin/menus/*`, `/api/admin/tables/*`, `/api/admin/settings/*` | Active Admin |
 | Staff and Paid-only reports | `/api/admin/staff/*`, `/api/admin/reports/*` | Active Admin |
 
@@ -91,4 +91,4 @@ npx vitest run src/db/schema.integration.test.ts src/lib/public/http.integration
 
 For staff, payment, reservation, and report HTTP tests, additionally set `TEST_ADMIN_EMAIL` and `TEST_ADMIN_PASSWORD` for an existing Neon Auth account, then run `npm test`. Those tests mutate only `TEST_DATABASE_URL`, never the linked Neon database, and clean up their fixtures. Do not point `TEST_DATABASE_URL` or `TEST_API_BASE_URL` at production. The GitHub workflow is configured to run lint, typecheck, unit tests, build, migration, repeatable seed, database health, and the public HTTP suite against a PostgreSQL service. Auth-backed HTTP tests need the login variables and are run locally.
 
-Backend limitations: no frontend yet; cash is the only payment method; no split bills, printing, inventory, or online booking. Staff creation sends a password setup email through Neon Auth; sending a real invitation has not been exercised in the local test suite. The per-table public rate limit can temporarily affect other guests at the same table during an abuse burst.
+Application limitations: cash is the only payment method; no split bills, printing, inventory, or online booking. The owner creates cashier email/password in `/admin/staff` and shares credentials privately. Public signup is blocked and the exclusive owner cannot be deactivated. Live Neon credential provisioning and optional reset email delivery still need a deployment smoke test. The per-table public rate limit can temporarily affect other guests at the same table during an abuse burst.

@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { auditEvents, staffProfiles } from "@/db/schema";
@@ -19,17 +19,11 @@ export async function PATCH(request: Request, context: { params: Promise<{ userI
   const body = await parseBody(request, patchSchema);
   if (body instanceof Response) return body;
   return db.transaction(async (tx) => {
-    // Serialize admin deactivations so two requests cannot remove the last active admin.
-    await tx.execute(sql`select pg_advisory_xact_lock(1010)`);
     const [profile] = await tx.select().from(staffProfiles)
       .where(eq(staffProfiles.userId, userId)).for("update");
     if (!profile) return apiError(404, "STAFF_NOT_FOUND", "Staff account not found");
-    if (profile.role === "ADMIN" && profile.isActive && body.isActive === false) {
-      const activeAdmins = await tx.select({ userId: staffProfiles.userId }).from(staffProfiles)
-        .where(and(eq(staffProfiles.role, "ADMIN"), eq(staffProfiles.isActive, true)));
-      if (activeAdmins.length <= 1) {
-        return apiError(409, "LAST_ADMIN", "The last active admin cannot be deactivated");
-      }
+    if (profile.role === "ADMIN" && body.isActive === false) {
+      return apiError(409, "OWNER_PROTECTED", "The exclusive owner account cannot be deactivated");
     }
     const [updated] = await tx.update(staffProfiles).set({
       ...body, updatedAt: new Date(),

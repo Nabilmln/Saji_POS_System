@@ -18,8 +18,8 @@ export function authorizeStaff(
   if (!profile || profile.userId !== sessionUserId || !profile.isActive) {
     return apiError(403, "STAFF_ACCESS_DENIED", "Active staff account required");
   }
-  if (requiredRole === "ADMIN" && profile.role !== "ADMIN") {
-    return apiError(403, "FORBIDDEN", "Admin access required");
+  if (profile.role !== requiredRole) {
+    return apiError(403, "FORBIDDEN", `${requiredRole === "ADMIN" ? "Owner" : "Cashier"} access required`);
   }
   return profile;
 }

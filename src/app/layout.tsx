@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Pesan dari Meja",
+  title: "Saji | Restaurant Workspace",
   description: "Lihat menu dan pesan langsung dari meja Anda",
 };
 

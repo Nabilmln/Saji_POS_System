@@ -22,12 +22,13 @@ await migrate(drizzle(pool), { migrationsFolder: "drizzle" });
 await pool.query("INSERT INTO store_settings (id) VALUES (1) ON CONFLICT DO NOTHING");
 const adminId = "00000000-0000-4000-8000-000000000001";
 const cashierId = "00000000-0000-4000-8000-000000000002";
-await pool.query("INSERT INTO staff_profiles (user_id, display_name, role) VALUES ($1, 'Test Admin', 'ADMIN'), ($2, 'Test Kasir', 'CASHIER') ON CONFLICT (user_id) DO UPDATE SET is_active = true", [adminId, cashierId]);
+await pool.query("INSERT INTO staff_profiles (user_id, display_name, role) VALUES ($1, 'Test Admin', 'ADMIN'), ($2, 'Test Kasir', 'CASHIER') ON CONFLICT (user_id) DO UPDATE SET is_active = true, role = excluded.role", [adminId, cashierId]);
 const users = new Map([
   ["admin@example.test", { id: adminId, email: "admin@example.test", name: "Test Admin", role: "admin" }],
   ["cashier@example.test", { id: cashierId, email: "cashier@example.test", name: "Test Kasir", role: "user" }],
 ]);
 const sessions = new Map<string, string>();
+const passwords = new Map([...users.keys()].map((email) => [email, "e2e-only-password"]));
 const cookieName = "__Secure-neon-auth.session_token";
 
 // Provider fixture is bound to loopback; application authorization and SQL stay real.
@@ -44,7 +45,7 @@ const authServer = createServer(async (request, response) => {
       send(user ? { user: { ...user, emailVerified: true, createdAt: new Date(), updatedAt: new Date() }, session: { id: randomUUID(), token, userId, expiresAt: new Date(Date.now() + 86_400_000), createdAt: new Date(), updatedAt: new Date() } } : null);
     } else if (path === "/sign-in/email") {
       const signedIn = users.get(body.email);
-      if (!signedIn || body.password !== "e2e-only-password") { send({ message: "Invalid credentials" }, 401); return; }
+      if (!signedIn || body.password !== passwords.get(body.email)) { send({ message: "Invalid credentials" }, 401); return; }
       const sessionToken = randomUUID(); sessions.set(sessionToken, signedIn.id);
       response.setHeader("Set-Cookie", `${cookieName}=${sessionToken}; Path=/; HttpOnly; Secure; SameSite=Lax`);
       send({ user: signedIn, token: sessionToken, redirect: false });
@@ -54,14 +55,14 @@ const authServer = createServer(async (request, response) => {
     } else if (path === "/admin/create-user" && user?.id === adminId) {
       if (users.has(body.email)) { send({ message: "Email already exists" }, 422); return; }
       const created = { id: randomUUID(), name: body.name, email: body.email, role: "user" };
-      await pool.query('INSERT INTO neon_auth."user" (id) VALUES ($1)', [created.id]); users.set(created.email, created); send({ user: created });
+      await pool.query('INSERT INTO neon_auth."user" (id) VALUES ($1)', [created.id]); users.set(created.email, created); passwords.set(created.email, body.password); send({ user: created });
     } else if (path === "/request-password-reset") {
       send({ status: true, message: "Test provider accepted password setup request" });
     } else if (path === "/reset-password" && body.token === "e2e-reset-token" && body.newPassword?.length >= 8) {
       send({ status: true });
     } else if (path === "/admin/remove-user" && user?.id === adminId) {
       const target = [...users.values()].find((entry) => entry.id === body.userId);
-      if (target) { users.delete(target.email); await pool.query('DELETE FROM neon_auth."user" WHERE id = $1', [target.id]); } send({ success: true });
+      if (target) { users.delete(target.email); passwords.delete(target.email); await pool.query('DELETE FROM neon_auth."user" WHERE id = $1', [target.id]); } send({ success: true });
     } else { send({ message: "Unsupported fixture endpoint" }, 403); }
   } catch { response.writeHead(500); response.end(); }
 });

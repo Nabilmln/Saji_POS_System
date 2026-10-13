@@ -38,11 +38,11 @@ export const test = base.extend<{ data: Data }>({
 export { expect };
 
 export async function signIn(page: Page, role: "admin" | "cashier" = "cashier") {
-  await page.goto("/login");
+  await page.goto(role === "admin" ? "/owner-login" : "/login");
   await page.getByLabel("Email", { exact: true }).fill(`${role}@example.test`);
   await page.getByLabel("Kata sandi", { exact: true }).fill("e2e-only-password");
   await page.getByRole("button", { name: "Masuk", exact: true }).click();
-  await expect(page).toHaveURL(role === "admin" ? /\/admin\/menus$/ : /\/pos$/);
+  await expect(page).toHaveURL(role === "admin" ? /\/admin\/reports$/ : /\/pos$/);
 }
 
 export async function call(request: APIRequestContext, path: string, method = "GET", body?: object, key?: string) {

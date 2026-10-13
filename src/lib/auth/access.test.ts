@@ -11,11 +11,12 @@ describe("staff access", () => {
     expect(authorizeStaff(cashier.userId, { ...cashier, isActive: false })).toHaveProperty("status", 403);
   });
 
-  it("allows staff routes but reserves admin routes for admins", () => {
+  it("separates owner and cashier routes in both directions", () => {
     expect(authorizeStaff(cashier.userId, cashier)).toEqual(cashier);
     expect(authorizeStaff(cashier.userId, cashier, "ADMIN")).toHaveProperty("status", 403);
     const admin: StaffIdentity = { ...cashier, role: "ADMIN" };
     expect(authorizeStaff(admin.userId, admin, "ADMIN")).toEqual(admin);
+    expect(authorizeStaff(admin.userId, admin, "CASHIER")).toHaveProperty("status", 403);
   });
 
   it("rejects cross-origin mutations", () => {

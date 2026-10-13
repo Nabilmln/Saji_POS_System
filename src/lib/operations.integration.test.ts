@@ -21,6 +21,12 @@ it.skipIf(!dbUrl || !baseUrl || !email || !password)(
     expect(signIn.status).toBe(200);
     const { user } = await signIn.json();
     const cookie = signIn.headers.getSetCookie().map((value) => value.split(";")[0]).join("; ");
+    const cashierSignIn = await fetch(`${baseUrl}/api/auth/sign-in/email`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: process.env.TEST_CASHIER_EMAIL, password: process.env.TEST_CASHIER_PASSWORD }),
+    });
+    expect(cashierSignIn.status).toBe(200);
+    const cashierCookie = cashierSignIn.headers.getSetCookie().map((value) => value.split(";")[0]).join("; ");
     const client = new Client({ connectionString: dbUrl });
     await client.connect();
     const tableId = randomUUID();
@@ -35,7 +41,7 @@ it.skipIf(!dbUrl || !baseUrl || !email || !password)(
     let otherAdminStates: { user_id: string; is_active: boolean }[] = [];
     const call = (path: string, method = "GET", body?: object, key?: string) =>
       fetch(`${baseUrl}/api${path}`, {
-        method, headers: { Cookie: cookie, Origin: baseUrl!, "Content-Type": "application/json",
+        method, headers: { Cookie: path.startsWith("/staff/") ? cashierCookie : cookie, Origin: baseUrl!, "Content-Type": "application/json",
           ...(key ? { "Idempotency-Key": key } : {}) },
         ...(body ? { body: JSON.stringify(body) } : {}),
       });
@@ -104,6 +110,8 @@ it.skipIf(!dbUrl || !baseUrl || !email || !password)(
       expect((await client.query("SELECT cycle_number FROM dining_tables WHERE id = $1", [tableId]))
         .rows[0].cycle_number).toBe(1);
 
+      expect((await fetch(`${baseUrl}/api/staff/me`, { headers: { Cookie: cookie } })).status).toBe(403);
+      expect((await fetch(`${baseUrl}/api/admin/me`, { headers: { Cookie: cashierCookie } })).status).toBe(403);
       const staffList = await call("/admin/staff");
       expect(staffList.status).toBe(200);
       expect((await call("/auth/admin/list-users")).status).toBe(404);

@@ -1,11 +1,15 @@
 "use client";
 
-import { useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { ReceiptIcon, TrendUpIcon, ChartLineUpIcon } from "@phosphor-icons/react";
 import { adminApi } from "@/lib/admin/client";
 import { reportRangeSchema } from "@/lib/admin/report-range";
 import { revenueDays, type RevenuePoint } from "@/lib/admin/report-chart";
 import { restaurantDate } from "@/lib/time";
 import { formatIdr } from "@/lib/customer/cart";
+import { DetailPane } from "@/components/app-shells";
+import { RevenueChart } from "@/components/revenue-chart";
+import { Button, Input, Selection, EmptyState, Alert, LoadingState } from "@/components/ui/controls";
 
 type Report = { summary: { revenueIdr: string; paidTransactionCount: number }; points: RevenuePoint[] };
 type TopMenu = { menuName: string; quantitySold: number; grossSalesIdr: string };
@@ -13,16 +17,13 @@ type TopMenu = { menuName: string; quantitySold: number; grossSalesIdr: string }
 export function AdminReports() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [preset, setPreset] = useState("week");
   const [period, setPeriod] = useState<{ from: string; to: string } | null>(null);
   const [report, setReport] = useState<Report | null>(null);
   const [menus, setMenus] = useState<TopMenu[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState(true);
   const [error, setError] = useState("");
-  useEffect(() => {
-    const timer = window.setTimeout(() => { const today = restaurantDate(new Date()); setFrom(today); setTo(today); void load(today, today); }, 0);
-    return () => window.clearTimeout(timer);
-  }, []);
-  async function load(start: string, end: string) {
+  const load = useCallback(async (start: string, end: string) => {
     if (!reportRangeSchema.safeParse({ from: start, to: end }).success) { setError("Pilih rentang tanggal yang valid, maksimal 366 hari."); return; }
     setBusy(true); setError("");
     try {
@@ -31,16 +32,29 @@ export function AdminReports() {
       setReport(revenue); setMenus(top); setPeriod({ from: start, to: end });
     } catch { setError("Laporan belum dapat dimuat. Periksa koneksi lalu coba lagi."); }
     finally { setBusy(false); }
-  }
+  }, []);
+  const choosePeriod = useCallback((value: string) => {
+    setPreset(value);
+    if (value === "custom") return;
+    const today = restaurantDate(new Date());
+    const days = value === "month" ? 29 : value === "week" ? 6 : 0;
+    const start = new Date(Date.parse(today) - days * 86_400_000).toISOString().slice(0, 10);
+    setFrom(start); setTo(today); void load(start, today);
+  }, [load]);
+  useEffect(() => { const timer = window.setTimeout(() => choosePeriod("week"), 0); return () => window.clearTimeout(timer); }, [choosePeriod]);
   function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); void load(from, to); }
   const days = period && report ? revenueDays(period.from, period.to, report.points) : [];
-  const maximum = days.reduce((max, day) => BigInt(day.revenueIdr) > max ? BigInt(day.revenueIdr) : max, 0n);
-  const coords = days.map((day, index) => ({ ...day, x: 60 + (days.length === 1 ? 300 : index * 600 / (days.length - 1)), y: 210 - (maximum ? Number(BigInt(day.revenueIdr) * 17000n / maximum) / 100 : 0) }));
-  return <div className="admin-stack"><section className="admin-panel"><h2>Penjualan dari transaksi lunas</h2><p className="muted">Pendapatan memakai total tagihan Paid. Uang diterima dan kembalian tidak dihitung sebagai pendapatan tambahan.</p>
-    <form className="report-filters" onSubmit={submit}><label>Dari tanggal<input className="text-field" type="date" required value={from} onChange={(event) => setFrom(event.target.value)} /></label><label>Sampai tanggal<input className="text-field" type="date" required value={to} onChange={(event) => setTo(event.target.value)} /></label><button className="primary-button" disabled={busy}>{busy ? "Memuat…" : "Tampilkan laporan"}</button></form>
-    {error && <div className="inline-alert" role="alert">{error}</div>}
-    {report && period ? <><p className="muted">Periode {period.from} hingga {period.to} · WIB</p><dl className="report-summary"><div><dt>Pendapatan lunas</dt><dd>{formatIdr(report.summary.revenueIdr)}</dd></div><div><dt>Transaksi lunas</dt><dd>{report.summary.paidTransactionCount}</dd></div><div><dt>Rata-rata transaksi</dt><dd>{formatIdr(report.summary.paidTransactionCount ? BigInt(report.summary.revenueIdr) / BigInt(report.summary.paidTransactionCount) : 0n)}</dd></div></dl>
-      {report.summary.paidTransactionCount ? <><svg className="revenue-chart" viewBox="0 0 720 265" role="img" aria-labelledby="revenue-chart-title revenue-chart-desc"><title id="revenue-chart-title">Pendapatan lunas harian</title><desc id="revenue-chart-desc">Total {formatIdr(report.summary.revenueIdr)} dari {report.summary.paidTransactionCount} transaksi. Angka per hari tersedia pada tabel di bawah.</desc><line x1="60" y1="210" x2="660" y2="210" stroke="var(--border)" /><line x1="60" y1="40" x2="60" y2="210" stroke="var(--border)" /><text x="60" y="25" fill="var(--text-muted)">{formatIdr(maximum)}</text><text x="42" y="215" textAnchor="end" fill="var(--text-muted)">0</text><polyline points={coords.map((point) => `${point.x},${point.y}`).join(" ")} fill="none" stroke="var(--primary)" strokeWidth="3" />{coords.length <= 31 && coords.map((point) => <circle key={point.date} cx={point.x} cy={point.y} r="4" fill="var(--primary)"><title>{point.date}: {formatIdr(point.revenueIdr)}</title></circle>)}<text x="60" y="247" fill="var(--text-muted)">{period.from}</text><text x="660" y="247" textAnchor="end" fill="var(--text-muted)">{period.to}</text></svg><details className="report-data"><summary>Lihat angka harian</summary><div className="table-scroll"><table><caption>Pendapatan harian (WIB)</caption><thead><tr><th>Tanggal</th><th>Transaksi</th><th>Pendapatan lunas</th></tr></thead><tbody>{days.map((day) => <tr key={day.date}><td>{day.date}</td><td>{day.transactionCount}</td><td>{formatIdr(day.revenueIdr)}</td></tr>)}</tbody></table></div></details></> : <p className="empty-state">Belum ada pembayaran lunas pada periode ini.</p>}
-    </> : <p className="loading-block" role="status">Pilih periode untuk memuat laporan.</p>}
-  </section><section className="admin-panel"><h2>Menu terlaris</h2><p className="muted">Jumlah terjual hanya dari sesi Paid; nilai menu sebelum diskon dan pajak.</p>{menus.length ? <div className="table-scroll"><table><caption>10 menu terlaris pada periode laporan</caption><thead><tr><th>Menu</th><th>Jumlah terjual</th><th>Nilai penjualan menu</th></tr></thead><tbody>{menus.map((menu) => <tr key={menu.menuName}><td>{menu.menuName}</td><td>{menu.quantitySold}</td><td>{formatIdr(menu.grossSalesIdr)}</td></tr>)}</tbody></table></div> : <p className="empty-state">Belum ada penjualan menu untuk ditampilkan.</p>}</section></div>;
+  const best = report?.points.reduce<RevenuePoint | null>((current, point) => !current || BigInt(point.revenueIdr) > BigInt(current.revenueIdr) ? point : current, null);
+  return <div className="admin-stack">
+    <form className="report-filters" onSubmit={submit}><Selection label="Periode penjualan" value={preset} onChange={choosePeriod} disabled={busy} options={[{ value: "today", label: "Hari ini" }, { value: "week", label: "7 hari" }, { value: "month", label: "30 hari" }, { value: "custom", label: "Kustom" }]} />{preset === "custom" && <><label>Dari tanggal<Input type="date" required value={from} onChange={(event) => setFrom(event.target.value)} /></label><label>Sampai tanggal<Input type="date" required value={to} onChange={(event) => setTo(event.target.value)} /></label></>}<Button type="submit" disabled={busy}>{busy ? "Memuat..." : "Tampilkan laporan"}</Button></form>
+    {error && <Alert>{error}</Alert>}
+    {report && period ? <><p className="report-period">{period.from} hingga {period.to} · WIB · Hanya transaksi lunas</p><div className="sales-bento report-summary">
+      <section className="bento-cell bento-revenue"><ChartLineUpIcon size={20} className="metric-icon" /><p className="metric-label">Pendapatan lunas</p><p className="metric-value">{formatIdr(report.summary.revenueIdr)}</p><p className="metric-foot">Total tagihan, setelah diskon dan pajak</p></section>
+      <section className="bento-cell bento-count"><ReceiptIcon size={20} className="metric-icon" /><p className="metric-label">Transaksi lunas</p><p className="metric-value">{report.summary.paidTransactionCount}</p><p className="metric-foot">Pembayaran tunai penuh</p></section>
+      <section className="bento-cell bento-average"><TrendUpIcon size={20} className="metric-icon" /><p className="metric-label">Rata-rata transaksi</p><p className="metric-value">{formatIdr(report.summary.paidTransactionCount ? BigInt(report.summary.revenueIdr) / BigInt(report.summary.paidTransactionCount) : 0n)}</p><p className="metric-foot">Pendapatan dibagi transaksi</p></section>
+      <section className="bento-cell bento-chart"><div className="chart-heading"><h2>Tren penjualan</h2><span className="chart-unit">IDR / hari</span></div>{report.summary.paidTransactionCount ? <RevenueChart from={period.from} to={period.to} points={report.points} /> : <EmptyState>Belum ada pembayaran lunas pada periode ini.</EmptyState>}</section>
+      <section className="bento-cell bento-menus"><h2>Menu terlaris</h2>{menus.length ? menus.map((menu, index) => <div className="top-menu-row" key={menu.menuName}><span className="rank">{index + 1}</span><div><strong>{menu.menuName}</strong><small>{formatIdr(menu.grossSalesIdr)} sebelum diskon/pajak</small></div><span className="quantity">{menu.quantitySold}<small>terjual</small></span></div>) : <EmptyState>Belum ada menu terjual.</EmptyState>}</section>
+      <section className="bento-cell bento-data"><details className="report-data"><summary>Lihat angka harian</summary><div className="table-scroll"><table><caption>Pendapatan harian (WIB)</caption><thead><tr><th>Tanggal</th><th>Transaksi</th><th>Pendapatan lunas</th></tr></thead><tbody>{days.map((day) => <tr key={day.date}><td>{day.date}</td><td>{day.transactionCount}</td><td>{formatIdr(day.revenueIdr)}</td></tr>)}</tbody></table></div></details></section>
+    </div><DetailPane><div className="detail-heading"><h2>Rincian periode</h2></div><dl className="period-detail"><dt>Dari tanggal</dt><dd>{period.from}</dd><dt>Sampai tanggal</dt><dd>{period.to}</dd><dt>Zona waktu</dt><dd>WIB / Asia Jakarta</dd></dl><div className="detail-rule" />{best ? <><h3>Penjualan tertinggi</h3><p className="metric-value">{formatIdr(best.revenueIdr)}</p><p className="muted">{best.date} · {best.transactionCount} transaksi</p></> : <p className="muted">Ringkasan tersedia setelah ada pembayaran.</p>}<p className="detail-note">Pesanan belum lunas dan uang kembalian tidak dihitung sebagai pendapatan.</p></DetailPane></> : busy ? <LoadingState>Memuat ringkasan penjualan...</LoadingState> : <EmptyState>Pilih periode lalu tampilkan laporan untuk mencoba lagi.</EmptyState>}
+  </div>;
 }

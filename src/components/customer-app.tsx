@@ -1,7 +1,11 @@
 "use client";
 
+import { StatusBadge } from "@/components/ui/status-badge";
+
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { Photo } from "@/components/ui/photo";
+import { Selection, LoadingState, EmptyState, Button, Alert, Input } from "@/components/ui/controls";
 import { CustomerShell } from "@/components/app-shells";
 import { cartSubtotal, changeCart, formatIdr, type CartItem } from "@/lib/customer/cart";
 
@@ -18,7 +22,6 @@ type OrderStatus = {
 type ApiResult<T> = { data: T } | { error: { code: string; message: string } };
 type View = "menu" | "cart" | "status";
 
-const statusLabels = { PENDING: "Menunggu konfirmasi", PREPARING: "Sedang disiapkan", SERVED: "Sudah disajikan" };
 class ApiFailure extends Error {
   constructor(message: string, readonly status: number) { super(message); }
 }
@@ -192,81 +195,81 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
     } finally { setBusy(false); }
   }
 
-  if (loading) return <CustomerShell><div className="loading-block" role="status">Memeriksa kode QR meja…</div></CustomerShell>;
-  if (!table && view !== "status") return <CustomerShell><div className="empty-state"><h1>Meja tidak ditemukan</h1><p>{error || "Kode QR tidak valid."}</p></div></CustomerShell>;
+  if (loading) return <CustomerShell><LoadingState className="loading-block" role="status">Memeriksa kode QR meja…</LoadingState></CustomerShell>;
+  if (!table && view !== "status") return <CustomerShell><EmptyState className="empty-state"><h1>Meja tidak ditemukan</h1><p>{error || "Kode QR tidak valid."}</p></EmptyState></CustomerShell>;
 
   const footer = view === "menu" && guest && cart.length > 0
-    ? <div className="sticky-action"><button className="primary-button full-width" onClick={() => router.push(`${base}/cart`)}><span>Lihat Keranjang · {cart.reduce((n, item) => n + item.quantity, 0)} item</span><span>{formatIdr(cartSubtotal(cart))}</span></button></div>
+    ? <div className="sticky-action"><Button className="primary-button full-width" onClick={() => router.push(`${base}/cart`)}><span>Lihat Keranjang · {cart.reduce((n, item) => n + item.quantity, 0)} item</span><span>{formatIdr(cartSubtotal(cart))}</span></Button></div>
     : null;
 
   return <CustomerShell tableNumber={table?.tableNumber} footer={footer}>
     {view === "status" ? <>
-      {placed && <div className="success-panel" role="status"><p className="eyebrow">PESANAN TERKIRIM</p><h1>Terima kasih!</h1><p>Pesanan Anda telah dikirim ke kasir dan menunggu konfirmasi.</p></div>}
-      <p className="eyebrow">PESANAN SAYA</p><h1>Status pesanan</h1>
+      {placed && <div className="success-panel" role="status"><h1>Terima kasih!</h1><p>Pesanan Anda telah dikirim ke kasir dan menunggu konfirmasi.</p></div>}
+      <h1>Status pesanan</h1>
       <p className="section-intro">Status diperbarui otomatis. Hanya pesanan dari browser ini yang ditampilkan.</p>
-      {error && <div className="inline-alert" role="alert">{error} <button className="text-button" onClick={() => void refreshStatuses()}>Coba lagi</button></div>}
-      {!orders.length ? <div className="empty-state"><h2>Belum ada pesanan</h2><p>Pesanan yang Anda kirim dari browser ini akan muncul di sini.</p></div>
+      {error && <Alert className="inline-alert" role="alert">{error} <Button className="text-button" onClick={() => void refreshStatuses()}>Coba lagi</Button></Alert>}
+      {!orders.length ? <EmptyState className="empty-state"><h2>Belum ada pesanan</h2><p>Pesanan yang Anda kirim dari browser ini akan muncul di sini.</p></EmptyState>
         : orders.map((order) => {
           const status = statuses[order.id];
           return <article className="status-card" key={order.id}>
-            <div className="status-top"><div><p className="eyebrow">PESANAN #{order.id.slice(0, 8).toUpperCase()}</p><h2>{status ? status.customerName : "Memuat pesanan…"}</h2></div>
-              {status && <span className={`status-chip ${status.status.toLowerCase()}`}>{status.voided ? "Dibatalkan" : statusLabels[status.status]}</span>}</div>
+            <div className="status-top"><div><p className="context-label">PESANAN #{order.id.slice(0, 8).toUpperCase()}</p><h2>{status ? status.customerName : "Memuat pesanan…"}</h2></div>
+              {status && <StatusBadge status={status.voided ? "VOID" : status.status} />}</div>
             {status && <><ul>{status.items.map((item, index) => <li key={index}>{item.quantity}× {item.menuName} <span className="muted">· {item.voided ? "Dibatalkan" : item.served ? "Sudah disajikan" : "Belum disajikan"}</span></li>)}</ul>
               <p className="muted" style={{ marginTop: 14 }}>{status.items.filter((item) => item.served && !item.voided).length} dari {status.items.filter((item) => !item.voided).length} jenis item disajikan</p></>}
           </article>;
         })}
       {updatedAt && <p className="muted">Terakhir diperbarui {updatedAt.toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</p>}
       <p className="muted" style={{ marginTop: 24 }}>Perlu membatalkan pesanan? Silakan hubungi kasir.</p>
-      <button className="secondary-button full-width" style={{ marginTop: 24 }} onClick={() => router.push(base)}>Tambah pesanan</button>
+      <Button className="secondary-button full-width" style={{ marginTop: 24 }} onClick={() => router.push(base)}>Tambah pesanan</Button>
     </> : !table ? null : !guest ? <>
-      <div className="hero-panel"><p className="eyebrow">SELAMAT DATANG DI MEJA {table.tableNumber}</p><h1>Mau pesan apa hari ini?</h1><p>Isi nama Anda dulu, lalu pilih hidangan yang Anda suka.</p></div>
+      <div className="hero-panel"><p className="context-label">SELAMAT DATANG DI MEJA {table.tableNumber}</p><h1>Mau pesan apa hari ini?</h1><p>Isi nama Anda dulu, lalu pilih hidangan yang Anda suka.</p></div>
       <form onSubmit={submitName}>
         <label className="field-label" htmlFor="customer-name">Nama pemesan *</label>
-        <input className="text-field" id="customer-name" name="customerName" placeholder="Contoh: Nadia" autoComplete="name" maxLength={120} required value={name} onChange={(event) => setName(event.target.value)} />
-        {error && <div className="inline-alert" role="alert">{error}</div>}
-        {table.status === "RESERVED" && <div className="inline-alert info">Meja ini sedang direservasi. Kasir perlu melakukan check-in sebelum pesanan dapat dikirim.</div>}
-        <button className="primary-button full-width" style={{ marginTop: 20 }} disabled={busy || !name.trim()}>{busy ? "Menyiapkan menu…" : "Lihat Menu"}</button>
+        <Input className="text-field" id="customer-name" name="customerName" placeholder="Contoh: Nadia" autoComplete="name" maxLength={120} required value={name} onChange={(event) => setName(event.target.value)} />
+        {error && <Alert className="inline-alert" role="alert">{error}</Alert>}
+        {table.status === "RESERVED" && <Alert className="inline-alert info">Meja ini sedang direservasi. Kasir perlu melakukan check-in sebelum pesanan dapat dikirim.</Alert>}
+        <Button className="primary-button full-width" style={{ marginTop: 20 }} disabled={busy || !name.trim()}>{busy ? "Menyiapkan menu…" : "Lihat Menu"}</Button>
       </form>
     </> : view === "cart" ? <>
-      <p className="eyebrow">MEJA {table.tableNumber} · {guest.customerName}</p><h1>Keranjang Anda</h1>
+      <p className="context-label">MEJA {table.tableNumber} · {guest.customerName}</p><h1>Keranjang Anda</h1>
       <p className="section-intro">Periksa pesanan sebelum dikirim ke kasir.</p>
-      {!cart.length ? <div className="empty-state"><h2>Keranjang masih kosong</h2><p>Pilih menu favorit Anda untuk mulai memesan.</p><button className="secondary-button" onClick={() => router.push(base)}>Lihat Menu</button></div> : <>
+      {!cart.length ? <EmptyState className="empty-state"><h2>Keranjang masih kosong</h2><p>Pilih menu favorit Anda untuk mulai memesan.</p><Button className="secondary-button" onClick={() => router.push(base)}>Lihat Menu</Button></EmptyState> : <>
         {cart.map((item) => <div className="cart-row" key={item.id}>
           <div className="cart-row-head"><strong>{item.name}</strong><span>{formatIdr(BigInt(item.priceIdr) * BigInt(item.quantity))}</span></div>
           <p className="muted">{formatIdr(item.priceIdr)} per item</p>
           <div className="cart-controls"><div className="stepper">
-            <button type="button" aria-label={`Kurangi ${item.name}`} disabled={uncertain} onClick={() => editCart(item, item.quantity - 1)}>−</button>
+            <Button type="button" aria-label={`Kurangi ${item.name}`} disabled={uncertain} onClick={() => editCart(item, item.quantity - 1)}>−</Button>
             <strong>{item.quantity}</strong>
-            <button type="button" aria-label={`Tambah ${item.name}`} disabled={uncertain || item.quantity >= 99} onClick={() => editCart(item, item.quantity + 1)}>+</button>
-          </div><button className="text-button" disabled={uncertain} onClick={() => editCart(item, 0)}>Hapus</button></div>
-          <input className="text-field cart-note" aria-label={`Catatan untuk ${item.name}`} placeholder="Catatan untuk item ini (opsional)" maxLength={500} disabled={uncertain} value={item.note} onChange={(event) => editCart({ ...item, note: event.target.value }, item.quantity)} />
+            <Button type="button" aria-label={`Tambah ${item.name}`} disabled={uncertain || item.quantity >= 99} onClick={() => editCart(item, item.quantity + 1)}>+</Button>
+          </div><Button className="text-button" disabled={uncertain} onClick={() => editCart(item, 0)}>Hapus</Button></div>
+          <Input className="text-field cart-note" aria-label={`Catatan untuk ${item.name}`} placeholder="Catatan untuk item ini (opsional)" maxLength={500} disabled={uncertain} value={item.note} onChange={(event) => editCart({ ...item, note: event.target.value }, item.quantity)} />
         </div>)}
         <div className="summary-card"><div className="money-row"><span>Subtotal menu</span><strong>{formatIdr(cartSubtotal(cart))}</strong></div><p className="muted">Belum termasuk pajak atau diskon yang dihitung kasir pada tagihan akhir.</p></div>
-        {error && <div className="inline-alert" role="alert">{error}</div>}
-        {table.status === "RESERVED" && <div className="inline-alert info">Kasir perlu melakukan check-in meja reservasi sebelum Anda dapat memesan.</div>}
-        <button className="primary-button full-width" disabled={busy || table.status === "RESERVED"} onClick={() => void checkout()}>{busy ? "Mengirim pesanan…" : uncertain ? "Coba Lagi dengan Aman" : "Konfirmasi Pesanan"}</button>
-        <button className="secondary-button full-width" style={{ marginTop: 10 }} disabled={busy || uncertain} onClick={() => router.push(base)}>Kembali ke Menu</button>
+        {error && <Alert className="inline-alert" role="alert">{error}</Alert>}
+        {table.status === "RESERVED" && <Alert className="inline-alert info">Kasir perlu melakukan check-in meja reservasi sebelum Anda dapat memesan.</Alert>}
+        <Button className="primary-button full-width" disabled={busy || table.status === "RESERVED"} onClick={() => void checkout()}>{busy ? "Mengirim pesanan…" : uncertain ? "Coba Lagi dengan Aman" : "Konfirmasi Pesanan"}</Button>
+        <Button className="secondary-button full-width" style={{ marginTop: 10 }} disabled={busy || uncertain} onClick={() => router.push(base)}>Kembali ke Menu</Button>
       </>}
     </> : <>
-      <p className="eyebrow">MEJA {table.tableNumber} · HAI, {guest.customerName.toUpperCase()}</p><h1>Pilih yang Anda suka.</h1><p className="section-intro">Menu yang tersedia hari ini. Tambahkan pilihan Anda ke keranjang.</p>
-      {uncertain && <div className="inline-alert" role="alert">Pengiriman pesanan sebelumnya belum pasti. Buka keranjang dan coba lagi sebelum mengubah pesanan. <button className="text-button" onClick={() => router.push(`${base}/cart`)}>Buka keranjang</button></div>}
-      {orders.length > 0 && <button className="text-button" onClick={() => router.push(`${base}/status`)}>Lihat status pesanan saya →</button>}
-      <div className="menu-tools"><label htmlFor="menu-search" className="field-label">Cari menu</label><input id="menu-search" className="text-field" type="search" placeholder="Cari nama hidangan…" value={search} onChange={(event) => setSearch(event.target.value)} />
-        {menu && <div className="category-list" aria-label="Kategori menu"><button className="category-chip" aria-pressed={!categoryId} onClick={() => setCategoryId("")}>Semua</button>{menu.categories.map((category) => <button className="category-chip" aria-pressed={categoryId === category.id} key={category.id} onClick={() => setCategoryId(category.id)}>{category.name}</button>)}</div>}</div>
-      {error && <div className="inline-alert" role="alert">{error}<button className="text-button" onClick={() => guest && void loadMenu(guest.guestToken)}>Coba lagi</button></div>}
-      {!menu && !error && <div className="loading-block" role="status">Memuat menu…</div>}
+      <p className="context-label">MEJA {table.tableNumber} · HAI, {guest.customerName.toUpperCase()}</p><h1>Pilih yang Anda suka.</h1><p className="section-intro">Menu yang tersedia hari ini. Tambahkan pilihan Anda ke keranjang.</p>
+      {uncertain && <Alert className="inline-alert" role="alert">Pengiriman pesanan sebelumnya belum pasti. Buka keranjang dan coba lagi sebelum mengubah pesanan. <Button className="text-button" onClick={() => router.push(`${base}/cart`)}>Buka keranjang</Button></Alert>}
+      {orders.length > 0 && <Button className="text-button" onClick={() => router.push(`${base}/status`)}>Lihat status pesanan saya →</Button>}
+      <div className="menu-tools"><label htmlFor="menu-search" className="field-label">Cari menu</label><Input id="menu-search" className="text-field" type="search" placeholder="Cari nama hidangan…" value={search} onChange={(event) => setSearch(event.target.value)} />
+        {menu && <Selection label="Kategori" value={categoryId} onChange={setCategoryId} options={[{ value: "", label: "Semua" }, ...menu.categories.map((category) => ({ value: category.id, label: category.name }))]} />}</div>
+      {error && <Alert className="inline-alert" role="alert">{error}<Button className="text-button" onClick={() => guest && void loadMenu(guest.guestToken)}>Coba lagi</Button></Alert>}
+      {!menu && !error && <LoadingState className="loading-block" role="status">Memuat menu…</LoadingState>}
       {menu && menu.categories.filter((category) => !categoryId || category.id === categoryId).map((category) => {
         const items = category.items.filter((item) => item.name.toLocaleLowerCase("id-ID").includes(search.toLocaleLowerCase("id-ID")));
         if (!items.length) return null;
         return <section className="menu-section" key={category.id}><div className="menu-section-heading"><h2>{category.name}</h2><span className="muted">{items.length} menu</span></div><div className="menu-list">{items.map((item) => {
           const current = cart.find((entry) => entry.id === item.id);
           return <article className="menu-card" key={item.id}><div className="menu-card-copy"><h3>{item.name}</h3>{item.description && <p>{item.description}</p>}<p className="menu-price">{formatIdr(item.priceIdr)}</p></div><div className="menu-card-end">
-            {item.imageUrl ? <img className="menu-photo" src={item.imageUrl} alt={item.name} /> : <div className="menu-photo-placeholder" aria-hidden="true">Menu pilihan</div>}
-            <button className="add-button" disabled={uncertain || current?.quantity === 99} onClick={() => editCart(current ?? { id: item.id, name: item.name, priceIdr: item.priceIdr, quantity: 0, note: "" }, (current?.quantity ?? 0) + 1)} aria-label={`Tambahkan ${item.name} ke keranjang`}>{current ? `Tambah · ${current.quantity}` : "Tambah +"}</button>
+            <Photo src={item.imageUrl} alt={item.name} />
+            <Button className="add-button" disabled={uncertain || current?.quantity === 99} onClick={() => editCart(current ?? { id: item.id, name: item.name, priceIdr: item.priceIdr, quantity: 0, note: "" }, (current?.quantity ?? 0) + 1)} aria-label={`Tambahkan ${item.name} ke keranjang`}>{current ? `Tambah · ${current.quantity}` : "Tambah +"}</Button>
           </div></article>;
         })}</div></section>;
       })}
-      {menu && !menu.categories.some((category) => (!categoryId || category.id === categoryId) && category.items.some((item) => item.name.toLocaleLowerCase("id-ID").includes(search.toLocaleLowerCase("id-ID")))) && <div className="empty-state"><h2>Menu tidak ditemukan</h2><p>Coba kata lain atau pilih kategori berbeda.</p></div>}
+      {menu && !menu.categories.some((category) => (!categoryId || category.id === categoryId) && category.items.some((item) => item.name.toLocaleLowerCase("id-ID").includes(search.toLocaleLowerCase("id-ID")))) && <EmptyState className="empty-state"><h2>Menu tidak ditemukan</h2><p>Coba kata lain atau pilih kategori berbeda.</p></EmptyState>}
     </>}
   </CustomerShell>;
 }

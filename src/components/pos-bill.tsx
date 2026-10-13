@@ -1,6 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Panel, Button, Alert } from "@/components/ui/controls";
+
+import { usePolling } from "@/lib/use-polling";
+
+import { useCallback, useRef, useState } from "react";
 import Link from "next/link";
 import { adminApi } from "@/lib/admin/client";
 import { formatIdr } from "@/lib/customer/cart";
@@ -27,19 +31,13 @@ export function PosBillPreview({ sessionId }: { sessionId: string }) {
       current.current = next; setQuote(next); setError("");
     } catch { setError("Tagihan belum dapat disinkronkan. Segarkan sebelum menerima pembayaran."); }
   }, [sessionId]);
-  useEffect(() => {
-    const initial = window.setTimeout(() => void refresh(), 0);
-    const timer = window.setInterval(() => { if (document.visibilityState === "visible") void refresh(); }, 5000);
-    const onFocus = () => { void refresh(); };
-    window.addEventListener("focus", onFocus); window.addEventListener("online", onFocus);
-    return () => { window.clearTimeout(initial); window.clearInterval(timer); window.removeEventListener("focus", onFocus); window.removeEventListener("online", onFocus); };
-  }, [refresh]);
-  return <section className="admin-panel">
-    <div className="admin-section-head"><div><p className="eyebrow">TAGIHAN LANGSUNG</p><h2>Rincian tagihan</h2></div><button className="secondary-button" onClick={() => void refresh()}>Segarkan</button></div>
-    {error && <div className="inline-alert" role="alert">{error}</div>}
-    {changed && <div className="inline-alert info" role="status">Tagihan diperbarui. Periksa total terbaru sebelum pembayaran.</div>}
+  usePolling(refresh);
+  return <Panel className="admin-panel">
+    <div className="admin-section-head"><div><h2>Rincian tagihan</h2></div><Button className="secondary-button" onClick={() => void refresh()}>Segarkan</Button></div>
+    {error && <Alert className="inline-alert" role="alert">{error}</Alert>}
+    {changed && <Alert className="inline-alert info" role="status">Tagihan diperbarui. Periksa total terbaru sebelum pembayaran.</Alert>}
     {!quote ? <p className="muted">Memuat tagihan…</p> : <><BillBreakdown quote={quote} /><p className="muted pos-bill-meta">Revisi {quote.sessionRevision} · Pengaturan {quote.settingsVersion} · Dihitung {new Date(quote.calculatedAt).toLocaleTimeString("id-ID")}</p>
       {!quote.paymentEligible && <p className="muted">{quote.blockingOrders.length ? `${quote.blockingOrders.length} pesanan belum selesai disajikan.` : "Belum ada item yang dapat dibayar."}</p>}
       <Link className="primary-button" href={`/pos/payments/${sessionId}`}>Lihat tagihan & pembayaran</Link></>}
-  </section>;
+  </Panel>;
 }

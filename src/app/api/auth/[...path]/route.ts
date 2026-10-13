@@ -15,6 +15,9 @@ async function forward(method: keyof typeof handler, request: Request, context: 
   if (first.split("/")[0].toLowerCase() === "admin") {
     return apiError(404, "NOT_FOUND", "Route not found");
   }
+  if (first.split("/")[0].toLowerCase() === "sign-up") {
+    return apiError(403, "SIGNUP_DISABLED", "Staff accounts are provisioned by the owner");
+  }
   return handler[method](request, context);
 }
 

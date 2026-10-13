@@ -1,3 +1,4 @@
+import { LoadingState } from "@/components/ui/controls";
 import { Suspense } from "react";
 import { PosPayment } from "@/components/pos-payment";
 
@@ -7,5 +8,5 @@ async function Content({ params }: { params: Promise<{ sessionId: string }> }) {
 }
 
 export default function PaymentPage({ params }: { params: Promise<{ sessionId: string }> }) {
-  return <Suspense fallback={<div className="loading-block" role="status">Menyiapkan pembayaran…</div>}><Content params={params} /></Suspense>;
+  return <Suspense fallback={<LoadingState className="loading-block" role="status">Menyiapkan pembayaran…</LoadingState>}><Content params={params} /></Suspense>;
 }

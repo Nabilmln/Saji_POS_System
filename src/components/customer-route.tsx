@@ -1,3 +1,4 @@
+import { LoadingState } from "@/components/ui/controls";
 import { Suspense } from "react";
 import { CustomerApp } from "@/components/customer-app";
 import { CustomerShell } from "@/components/app-shells";
@@ -12,7 +13,7 @@ async function Content({ params, view }: {
 export function CustomerRoute({ params, view }: {
   params: Promise<{ tableToken: string }>; view: "menu" | "cart" | "status";
 }) {
-  return <Suspense fallback={<CustomerShell><div className="loading-block" role="status">Menyiapkan halaman…</div></CustomerShell>}>
+  return <Suspense fallback={<CustomerShell><LoadingState className="loading-block" role="status">Menyiapkan halaman…</LoadingState></CustomerShell>}>
     <Content params={params} view={view} />
   </Suspense>;
 }

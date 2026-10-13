@@ -1,0 +1,60 @@
+"use client";
+
+import { useId, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type TextareaHTMLAttributes, type HTMLAttributes } from "react";
+import * as Select from "@radix-ui/react-select";
+import { CaretDownIcon, CaretUpIcon, CheckIcon, EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
+
+export function Button({ className, type, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
+  return <button type={type} className={`button ${className ?? "primary-button"}`} {...props} />;
+}
+
+export function Input({ className, type, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+  return <input type={type} className={className ?? (type === "checkbox" || type === "radio" ? undefined : "text-field")} {...props} />;
+}
+
+export function Textarea({ className = "text-field", ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+  return <textarea className={className} {...props} />;
+}
+
+export function PasswordInput(props: InputHTMLAttributes<HTMLInputElement>) {
+  const [visible, setVisible] = useState(false);
+  return <div className="password-field"><Input {...props} type={visible ? "text" : "password"} /><Button type="button" className="icon-button password-reveal" aria-label={visible ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"} aria-pressed={visible} onClick={() => setVisible(!visible)}>{visible ? <EyeSlashIcon size={18} /> : <EyeIcon size={18} />}</Button></div>;
+}
+
+export type SelectOption = { value: string; label: string; disabled?: boolean };
+type SelectionProps = { label: string; options: SelectOption[]; value?: string; defaultValue?: string; onChange?: (value: string) => void; name?: string; required?: boolean; disabled?: boolean; kind?: "dropdown" | "segments"; className?: string };
+
+export function Selection({ label, options, value, defaultValue = "", onChange, name, required, disabled, kind, className = "" }: SelectionProps) {
+  const id = useId();
+  const [internal, setInternal] = useState(defaultValue);
+  const active = value ?? internal;
+  const change = (next: string) => { setInternal(next); onChange?.(next); };
+  const segmented = kind === "segments" || (!kind && options.length <= 4);
+  if (segmented) return <fieldset className={`selection ${className}`} disabled={disabled}><legend>{label}</legend><div className="segmented-control">{options.map((option) => <label className="segment-option" key={option.value}><Input type="radio" name={name ?? id} value={option.value} checked={active === option.value} onChange={() => change(option.value)} disabled={option.disabled} required={required} /><span>{option.label}</span></label>)}</div></fieldset>;
+  const empty = options.find((option) => option.value === "");
+  const encode = (option: string) => option === "" && empty && !empty.disabled ? "__empty__" : option;
+  return <div className={`selection ${className}`}><label htmlFor={id}>{label}</label><Select.Root name={name} value={encode(active)} onValueChange={(next) => change(next === "__empty__" ? "" : next)} required={required} disabled={disabled}>
+    <Select.Trigger id={id} className="select-trigger"><Select.Value placeholder={empty?.label ?? "Pilih opsi"} /><Select.Icon><CaretDownIcon size={16} /></Select.Icon></Select.Trigger>
+    <Select.Portal><Select.Content className="select-content" position="popper" sideOffset={6}><Select.ScrollUpButton className="select-scroll"><CaretUpIcon size={14} /></Select.ScrollUpButton><Select.Viewport>{options.filter((option) => option.value || !option.disabled).map((option) => <Select.Item className="select-option" key={option.value} value={encode(option.value)} disabled={option.disabled}><Select.ItemText>{option.label}</Select.ItemText><Select.ItemIndicator><CheckIcon size={15} /></Select.ItemIndicator></Select.Item>)}</Select.Viewport><Select.ScrollDownButton className="select-scroll"><CaretDownIcon size={14} /></Select.ScrollDownButton></Select.Content></Select.Portal>
+  </Select.Root></div>;
+}
+
+export function Panel({ className = "admin-panel", ...props }: HTMLAttributes<HTMLElement>) {
+  return <section className={className} {...props} />;
+}
+
+export function Alert({ className = "inline-alert", role, ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={className} role={role ?? (className.includes("info") ? "status" : "alert")} {...props} />;
+}
+
+export function EmptyState({ className = "empty-state", ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={className} {...props} />;
+}
+
+export function LoadingState({ className = "loading-block", ...props }: HTMLAttributes<HTMLDivElement>) {
+  return <div className={className} role="status" {...props} />;
+}
+
+export function Pagination({ page, hasNext, onChange, disabled }: { page: number; hasNext: boolean; onChange: (page: number) => void; disabled?: boolean }) {
+  return <div className="pagination"><span>Halaman {page}</span><div><Button className="secondary-button" disabled={page === 1 || disabled} onClick={() => onChange(page - 1)}>Sebelumnya</Button><Button className="secondary-button" disabled={!hasNext || disabled} onClick={() => onChange(page + 1)}>Berikutnya</Button></div></div>;
+}

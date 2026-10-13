@@ -1,12 +1,14 @@
 import { test, expect, signIn, guestOrder, call } from "./fixtures";
 import AxeBuilder from "@axe-core/playwright";
 
-test("two guests share one bill, stale review stops payment, and a lost response replays once", async ({ browser, page, data }) => {
+test("two guests share one bill, stale review stops payment, and a lost response replays once", async ({ browser, page, data }, testInfo) => {
   const first = await browser.newContext({ viewport: { width: 390, height: 844 } });
   const second = await browser.newContext({ viewport: { width: 360, height: 800 } });
   const alice = await first.newPage(), bob = await second.newPage();
   await guestOrder(alice, data.token, "Aulia", data.menuName);
   await guestOrder(bob, data.token, "Budi", data.menuName);
+  for (const target of [alice, bob]) expect((await new AxeBuilder({ page: target }).analyze()).violations).toEqual([]);
+  await alice.screenshot({ path: testInfo.outputPath("customer-status.png"), fullPage: true });
   await expect(alice.getByRole("heading", { name: "Budi", exact: true })).toHaveCount(0);
   await expect(bob.getByRole("heading", { name: "Aulia", exact: true })).toHaveCount(0);
   expect((await data.pool.query("SELECT count(*)::int AS n FROM table_sessions WHERE table_id=$1", [data.tableId])).rows[0].n).toBe(1);
@@ -21,6 +23,8 @@ test("two guests share one bill, stale review stops payment, and a lost response
   await expect(page.getByRole("checkbox", { name: /Sudah disajikan/ })).toHaveCount(2);
   await page.getByRole("checkbox", { name: /Sudah disajikan/ }).nth(1).click();
   await expect(page.getByRole("checkbox", { name: /Sudah disajikan/ }).nth(1)).toBeChecked();
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("cashier-orders-right.png"), fullPage: true });
   await page.getByRole("link", { name: "Lihat tagihan & pembayaran" }).click();
   await page.getByLabel("Uang diterima (Rp)").fill("1");
   await page.getByRole("checkbox", { name: /Saya sudah memeriksa/ }).check();
@@ -35,6 +39,7 @@ test("two guests share one bill, stale review stops payment, and a lost response
   await page.getByRole("checkbox", { name: /Saya sudah memeriksa/ }).check();
   await page.getByRole("button", { name: "Konfirmasi pembayaran", exact: true }).click();
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("cashier-payment.png"), fullPage: true });
   await page.route("**/api/staff/table-sessions/*/payments", async (route) => { await route.fetch(); await route.abort("failed"); }, { times: 1 });
   await page.getByRole("button", { name: "Bayar tunai", exact: true }).click();
   await expect(page.getByRole("button", { name: "Ulangi transaksi yang sama" })).toBeVisible();
@@ -44,6 +49,10 @@ test("two guests share one bill, stale review stops payment, and a lost response
   expect((await data.pool.query("SELECT count(*)::int AS n FROM payments p JOIN table_sessions s ON s.id=p.session_id WHERE s.table_id=$1", [data.tableId])).rows[0].n).toBe(1);
   await page.getByRole("link", { name: "Lihat struk digital" }).click();
   await expect(page.getByText("Lunas", { exact: true })).toBeVisible();
+  await page.setViewportSize({ width: 390, height: 844 });
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath("cashier-receipt-mobile.png"), fullPage: true });
   const receiptBefore = await page.locator(".pos-receipt").innerText();
   await data.pool.query("UPDATE store_settings SET tax_enabled=false,version=version+1 WHERE id=1");
   await data.pool.query("UPDATE menu_items SET price_idr=99999 WHERE id=$1", [data.menuId]);

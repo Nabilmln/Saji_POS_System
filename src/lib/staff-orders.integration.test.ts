@@ -4,8 +4,8 @@ import { expect, it } from "vitest";
 
 const dbUrl = process.env.TEST_DATABASE_URL;
 const baseUrl = process.env.TEST_API_BASE_URL;
-const email = process.env.TEST_ADMIN_EMAIL;
-const password = process.env.TEST_ADMIN_PASSWORD;
+const email = process.env.TEST_CASHIER_EMAIL;
+const password = process.env.TEST_CASHIER_PASSWORD;
 
 it.skipIf(!dbUrl || !baseUrl || !email || !password)(
   "handles cashier manual order, inbox, confirm, and per-line served transitions", async () => {
