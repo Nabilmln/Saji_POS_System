@@ -29,7 +29,11 @@ test("table quick actions add orders, preview receipts and pay without navigatin
   await page.getByLabel("Uang diterima (Rp)").fill("50000");
   await page.getByRole("checkbox", { name: /Saya sudah memeriksa/ }).check();
   await page.getByRole("button", { name: "Konfirmasi pembayaran", exact: true }).click();
+  await page.route("**/api/staff/table-sessions/*/payments", async (route) => { await route.fetch(); await route.abort("failed"); }, { times: 1 });
   await page.getByRole("button", { name: "Bayar tunai", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Ulangi transaksi yang sama" })).toBeVisible();
+  await page.reload();
+  await page.getByRole("button", { name: "Ulangi transaksi yang sama" }).click();
   await expect(page.getByRole("heading", { name: "Pembayaran berhasil" })).toBeVisible();
   await expect(page).toHaveURL(/\/pos$/);
   await page.getByRole("button", { name: "Lihat struk digital", exact: true }).click();
