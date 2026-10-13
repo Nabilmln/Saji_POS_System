@@ -1,7 +1,7 @@
 import { and, asc, eq, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { diningTables, orderItems, orders, storeSettings, tableSessions } from "@/db/schema";
+import { diningTables, menuItems, orderItems, orders, storeSettings, tableSessions } from "@/db/schema";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireStaff } from "@/lib/auth/guards";
 import { calculateBill } from "@/lib/billing";
@@ -26,7 +26,9 @@ export async function GET(request: Request, context: { params: Promise<{ tableId
     menuName: orderItems.menuNameSnapshot, quantity: orderItems.quantity,
     unitPriceIdr: orderItems.unitPriceIdr, lineTotalIdr: orderItems.lineTotalIdr,
     customerNote: orderItems.customerNote, servedAt: orderItems.servedAt, voidedAt: orderItems.voidedAt,
+    imageUrl: menuItems.imageUrl,
   }).from(orderItems).innerJoin(orders, eq(orderItems.orderId, orders.id))
+    .leftJoin(menuItems, eq(orderItems.menuItemId, menuItems.id))
     .where(eq(orders.sessionId, session.id)).orderBy(asc(orderItems.id));
   const [settings] = await db.select().from(storeSettings).where(eq(storeSettings.id, 1));
   if (!settings) return apiError(503, "SETTINGS_UNAVAILABLE", "Billing settings unavailable");
