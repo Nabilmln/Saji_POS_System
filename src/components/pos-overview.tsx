@@ -8,13 +8,15 @@ import { StatusBadge, statusLabels, orderStatusOptions } from "@/components/ui/s
 import { usePolling } from "@/lib/use-polling";
 
 import { useCallback, useState } from "react";
-import Link from "next/link";
 import { DataTable } from "@/components/ui/data-table";
 import { usePagination } from "@/lib/use-pagination";
 import { adminPage, adminApi, jsonRequest } from "@/lib/admin/client";
 import { Selection, Panel, Button, Alert, Input, LoadingState, Pagination } from "@/components/ui/controls";
 import { DetailPane } from "@/components/app-shells";
-import { OrderDetails, type StaffOrder } from "@/components/order-details";
+import { OrderDetails } from "@/components/order-details";
+import { PosTable, type StaffTable } from "@/components/pos-table";
+import { PosPayment } from "@/components/pos-payment";
+import { ReceiptPreview } from "@/components/pos-receipt";
 
 
 type Table = { id: string; tableNumber: string; status: "AVAILABLE" | "OCCUPIED" | "RESERVED"; activeOrderCount: number; pendingOrderCount: number; grandTotalIdr: string };
@@ -24,7 +26,10 @@ const tableLabels = { AVAILABLE: statusLabels.AVAILABLE, OCCUPIED: statusLabels.
 export function PosOverview() {
   const { t, locale, money } = useLocale();
   const [selectedId, setSelectedId] = useState("");
-  const [selected, setSelected] = useState<{ id: string; tableNumber: string; orders: StaffOrder[] } | null>(null);
+  const [selected, setSelected] = useState<StaffTable | null>(null);
+  const [workspace, setWorkspace] = useState<"DETAIL" | "ORDER" | "PAYMENT">("DETAIL");
+  const [paymentSessionId, setPaymentSessionId] = useState("");
+  const [receipt, setReceipt] = useState<{ sessionId: string; paymentId?: never } | { paymentId: string; sessionId?: never } | null>(null);
   const [detailError, setDetailError] = useState("");
   const [tables, setTables] = useState<Table[]>([]);
   const { page: tablePage, setPage: setTablePage, pageSize: tablePageSize, setPageSize: setTablePageSize } = usePagination();
@@ -66,6 +71,17 @@ export function PosOverview() {
     catch { await refresh(); setError("Pesanan gagal dikonfirmasi. Muat ulang untuk melihat status terbaru."); }
     finally { setBusy(""); }
   }
+  function selectTable(id: string) {
+    setSelectedId(id); setSelected(null); setDetailError(""); setReceipt(null); setWorkspace("DETAIL");
+  }
+  function openPayment(sessionId: string) {
+    setPaymentSessionId(sessionId); setWorkspace("PAYMENT");
+  }
+  function closeWorkspace() {
+    setWorkspace("DETAIL"); void refresh(); void refreshDetail();
+  }
+  if (workspace === "ORDER" && selectedId) return <PosTable key={selectedId} tableId={selectedId} initialManual onClose={closeWorkspace} onPayment={openPayment} />;
+  if (workspace === "PAYMENT" && paymentSessionId) return <PosPayment key={paymentSessionId} sessionId={paymentSessionId} onClose={closeWorkspace} onViewReceipt={(paymentId) => { setReceipt({ paymentId }); closeWorkspace(); }} />;
   return <div className="admin-stack">
     <Panel className="admin-panel">
       <div className="admin-section-head"><div><h2>{t("Ringkasan meja")}</h2></div><Button className="secondary-button" onClick={() => void refresh()}>{t("Segarkan")}</Button></div>
@@ -75,7 +91,7 @@ export function PosOverview() {
         <label>{t("Cari meja")}<Input className="text-field" value={query} maxLength={30} onChange={(event) => { setQuery(event.target.value); setTablePage(1); }} placeholder={t("Nomor meja")} /></label>
         <Selection label={t("Status meja")} value={filter} onChange={(value) => { setFilter(value); setTablePage(1); }} options={[{ value: "ALL", label: t("Semua") }, ...Object.entries(tableLabels).map(([value, label]) => ({ value, label: t(label) }))]} />
       </div>
-      {!loaded ? <LoadingState className="loading-block" role="status">{t("Memuat meja…")}</LoadingState> : visible.length ? <div className="pos-table-grid">{visible.slice((currentTablePage - 1) * tablePageSize, currentTablePage * tablePageSize).map((table) => <Button className={`pos-table-card ${selectedId === table.id ? "selected" : ""}`} aria-pressed={selectedId === table.id} key={table.id} onClick={() => { setSelectedId(table.id); setSelected(null); }}>
+      {!loaded ? <LoadingState className="loading-block" role="status">{t("Memuat meja…")}</LoadingState> : visible.length ? <div className="pos-table-grid">{visible.slice((currentTablePage - 1) * tablePageSize, currentTablePage * tablePageSize).map((table) => <Button className={`pos-table-card ${selectedId === table.id ? "selected" : ""}`} aria-pressed={selectedId === table.id} key={table.id} onClick={() => selectTable(table.id)}>
         <StatusBadge status={table.status} /><h3>{t("Meja")}{" "}{table.tableNumber}</h3>
         <p>{table.pendingOrderCount} {" "}{t("menunggu ·")}{" "}{table.activeOrderCount} {" "}{t("pesanan aktif")}</p><strong>{money(table.grandTotalIdr)}</strong><span className="pos-card-link">{t("Lihat meja →")}</span>
       </Button>)}</div> : <p className="empty-state">{t("Tidak ada meja yang cocok.")}</p>}
@@ -86,10 +102,10 @@ export function PosOverview() {
       <div className="admin-filters"><Selection label={t("Status pesanan")} value={orderStatus} onChange={(value) => { setOrderStatus(value as Order["status"] | "ALL"); setOrderPage(1); }} options={[{ value: "ALL", label: t("Semua") }, ...orderStatusOptions.map((option) => ({ ...option, label: t(option.label) }))]} /><Selection label={t("Meja")} kind="dropdown" value={orderTable} onChange={(value) => { setOrderTable(value); setOrderPage(1); }} options={[{ value: "", label: t("Semua meja") }, ...tables.map((table) => ({ value: table.id, label: t("Meja {0}", { "0": table.tableNumber }) }))]} /><label>{t("Tanggal")}<Input className="text-field" type="date" value={orderDate} onChange={(event) => { setOrderDate(event.target.value); setOrderPage(1); }} /></label></div>
       {orders.length ? <DataTable caption={t("Inbox pesanan")} columns={[t("Order"), t("Pelanggan"), t("Meja"), t("Waktu pesanan"), t("Status"), t("Tindakan")]}>{orders.map((order) => <tr key={order.id}>
         <th scope="row">{order.id.slice(0, 8)}<small className="table-secondary">{order.source === "QR" ? "QR" : t("Kasir")} {"\u00b7"} {order.itemCount} {t("item")}</small></th><td>{order.customerName}</td><td>{order.tableNumber}</td><td className="date-cell">{formatDateTime(order.createdAt, locale)}</td><td><StatusBadge status={order.status} /></td>
-        <td><div className="admin-row-actions">{order.status === "PENDING" && <Button disabled={busy === order.id} onClick={() => void confirm(order)}>{busy === order.id ? t("Memproses\u2026") : t("Konfirmasi")}</Button>}<Link className="secondary-button" href={`/pos/tables/${order.tableId}`}>{t("Detail")}</Link></div></td>
+        <td><div className="admin-row-actions">{order.status === "PENDING" && <Button disabled={busy === order.id} onClick={() => void confirm(order)}>{busy === order.id ? t("Memproses\u2026") : t("Konfirmasi")}</Button>}<Button className="secondary-button" onClick={() => selectTable(order.tableId)}>{t("Detail")}</Button></div></td>
       </tr>)}</DataTable> : <p className="empty-state">{loaded ? t("Belum ada pesanan pada status ini.") : t("Memuat pesanan\u2026")}</p>}
     </Panel>
     <Pagination label="Navigasi pesanan" pageSize={orderPageSize} onPageSizeChange={setOrderPageSize} page={orderPage} hasNext={hasNext} onChange={setOrderPage} disabled={!!busy} />
-    {selectedId && <DetailPane><div className="detail-heading"><h2>{t("Meja")}{" "}{selected?.tableNumber ?? tables.find((table) => table.id === selectedId)?.tableNumber}</h2><Button className="text-button" onClick={() => setSelectedId("")}>{t("Tutup")}</Button></div>{detailError && <p className="inline-alert" role="alert">{t(detailError)}</p>}{selected?.id === selectedId ? <OrderDetails orders={selected.orders} /> : <p className="loading-block" role="status">{t("Memuat detail...")}</p>}<Link className="primary-button full-width" href={`/pos/tables/${selectedId}`}>{t("Buka meja")}</Link></DetailPane>}
+    {selectedId && <DetailPane>{receipt ? <ReceiptPreview key={receipt.paymentId ?? receipt.sessionId} {...receipt} onClose={() => setReceipt(null)} /> : <><div className="detail-heading"><h2>{t("Meja")} {selected?.tableNumber ?? tables.find((table) => table.id === selectedId)?.tableNumber}</h2><Button className="text-button" onClick={() => setSelectedId("")}>{t("Tutup")}</Button></div>{detailError && <Alert>{t(detailError)}</Alert>}{selected?.id === selectedId ? <><div className="table-session-summary"><div className="money-row"><span>{t("Subtotal menu")}</span><strong>{money(selected.bill?.subtotalIdr ?? "0")}</strong></div><div className="money-row"><span>{t("Total tagihan")}</span><strong>{money(selected.bill?.grandTotalIdr ?? "0")}</strong></div></div><div className="table-quick-actions"><Button disabled={selected.status === "RESERVED"} onClick={() => setWorkspace("ORDER")}>{t("Tambah order")}</Button><Button className="secondary-button" disabled={!selected.session} onClick={() => selected.session && setReceipt({ sessionId: selected.session.id })}>{t("Lihat struk")}</Button><Button className="secondary-button" disabled={!selected.session} onClick={() => selected.session && openPayment(selected.session.id)}>{t("Pembayaran")}</Button></div><OrderDetails orders={selected.orders} /></> : <LoadingState>{t("Memuat detail...")}</LoadingState>}</>}</DetailPane>}
   </div>;
 }

@@ -18,13 +18,13 @@ import { PosBillPreview } from "@/components/pos-bill";
 import { ReceiptPreview } from "@/components/pos-receipt";
 import { OrderItemDeletion } from "@/components/order-item-deletion";
 
-type Table = { id: string; tableNumber: string; status: "AVAILABLE" | "OCCUPIED" | "RESERVED"; session: { id: string; billRevision: string } | null; orders: Order[]; bill: { grandTotalIdr: string } | null };
+export type StaffTable = { id: string; tableNumber: string; status: "AVAILABLE" | "OCCUPIED" | "RESERVED"; session: { id: string; billRevision: string } | null; orders: Order[]; bill: { subtotalIdr: string; grandTotalIdr: string } | null };
 type Menu = { categories: { id: string; name: string; items: { id: string; name: string; description: string | null; imageUrl: string | null; priceIdr: string }[] }[] };
 type Draft = { customerName: string; note: string; cart: CartItem[]; key: string; uncertain?: boolean };
 
-export function PosTable({ tableId }: { tableId: string }) {
+export function PosTable({ tableId, onClose, onPayment, initialManual = false }: { tableId: string; onClose?: () => void; onPayment?: (sessionId: string) => void; initialManual?: boolean }) {
   const { t, money } = useLocale();
-  const [table, setTable] = useState<Table | null>(null);
+  const [table, setTable] = useState<StaffTable | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
   const [draft, setDraft] = useState<Draft>({ customerName: "", note: "", cart: [], key: "" });
   const [ready, setReady] = useState(false);
@@ -34,7 +34,7 @@ export function PosTable({ tableId }: { tableId: string }) {
   const [voidItem, setVoidItem] = useState<Item | null>(null);
   const [closeReason, setCloseReason] = useState("");
   const [closing, setClosing] = useState<"EMPTY" | "ALL_VOID" | null>(null);
-  const [showManual, setShowManual] = useState(false);
+  const [showManual, setShowManual] = useState(initialManual);
   const [receiptSessionId, setReceiptSessionId] = useState("");
   const manualInFlight = useRef(false);
   const { page: menuPage, setPage: setMenuPage, pageSize: menuPageSize, setPageSize: setMenuPageSize } = usePagination();
@@ -45,7 +45,7 @@ export function PosTable({ tableId }: { tableId: string }) {
   const storageKey = `pos-manual:${tableId}`;
 
   const refresh = useCallback(async () => {
-    try { setTable(await adminApi<Table>(`/api/staff/tables/${tableId}`)); setError(""); }
+    try { setTable(await adminApi<StaffTable>(`/api/staff/tables/${tableId}`)); setError(""); }
     catch { setError("Data meja belum tersinkron. Periksa koneksi lalu segarkan."); }
     finally { setReady(true); }
   }, [tableId]);
@@ -115,7 +115,7 @@ export function PosTable({ tableId }: { tableId: string }) {
   const served = items.filter((item) => !item.voided && item.served).length;
   const active = items.filter((item) => !item.voided).length;
   return <div className="admin-stack">
-    <Link className="text-button" href="/pos">{t("← Semua meja")}</Link>
+    {onClose ? <Button className="text-button" disabled={!!busy} onClick={onClose}>{t("← Semua meja")}</Button> : <Link className="text-button" href="/pos">{t("← Semua meja")}</Link>}
     {error && <Alert className="inline-alert" role="alert">{t(error)} <Button className="text-button" onClick={() => void refresh()}>{t("Segarkan")}</Button></Alert>}
     {notice && <Alert toast className="inline-alert info" role="status">{t(notice)}</Alert>}
     {!ready ? <LoadingState className="loading-block" role="status">{t("Memuat detail meja…")}</LoadingState> : !table ? <EmptyState className="empty-state">{t("Meja tidak ditemukan.")}{" "}<Button className="text-button" onClick={() => void refresh()}>{t("Coba lagi")}</Button></EmptyState> : <>
@@ -125,7 +125,7 @@ export function PosTable({ tableId }: { tableId: string }) {
         <div className="pos-summary"><div><span>{t("Total tagihan saat ini")}</span><strong>{money(table.bill?.grandTotalIdr ?? "0")}</strong></div><div><span>{t("Item tersaji")}</span><strong>{served} / {active}</strong></div></div>
         <div className="admin-actions"><Button className="primary-button" disabled={table.status === "RESERVED"} onClick={() => setShowManual((current) => !current)}>{showManual ? t("Tutup form order") : t("Tambah order manual")}</Button>{table.session && <Button className="secondary-button" onClick={() => setReceiptSessionId(table.session?.id ?? "")}>{t("Lihat struk")}</Button>}{allVoid && <Button className="secondary-button danger-text" onClick={() => setClosing("ALL_VOID")}>{t("Tutup sesi tanpa pembayaran")}</Button>}{table.session && !table.orders.length && <Button className="secondary-button danger-text" onClick={() => setClosing("EMPTY")}>{t("Tutup sesi kosong")}</Button>}</div>
       </Panel>
-      {table.session && <PosBillPreview key={table.session.id} sessionId={table.session.id} />}
+      {table.session && <PosBillPreview key={table.session.id} sessionId={table.session.id} onPayment={onPayment} />}
       {showManual && <Panel className="admin-panel"><h2>{t("Order manual")}</h2><p className="muted">{t("Order baru masuk status Menunggu dan perlu dikonfirmasi.")}</p>
         <form onSubmit={(event) => void submitManual(event)}>
           {draft.uncertain && <Alert className="inline-alert info">{t("Pengiriman pesanan sebelumnya belum pasti. Coba lagi sebelum mengubah pesanan.")}</Alert>}

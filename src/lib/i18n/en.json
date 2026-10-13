@@ -1,4 +1,6 @@
 {
+  "Tambah order": "Add order",
+  "Pembayaran": "Payment",
   "Hapus item?": "Delete item?",
   "Item belum tersaji. Alasan tidak diperlukan.": "This item has not been served. No reason is required.",
   "Item sudah tersaji. Alasan retur atau pembatalan wajib diisi.": "This item has been served. A return or cancellation reason is required.",

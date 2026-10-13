@@ -22,7 +22,7 @@ export function BillBreakdown({ quote }: { quote: BillQuote }) {
   </div>;
 }
 
-export function PosBillPreview({ sessionId }: { sessionId: string }) {
+export function PosBillPreview({ sessionId, onPayment }: { sessionId: string; onPayment?: (sessionId: string) => void }) {
   const { t, locale } = useLocale();
   const [quote, setQuote] = useState<BillQuote | null>(null);
   const [error, setError] = useState("");
@@ -42,6 +42,6 @@ export function PosBillPreview({ sessionId }: { sessionId: string }) {
     {changed && <Alert className="inline-alert info" role="status">{t("Tagihan diperbarui. Periksa total terbaru sebelum pembayaran.")}</Alert>}
     {!quote ? <p className="muted">{t("Memuat tagihan…")}</p> : <><BillBreakdown quote={quote} /><p className="muted pos-bill-meta">{t("Revisi")}{" "}{quote.sessionRevision} {" "}{t("· Pengaturan")}{" "}{quote.settingsVersion} {" "}{t("· Dihitung")}{" "}{new Date(quote.calculatedAt).toLocaleTimeString(locale === "en" ? "en-GB" : "id-ID", { timeZone: "Asia/Jakarta" })}</p>
       {!quote.paymentEligible && <p className="muted">{quote.blockingOrders.length ? t("{0} pesanan belum selesai disajikan.", { "0": quote.blockingOrders.length }) : t("Belum ada item yang dapat dibayar.")}</p>}
-      <Link className="primary-button" href={`/pos/payments/${sessionId}`}>{t("Lihat tagihan & pembayaran")}</Link></>}
+      {onPayment ? <Button onClick={() => onPayment(sessionId)}>{t("Pembayaran")}</Button> : <Link className="primary-button" href={`/pos/payments/${sessionId}`}>{t("Lihat tagihan & pembayaran")}</Link>}</>}
   </Panel>;
 }
