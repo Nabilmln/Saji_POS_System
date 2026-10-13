@@ -1,4 +1,10 @@
 {
+  "Terima kasih, {0}!": "Thank you, {0}!",
+  "Pembayaran telah dikonfirmasi kasir.": "Your payment has been confirmed by the cashier.",
+  "Senang menyambut Anda di sini. Sampai jumpa lagi!": "It was lovely having you here. We hope to see you again!",
+  "Ingin memesan lagi? Pindai ulang QR di meja untuk memulai sesi baru.": "Ordering again? Scan the table QR again to start a new session.",
+  "Sesi pemesanan telah berakhir.": "Your ordering session has ended.",
+  "Sesi ini ditutup tanpa pembayaran.": "This session was closed without payment.",
   "{0} pesanan belum tersaji seluruhnya. Selesaikan checklist di panel rincian.": "{0} orders are not fully served. Complete the checklist in the details panel.",
   "Tambah order": "Add order",
   "Pembayaran": "Payment",

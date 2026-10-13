@@ -16,6 +16,7 @@ export async function GET(request: Request, context: { params: Promise<{ orderId
     orderId: orders.id, tableNumber: diningTables.tableNumber,
     customerName: orders.customerName, status: orders.status,
     voidedAt: orders.voidedAt, updatedAt: orders.updatedAt,
+    closedAt: tableSessions.closedAt, closureReason: tableSessions.closureReason,
   }).from(orders)
     .innerJoin(tableSessions, eq(orders.sessionId, tableSessions.id))
     .innerJoin(diningTables, eq(tableSessions.tableId, diningTables.id))
@@ -29,6 +30,7 @@ export async function GET(request: Request, context: { params: Promise<{ orderId
     orderId: order.orderId, tableNumber: order.tableNumber,
     customerName: order.customerName, status: order.status,
     voided: order.voidedAt !== null, updatedAt: order.updatedAt,
+    session: { status: !order.closedAt ? "OPEN" : order.closureReason === "PAID" ? "PAID" : "CLOSED", closedAt: order.closedAt },
     items: items.map((item) => ({
       menuName: item.menuName, quantity: item.quantity,
       served: item.servedAt !== null, voided: item.voidedAt !== null,

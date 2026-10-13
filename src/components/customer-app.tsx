@@ -11,6 +11,8 @@ import { MenuCard } from "@/components/menu-card";
 import { Selection, LoadingState, EmptyState, Button, Alert, Input, Pagination } from "@/components/ui/controls";
 import { CustomerShell } from "@/components/app-shells";
 import { cartSubtotal, changeCart, type CartItem } from "@/lib/customer/cart";
+import { usePolling } from "@/lib/use-polling";
+import { CustomerCompletion } from "@/components/customer-completion";
 
 type Table = { tableNumber: string; cycleNumber: number; status: string };
 type MenuItem = { id: string; name: string; description: string | null; imageUrl: string | null; priceIdr: string };
@@ -21,7 +23,9 @@ type OwnOrder = { id: string; token: string };
 type OrderStatus = {
   orderId: string; tableNumber: string; customerName: string; status: "PENDING" | "PREPARING" | "SERVED";
   voided: boolean; updatedAt: string; items: { menuName: string; quantity: number; served: boolean; voided: boolean }[];
+  session: { status: "OPEN" | "PAID" | "CLOSED"; closedAt: string | null };
 };
+type Completion = { status: "PAID" | "CLOSED"; customerName: string; tableNumber: string };
 type ApiResult<T> = { data: T } | { error: { code: string; message: string } };
 type View = "menu" | "cart" | "status";
 
@@ -76,9 +80,25 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [uncertain, setUncertain] = useState(false);
   const checkoutInFlight = useRef(false);
+  const statusRequests = useRef<AbortController | null>(null);
+  const [completion, setCompletion] = useState<Completion | null>(null);
+  const visitEnded = useRef(false);
+
+  useEffect(() => {
+    const controller = new AbortController(); statusRequests.current = controller;
+    return () => controller.abort();
+  }, [storage, view]);
 
   useEffect(() => {
     let active = true;
+    const finished = readSession<Completion | null>(`${storage}:completion`, null);
+    if (finished && view !== "menu") {
+      visitEnded.current = true;
+      const timer = window.setTimeout(() => { setCompletion(finished); setLoading(false); }, 0);
+      return () => { active = false; window.clearTimeout(timer); };
+    }
+    // The QR's menu URL is the entry point for a new visit after completion.
+    if (finished && view === "menu") sessionStorage.removeItem(`${storage}:completion`);
     api<Table>(`/api/public/tables/${encodeURIComponent(tableToken)}`)
       .then((data) => {
         if (!active) return;
@@ -87,8 +107,10 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
         if (savedGuest?.cycleNumber === data.cycleNumber && savedGuest.guestToken) setGuest(savedGuest);
         else { sessionStorage.removeItem(`${storage}:guest`); sessionStorage.removeItem(`${storage}:cart`); }
         setCart(savedGuest?.cycleNumber === data.cycleNumber ? readSession<CartItem[]>(`${storage}:cart`, []) : []);
-        setOrders(readSession<OwnOrder[]>(`${storage}:orders`, []));
-        setUncertain(Boolean(sessionStorage.getItem(`${storage}:requestKey`)));
+        const newVisit = view === "menu" && savedGuest && savedGuest.cycleNumber !== data.cycleNumber;
+        if (newVisit) for (const key of ["orders", "requestKey", "placed"]) sessionStorage.removeItem(`${storage}:${key}`);
+        setOrders(newVisit ? [] : readSession<OwnOrder[]>(`${storage}:orders`, []));
+        setUncertain(!newVisit && Boolean(sessionStorage.getItem(`${storage}:requestKey`)));
         if (view === "status" && sessionStorage.getItem(`${storage}:placed`) === "1") {
           setPlaced(true); sessionStorage.removeItem(`${storage}:placed`);
         }
@@ -125,37 +147,48 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
   }, [guest, view, menu, loadMenu]);
 
   const refreshStatuses = useCallback(async () => {
+    if (loading || completion) return;
     const saved = readSession<OwnOrder[]>(`${storage}:orders`, []);
     if (!saved.length) return;
+    const signal = statusRequests.current?.signal;
     const results = await Promise.allSettled(saved.map((order) =>
       api<OrderStatus>(`/api/public/orders/${encodeURIComponent(order.id)}`, {
-        headers: { Authorization: `Bearer ${order.token}` },
+        headers: { Authorization: `Bearer ${order.token}` }, signal,
       }),
     ));
+    if (signal?.aborted) return;
+    const finished = results.find((result) => result.status === "fulfilled" && result.value.session.status !== "OPEN");
+    if (finished?.status === "fulfilled" && finished.value.session.status !== "OPEN") {
+      visitEnded.current = true;
+      const end: Completion = { status: finished.value.session.status, customerName: finished.value.customerName, tableNumber: finished.value.tableNumber };
+      try {
+        sessionStorage.setItem(`${storage}:completion`, JSON.stringify(end));
+        for (const key of ["guest", "cart", "orders", "requestKey", "placed"]) sessionStorage.removeItem(`${storage}:${key}`);
+      } catch { /* Server cycle checks still reject the expired ordering credentials. */ }
+      statusRequests.current?.abort();
+      setCompletion(end); setGuest(null); setCart([]); setMenu(null); setOrders([]); setStatuses({}); setUncertain(false); setPlaced(false); setError("");
+      if (view !== "status") router.replace(`${base}/status`);
+      return;
+    }
     const next: Record<string, OrderStatus> = {};
     results.forEach((result, index) => { if (result.status === "fulfilled") next[saved[index].id] = result.value; });
     setStatuses(next);
     if (results.some((result) => result.status === "rejected")) setError("Sebagian status tidak dapat dimuat. Coba segarkan halaman.");
     else setError("");
     if (results.some((result) => result.status === "fulfilled")) setUpdatedAt(new Date());
-  }, [storage]);
-
-  useEffect(() => {
-    if (view !== "status" || loading) return;
-    const first = window.setTimeout(() => void refreshStatuses(), 0);
-    const interval = window.setInterval(() => void refreshStatuses(), 5000);
-    return () => { window.clearTimeout(first); window.clearInterval(interval); };
-  }, [view, loading, refreshStatuses]);
+  }, [storage, loading, completion, view, router, base]);
+  usePolling(refreshStatuses);
 
   async function submitName(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!table || !name.trim()) return;
+    if (!table || !name.trim() || visitEnded.current) return;
     setBusy(true); setError("");
     try {
       const result = await api<Guest>(`/api/public/tables/${encodeURIComponent(tableToken)}/guests`, {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ customerName: name.trim(), expectedCycleNumber: table.cycleNumber }),
       });
+      if (visitEnded.current) return;
       sessionStorage.setItem(`${storage}:guest`, JSON.stringify(result));
       sessionStorage.removeItem(`${storage}:cart`);
       sessionStorage.removeItem(`${storage}:orders`);
@@ -166,7 +199,7 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
   }
 
   function editCart(item: CartItem, quantity: number) {
-    if (uncertain || busy) return;
+    if (uncertain || busy || visitEnded.current) return;
     const next = changeCart(cart, item, quantity);
     sessionStorage.setItem(`${storage}:cart`, JSON.stringify(next));
     setCart(next);
@@ -174,7 +207,7 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
   }
 
   async function checkout() {
-    if (!table || !guest || !cart.length || checkoutInFlight.current) return;
+    if (!table || !guest || !cart.length || checkoutInFlight.current || visitEnded.current) return;
     checkoutInFlight.current = true;
     setBusy(true); setError("");
     const requestKey = sessionStorage.getItem(`${storage}:requestKey`) ?? crypto.randomUUID();
@@ -188,6 +221,7 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
           items: cart.map((item) => ({ menuItemId: item.id, quantity: item.quantity, ...(item.note.trim() ? { note: item.note.trim() } : {}) })),
         }),
       });
+      if (visitEnded.current) return;
       const nextOrders = [...orders.filter((order) => order.id !== result.orderId), { id: result.orderId, token: result.orderViewToken }];
       sessionStorage.setItem(`${storage}:orders`, JSON.stringify(nextOrders));
       sessionStorage.setItem(`${storage}:placed`, "1");
@@ -204,6 +238,7 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
   }
 
   if (loading) return <CustomerShell><LoadingState className="loading-block" role="status">{t("Memeriksa kode QR meja…")}</LoadingState></CustomerShell>;
+  if (completion) return <CustomerShell tableNumber={completion.tableNumber}><CustomerCompletion paid={completion.status === "PAID"} customerName={completion.customerName} /></CustomerShell>;
   if (!table && view !== "status") return <CustomerShell><EmptyState className="empty-state"><h1>{t("Meja tidak ditemukan")}</h1><p>{error || t("Kode QR tidak valid.")}</p></EmptyState></CustomerShell>;
 
   const footer = view === "menu" && guest && cart.length > 0

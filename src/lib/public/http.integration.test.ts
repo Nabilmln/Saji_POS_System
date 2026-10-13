@@ -84,7 +84,7 @@ it.skipIf(!databaseUrl || !apiBaseUrl || !process.env.CUSTOMER_TOKEN_SECRET)("en
       headers: { Authorization: `Bearer ${ownToken}` },
     });
     expect(own.status).toBe(200);
-    expect((await own.json()).data).toMatchObject({ orderId: ownOrderId, customerName: "Aulia" });
+    expect((await own.json()).data).toMatchObject({ orderId: ownOrderId, customerName: "Aulia", session: { status: "OPEN", closedAt: null } });
     const other = await fetch(`${apiBaseUrl}/api/public/orders/${otherOrderId}`, {
       headers: { Authorization: `Bearer ${ownToken}` },
     });
