@@ -8,8 +8,9 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { adminApi, AdminApiError, jsonRequest } from "@/lib/admin/client";
 import { changeCart, cartSubtotal, type CartItem } from "@/lib/customer/cart";
+import { LIST_PAGE_SIZE } from "@/lib/pagination";
 import { MenuCard } from "@/components/menu-card";
-import { Selection, Alert, Button, LoadingState, EmptyState, Panel, Input, Textarea } from "@/components/ui/controls";
+import { Selection, Alert, Button, LoadingState, EmptyState, Panel, Input, Textarea, Pagination } from "@/components/ui/controls";
 import { DetailPane } from "@/components/app-shells";
 import { OrderDetails, type OrderItem as Item, type StaffOrder as Order } from "@/components/order-details";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
@@ -34,7 +35,11 @@ export function PosTable({ tableId }: { tableId: string }) {
   const [closeReason, setCloseReason] = useState("");
   const [closing, setClosing] = useState<"EMPTY" | "ALL_VOID" | null>(null);
   const [showManual, setShowManual] = useState(false);
+  const [menuPage, setMenuPage] = useState(1);
   const [search, setSearch] = useState("");
+  const filteredMenuItems = menu?.categories.flatMap((category) => category.items).filter((item) => item.name.toLocaleLowerCase("id-ID").includes(search.trim().toLocaleLowerCase("id-ID"))) ?? [];
+  const currentMenuPage = Math.min(menuPage, Math.max(1, Math.ceil(filteredMenuItems.length / LIST_PAGE_SIZE)));
+  const visibleMenuIds = new Set(filteredMenuItems.slice((currentMenuPage - 1) * LIST_PAGE_SIZE, currentMenuPage * LIST_PAGE_SIZE).map((item) => item.id));
   const storageKey = `pos-manual:${tableId}`;
 
   const refresh = useCallback(async () => {
@@ -112,7 +117,7 @@ export function PosTable({ tableId }: { tableId: string }) {
   return <div className="admin-stack">
     <Link className="text-button" href="/pos">{t("← Semua meja")}</Link>
     {error && <Alert className="inline-alert" role="alert">{t(error)} <Button className="text-button" onClick={() => void refresh()}>{t("Segarkan")}</Button></Alert>}
-    {notice && <Alert className="inline-alert info" role="status">{t(notice)}</Alert>}
+    {notice && <Alert toast className="inline-alert info" role="status">{t(notice)}</Alert>}
     {!ready ? <LoadingState className="loading-block" role="status">{t("Memuat detail meja…")}</LoadingState> : !table ? <EmptyState className="empty-state">{t("Meja tidak ditemukan.")}{" "}<Button className="text-button" onClick={() => void refresh()}>{t("Coba lagi")}</Button></EmptyState> : <>
       <Panel className="admin-panel">
         <div className="admin-section-head"><div><h2>{t("Meja")}{" "}{table.tableNumber}</h2></div><Button className="secondary-button" onClick={() => void refresh()}>{t("Segarkan")}</Button></div>
@@ -124,15 +129,16 @@ export function PosTable({ tableId }: { tableId: string }) {
       {showManual && <Panel className="admin-panel"><h2>{t("Order manual")}</h2><p className="muted">{t("Order baru masuk status Menunggu dan perlu dikonfirmasi.")}</p>
         <form onSubmit={(event) => void submitManual(event)}>
           <div className="admin-form-grid"><label>{t("Nama pelanggan / label")}<Input className="text-field" required maxLength={120} value={draft.customerName} onChange={(event) => editDraft({ customerName: event.target.value })} /></label><label>{t("Catatan order (opsional)")}<Input className="text-field" maxLength={500} value={draft.note} onChange={(event) => editDraft({ note: event.target.value })} /></label></div>
-          <label className="field-label">{t("Cari menu")}<Input className="text-field" value={search} onChange={(event) => setSearch(event.target.value)} placeholder={t("Nama menu")} /></label>
+          <label className="field-label">{t("Cari menu")}<Input className="text-field" value={search} onChange={(event) => { setSearch(event.target.value); setMenuPage(1); }} placeholder={t("Nama menu")} /></label>
           {!menu ? <p className="muted">{t("Memuat menu…")}{" "}<Button type="button" className="text-button" onClick={() => { setMenu(null); adminApi<Menu>("/api/staff/menus").then(setMenu).catch(() => setError("Menu belum dapat dimuat.")); }}>{t("Coba lagi")}</Button></p> : menu.categories.map((category) => {
-            const listed = category.items.filter((item) => item.name.toLowerCase().includes(search.trim().toLowerCase()));
+            const listed = category.items.filter((item) => visibleMenuIds.has(item.id));
             return listed.length ? <div key={category.id} className="pos-menu-group"><h3>{category.name}</h3><div className="menu-grid">{listed.map((item) => {
               const selected = draft.cart.find((entry) => entry.id === item.id);
               const cartItem: CartItem = { id: item.id, name: item.name, priceIdr: item.priceIdr, quantity: selected?.quantity ?? 0, note: selected?.note ?? "" };
               return <MenuCard key={item.id} menu={item} className="pos-menu-card"><div className="stepper"><Button type="button" aria-label={t("Kurangi {0}", { "0": item.name })} disabled={!selected} onClick={() => editDraft({ cart: changeCart(draft.cart, cartItem, cartItem.quantity - 1) })}>−</Button><span>{cartItem.quantity}</span><Button type="button" aria-label={t("Tambah {0}", { "0": item.name })} disabled={cartItem.quantity >= 99} onClick={() => editDraft({ cart: changeCart(draft.cart, cartItem, cartItem.quantity + 1) })}>+</Button></div></MenuCard>;
             })}</div></div> : null;
           })}
+          {menu && <Pagination page={currentMenuPage} hasNext={currentMenuPage * LIST_PAGE_SIZE < filteredMenuItems.length} total={filteredMenuItems.length} onChange={setMenuPage} />}
           {draft.cart.length > 0 && <div className="summary-card"><h3>{t("Ringkasan order")}</h3>{draft.cart.map((item) => <div className="cart-row" key={item.id}><div className="cart-row-head"><strong>{item.quantity}× {item.name}</strong><span>{money(BigInt(item.priceIdr) * BigInt(item.quantity))}</span></div><Input className="text-field cart-note" aria-label={t("Catatan {0}", { "0": item.name })} maxLength={500} placeholder={t("Catatan item (opsional)")} value={item.note} onChange={(event) => editDraft({ cart: draft.cart.map((entry) => entry.id === item.id ? { ...entry, note: event.target.value } : entry) })} /></div>)}<div className="money-row"><strong>{t("Subtotal menu")}</strong><strong>{money(cartSubtotal(draft.cart))}</strong></div></div>}
           <div className="admin-actions"><Button className="primary-button" disabled={busy === "manual" || !draft.cart.length || !menu}>{busy === "manual" ? t("Menyimpan…") : t("Simpan order Menunggu")}</Button></div>
         </form>

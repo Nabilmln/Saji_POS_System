@@ -6,8 +6,9 @@ import { StatusBadge } from "@/components/ui/status-badge";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { LIST_PAGE_SIZE } from "@/lib/pagination";
 import { MenuCard } from "@/components/menu-card";
-import { Selection, LoadingState, EmptyState, Button, Alert, Input } from "@/components/ui/controls";
+import { Selection, LoadingState, EmptyState, Button, Alert, Input, Pagination } from "@/components/ui/controls";
 import { CustomerShell } from "@/components/app-shells";
 import { cartSubtotal, changeCart, type CartItem } from "@/lib/customer/cart";
 
@@ -65,6 +66,7 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
   const [orders, setOrders] = useState<OwnOrder[]>([]);
   const [statuses, setStatuses] = useState<Record<string, OrderStatus>>({});
   const [name, setName] = useState("");
+  const [menuPage, setMenuPage] = useState(1);
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -99,6 +101,9 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
     if (table && guest) sessionStorage.setItem(`${storage}:cart`, JSON.stringify(cart));
   }, [cart, guest, storage, table]);
 
+  const filteredMenuItems = menu?.categories.filter((category) => (!categoryId || category.id === categoryId)).flatMap((category) => category.items).filter((item) => item.name.toLocaleLowerCase("id-ID").includes(search.trim().toLocaleLowerCase("id-ID"))) ?? [];
+  const currentMenuPage = Math.min(menuPage, Math.max(1, Math.ceil(filteredMenuItems.length / LIST_PAGE_SIZE)));
+  const visibleMenuIds = new Set(filteredMenuItems.slice((currentMenuPage - 1) * LIST_PAGE_SIZE, currentMenuPage * LIST_PAGE_SIZE).map((item) => item.id));
   const loadMenu = useCallback(async (token: string) => {
     setError("");
     try {
@@ -257,12 +262,12 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
       <p className="context-label">{t("MEJA")}{" "}{table.tableNumber} {" "}{t("· HAI,")}{" "}{guest.customerName.toUpperCase()}</p><h1>{t("Pilih yang Anda suka.")}</h1><p className="section-intro">{t("Menu yang tersedia hari ini. Tambahkan pilihan Anda ke keranjang.")}</p>
       {uncertain && <Alert className="inline-alert" role="alert">{t("Pengiriman pesanan sebelumnya belum pasti. Buka keranjang dan coba lagi sebelum mengubah pesanan.")}{" "}<Button className="text-button" onClick={() => router.push(`${base}/cart`)}>{t("Buka keranjang")}</Button></Alert>}
       {orders.length > 0 && <Button className="text-button" onClick={() => router.push(`${base}/status`)}>{t("Lihat status pesanan saya →")}</Button>}
-      <div className="menu-tools"><label htmlFor="menu-search" className="field-label">{t("Cari menu")}</label><Input id="menu-search" className="text-field" type="search" placeholder={t("Cari nama hidangan…")} value={search} onChange={(event) => setSearch(event.target.value)} />
-        {menu && <Selection label={t("Kategori")} value={categoryId} onChange={setCategoryId} options={[{ value: "", label: t("Semua") }, ...menu.categories.map((category) => ({ value: category.id, label: category.name }))]} />}</div>
+      <div className="menu-tools"><label htmlFor="menu-search" className="field-label">{t("Cari menu")}</label><Input id="menu-search" className="text-field" type="search" placeholder={t("Cari nama hidangan…")} value={search} onChange={(event) => { setSearch(event.target.value); setMenuPage(1); }} />
+        {menu && <Selection label={t("Kategori")} value={categoryId} onChange={(value) => { setCategoryId(value); setMenuPage(1); }} options={[{ value: "", label: t("Semua") }, ...menu.categories.map((category) => ({ value: category.id, label: category.name }))]} />}</div>
       {error && <Alert className="inline-alert" role="alert">{t(error)}<Button className="text-button" onClick={() => guest && void loadMenu(guest.guestToken)}>{t("Coba lagi")}</Button></Alert>}
       {!menu && !error && <LoadingState className="loading-block" role="status">{t("Memuat menu…")}</LoadingState>}
       {menu && menu.categories.filter((category) => !categoryId || category.id === categoryId).map((category) => {
-        const items = category.items.filter((item) => item.name.toLocaleLowerCase("id-ID").includes(search.toLocaleLowerCase("id-ID")));
+        const items = category.items.filter((item) => visibleMenuIds.has(item.id));
         if (!items.length) return null;
         return <section className="menu-section" key={category.id}><div className="menu-section-heading"><h2>{category.name}</h2><span className="muted">{items.length} {" "}{t("menu")}</span></div><div className="menu-list menu-grid">{items.map((item) => {
           const current = cart.find((entry) => entry.id === item.id);
@@ -271,6 +276,7 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
           </MenuCard>;
         })}</div></section>;
       })}
+      {menu && <Pagination page={currentMenuPage} hasNext={currentMenuPage * LIST_PAGE_SIZE < filteredMenuItems.length} total={filteredMenuItems.length} onChange={setMenuPage} />}
       {menu && !menu.categories.some((category) => (!categoryId || category.id === categoryId) && category.items.some((item) => item.name.toLocaleLowerCase("id-ID").includes(search.toLocaleLowerCase("id-ID")))) && <EmptyState className="empty-state"><h2>{t("Menu tidak ditemukan")}</h2><p>{t("Coba kata lain atau pilih kategori berbeda.")}</p></EmptyState>}
     </>}
   </CustomerShell>;

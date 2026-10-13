@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale } from "@/components/locale-provider";
+import { formatDateTime } from "@/lib/time";
 
 import { Alert, Button, LoadingState, Input } from "@/components/ui/controls";
 
@@ -74,7 +75,7 @@ export function BillingSettings() {
 
   return <div className="admin-stack">
     <p className="section-intro">{t("Atur diskon nominal dan pajak. Nilai baru berlaku pada tagihan yang belum lunas saat dihitung ulang.")}</p>
-    {notice && <Alert className="inline-alert info" role="status">{t(notice)}</Alert>}
+    {notice && <Alert toast className="inline-alert info" role="status">{t(notice)}</Alert>}
     {error && <Alert className="inline-alert" role="alert">{t(error)} {conflict && <Button className="text-button" onClick={() => { setRevision((value) => value + 1); setConflict(false); }}>{t("Muat pengaturan terbaru")}</Button>}</Alert>}
     {!draft || !applied ? <LoadingState className="loading-block" role="status">{t("Memuat pengaturan…")}</LoadingState> : <form onSubmit={save} className="admin-settings-grid">
       <div className="admin-stack"><Section id="discount-settings" title={t("Diskon nominal")}>
@@ -88,7 +89,7 @@ export function BillingSettings() {
           <label className="field-label" htmlFor="tax-percent">{t("Tarif pajak (%)")}</label>
           <Input className="text-field" id="tax-percent" inputMode="decimal" pattern="(100(\.0{1,2})?|[0-9]{1,2}(\.[0-9]{1,2})?)" required value={draft.taxPercent} onChange={(event) => setDraft({ ...draft, taxPercent: event.target.value })} />
         </div>
-        </Section><Section id="save-settings" title={t("Tinjau dan simpan")}><p className="muted">{t("Versi aktif:")}{" "}{applied.version} {" "}{t("· Terakhir diperbarui")}{" "}{new Date(applied.updatedAt).toLocaleString(locale === "en" ? "en-GB" : "id-ID", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Jakarta" })} {" "}{t("WIB")}</p>
+        </Section><Section id="save-settings" title={t("Tinjau dan simpan")}><p className="muted">{t("Versi aktif:")}{" "}{applied.version} {" "}{t("· Terakhir diperbarui")}{" "}{formatDateTime(applied.updatedAt, locale)} {" "}{t("WIB")}</p>
         <p className="muted">{t("Perubahan akan memengaruhi tagihan meja yang belum lunas.")}</p>
         <Button className="primary-button" disabled={busy || conflict || !changed}>{busy ? t("Menyimpan…") : t("Simpan Perubahan")}</Button>
       </Section></div>
