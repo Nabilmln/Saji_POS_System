@@ -3,6 +3,9 @@ import { LoadingState } from "@/components/ui/controls";
 import { Suspense } from "react";
 import { PosPayment } from "@/components/pos-payment";
 
+// The staff layout defers this segment until its client-side access check finishes.
+export const instant = false;
+
 async function Content({ params }: { params: Promise<{ sessionId: string }> }) {
   const { sessionId } = await params;
   return <PosPayment key={sessionId} sessionId={sessionId} />;
