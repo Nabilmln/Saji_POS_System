@@ -1,4 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
+import { randomUUID } from "node:crypto";
 import { test, expect, signIn, call } from "./fixtures";
 
 test("table quick actions add orders, preview receipts and pay without navigating", async ({ page, data }, testInfo) => {
@@ -47,4 +48,41 @@ test("table quick actions add orders, preview receipts and pay without navigatin
   await expect(pane.locator(".pos-receipt")).toContainText("Paid");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath("quick-actions-paid-mobile.png"), fullPage: true });
+});
+
+test("bill follows the order list and table actions stay at the bottom while details scroll", async ({ page, data }, testInfo) => {
+  await signIn(page);
+  for (let index = 0; index < 10; index++) {
+    const key = randomUUID();
+    expect((await call(page.request, `/staff/tables/${data.tableId}/orders`, "POST", {
+      clientRequestKey: key, customerName: `Guest ${index + 1}`, items: [{ menuItemId: data.menuId, quantity: 1 }],
+    }, key)).status()).toBe(201);
+  }
+  for (const route of ["/pos", `/pos/tables/${data.tableId}`]) {
+    await page.goto(route);
+    if (route === "/pos") await page.getByRole("button", { name: new RegExp(data.tableNumber) }).click();
+    const pane = page.locator(".workspace-detail");
+    for (const width of [1440, 390]) {
+      await page.setViewportSize({ width, height: 844 });
+      await page.getByRole("button", { name: width === 390 ? "English" : "Bahasa Indonesia", exact: true }).click();
+      await expect(pane.locator(".pos-item")).toHaveCount(10);
+      const content = pane.locator(".detail-pane-content"), footer = pane.locator(".detail-pane-footer");
+      await expect(footer.getByRole("button", { name: /^(Lihat struk|View receipt)$/ })).toBeVisible();
+      await expect(pane.getByRole("heading", { name: /^(Rincian tagihan|Bill details)$/ })).toHaveCount(1);
+      await expect(page.locator(".staff-content .pos-bill-lines")).toHaveCount(0);
+      expect(await content.evaluate((element) => element.querySelector(".order-details")!.compareDocumentPosition(element.querySelector(".pos-bill-lines")!) & Node.DOCUMENT_POSITION_FOLLOWING)).toBeTruthy();
+      await pane.scrollIntoViewIfNeeded();
+      await content.evaluate((element) => { element.scrollTop = 0; });
+      const before = await footer.boundingBox();
+      await content.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+      const after = await footer.boundingBox();
+      expect(Math.abs(before!.y - after!.y)).toBeLessThan(1);
+      expect(await content.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+      expect(after!.y + after!.height).toBeLessThanOrEqual(844);
+      await expect(pane.locator(".pos-bill-total")).toContainText(width === 390 ? /250,000/ : /250\.000/);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+      await page.screenshot({ path: testInfo.outputPath(`bill-footer-${route === "/pos" ? "overview" : "table"}-${width}.png`), fullPage: true });
+    }
+  }
 });

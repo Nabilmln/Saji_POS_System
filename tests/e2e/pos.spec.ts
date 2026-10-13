@@ -25,7 +25,7 @@ test("two guests share one bill, stale review stops payment, and a lost response
   await expect(page.getByRole("button", { name: /^Tersaji:/ }).nth(1)).toHaveAttribute("aria-pressed", "true");
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   await page.screenshot({ path: testInfo.outputPath("cashier-orders-right.png"), fullPage: true });
-  await page.getByRole("link", { name: "Lihat tagihan & pembayaran" }).click();
+  await page.getByRole("link", { name: "Pembayaran", exact: true }).click();
   await page.getByLabel("Uang diterima (Rp)").fill("1");
   await page.getByRole("checkbox", { name: /Saya sudah memeriksa/ }).check();
   await expect(page.getByRole("button", { name: "Konfirmasi pembayaran", exact: true })).toBeDisabled();

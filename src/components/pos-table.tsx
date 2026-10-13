@@ -15,6 +15,7 @@ import { DetailPane } from "@/components/app-shells";
 import { OrderDetails, type OrderItem as Item, type StaffOrder as Order } from "@/components/order-details";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { PosBillPreview } from "@/components/pos-bill";
+import { PosTableActions } from "@/components/pos-table-actions";
 import { ReceiptPreview } from "@/components/pos-receipt";
 import { OrderItemDeletion } from "@/components/order-item-deletion";
 
@@ -112,8 +113,6 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
   }
   const items = table?.orders.flatMap((order) => order.items) ?? [];
   const allVoid = Boolean(table?.session && items.length && items.every((item) => item.voided));
-  const served = items.filter((item) => !item.voided && item.served).length;
-  const active = items.filter((item) => !item.voided).length;
   return <div className="admin-stack">
     {onClose ? <Button className="text-button" disabled={!!busy} onClick={onClose}>{t("← Semua meja")}</Button> : <Link className="text-button" href="/pos">{t("← Semua meja")}</Link>}
     {error && <Alert className="inline-alert" role="alert">{t(error)} <Button className="text-button" onClick={() => void refresh()}>{t("Segarkan")}</Button></Alert>}
@@ -122,10 +121,8 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
       <Panel className="admin-panel">
         <div className="admin-section-head"><div><h2>{t("Meja")}{" "}{table.tableNumber}</h2></div><Button className="secondary-button" onClick={() => void refresh()}>{t("Segarkan")}</Button></div>
         <p className="muted">{table.status === "AVAILABLE" ? t("Tersedia") : table.status === "RESERVED" ? t("Dipesan · check-in diperlukan sebelum order manual") : t("Terisi")}{table.session ? t(" · Sesi {0}", { "0": table.session.id.slice(0, 8) }) : ""}</p>
-        <div className="pos-summary"><div><span>{t("Total tagihan saat ini")}</span><strong>{money(table.bill?.grandTotalIdr ?? "0")}</strong></div><div><span>{t("Item tersaji")}</span><strong>{served} / {active}</strong></div></div>
-        <div className="admin-actions"><Button className="primary-button" disabled={table.status === "RESERVED"} onClick={() => setShowManual((current) => !current)}>{showManual ? t("Tutup form order") : t("Tambah order manual")}</Button>{table.session && <Button className="secondary-button" onClick={() => setReceiptSessionId(table.session?.id ?? "")}>{t("Lihat struk")}</Button>}{allVoid && <Button className="secondary-button danger-text" onClick={() => setClosing("ALL_VOID")}>{t("Tutup sesi tanpa pembayaran")}</Button>}{table.session && !table.orders.length && <Button className="secondary-button danger-text" onClick={() => setClosing("EMPTY")}>{t("Tutup sesi kosong")}</Button>}</div>
+        <div className="admin-actions">{allVoid && <Button className="secondary-button danger-text" onClick={() => setClosing("ALL_VOID")}>{t("Tutup sesi tanpa pembayaran")}</Button>}{table.session && !table.orders.length && <Button className="secondary-button danger-text" onClick={() => setClosing("EMPTY")}>{t("Tutup sesi kosong")}</Button>}</div>
       </Panel>
-      {table.session && <PosBillPreview key={table.session.id} sessionId={table.session.id} onPayment={onPayment} />}
       {showManual && <Panel className="admin-panel"><h2>{t("Order manual")}</h2><p className="muted">{t("Order baru masuk status Menunggu dan perlu dikonfirmasi.")}</p>
         <form onSubmit={(event) => void submitManual(event)}>
           {draft.uncertain && <Alert className="inline-alert info">{t("Pengiriman pesanan sebelumnya belum pasti. Coba lagi sebelum mengubah pesanan.")}</Alert>}
@@ -146,11 +143,11 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
           <div className="admin-actions"><Button className="primary-button" disabled={busy === "manual" || !draft.cart.length || !menu}>{busy === "manual" ? t("Menyimpan…") : draft.uncertain ? t("Coba Lagi dengan Aman") : t("Simpan order Menunggu")}</Button></div>
         </form>
       </Panel>}
-      <DetailPane>{table.session && receiptSessionId === table.session.id ? <ReceiptPreview key={table.session.id} sessionId={table.session.id} onClose={() => setReceiptSessionId("")} /> : <OrderDetails orders={table.orders} busy={busy}
+      <DetailPane footer={table.session && receiptSessionId === table.session.id ? undefined : <PosTableActions sessionId={table.session?.id} reserved={table.status === "RESERVED"} busy={Boolean(busy)} paymentDisabled={Boolean(draft.uncertain)} addLabel={showManual ? "Tutup form order" : "Tambah order manual"} onAddOrder={() => setShowManual((current) => !current)} onReceipt={() => setReceiptSessionId(table.session?.id ?? "")} onPayment={onPayment} />}>{table.session && receiptSessionId === table.session.id ? <ReceiptPreview key={table.session.id} sessionId={table.session.id} onClose={() => setReceiptSessionId("")} /> : <><OrderDetails orders={table.orders} busy={busy}
         onConfirm={(id) => void mutate(`/api/staff/orders/${id}/confirm`, jsonRequest("POST", {}), `confirm:${id}`)}
         onServe={(id) => void mutate(`/api/staff/order-items/${id}/served`, jsonRequest("PATCH", { served: true }), `served:${id}`)}
         onVoid={setVoidItem}
-      />}</DetailPane>
+      />{table.session && <PosBillPreview key={table.session.id} sessionId={table.session.id} />}</>}</DetailPane>
       {voidItem && <OrderItemDeletion key={voidItem.id} item={voidItem} onClose={() => setVoidItem(null)} onDeleted={refresh} />}
       {closing && table.session && <ConfirmationDialog titleId="close-title" onClose={() => setClosing(null)}><h2 id="close-title">{t("Tutup sesi tanpa pembayaran?")}</h2><p>{closing === "EMPTY" ? t("Sesi belum berisi pesanan.") : t("Semua item dibatalkan.")} {" "}{t("Meja akan kembali tersedia tanpa membuat pembayaran.")}</p>{error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}<form onSubmit={(event) => void closeSession(event)}><label className="field-label">{t("Alasan penutupan")}<Textarea className="text-field" minLength={5} maxLength={500} required value={closeReason} onChange={(event) => setCloseReason(event.target.value)} /></label><div className="admin-actions"><Button type="button" className="secondary-button" onClick={() => setClosing(null)}>{t("Kembali")}</Button><Button className="primary-button" disabled={Boolean(busy)}>{t("Tutup sesi")}</Button></div></form></ConfirmationDialog>}
     </>}

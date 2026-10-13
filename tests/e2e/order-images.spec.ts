@@ -22,11 +22,17 @@ test("order details align left photos, title quantities, prices and action butto
     expect(photo!.x + photo!.width).toBeLessThanOrEqual(copy!.x);
     await expect(row.locator(".order-item-copy strong")).toHaveText(`${data.menuName} x1`);
     const actions = await row.locator(".pos-item-actions").boundingBox();
+    const body = await row.locator(".order-item-body").boundingBox();
+    expect(Math.abs(photo!.y + photo!.height / 2 - (body!.y + body!.height / 2))).toBeLessThan(1);
     expect(actions!.x).toBe(copy!.x);
     expect(actions!.y).toBeGreaterThanOrEqual(copy!.y + copy!.height);
     await expect(row.getByRole("checkbox")).toHaveCount(0);
     await expect(row.getByRole("button", { name: /^(Tersaji|Served):/ })).toBeDisabled();
     await expect(row.getByRole("button", { name: /^(Hapus|Remove)$/ })).toBeVisible();
+    const served = await row.getByRole("button", { name: /^(Tersaji|Served):/ }).boundingBox();
+    const remove = await row.getByRole("button", { name: /^(Hapus|Remove)$/ }).boundingBox();
+    expect(remove!.y).toBe(served!.y);
+    expect(remove!.x - (served!.x + served!.width)).toBeCloseTo(8, 0);
     await expect(page.locator(".workspace-detail .session-tally, .workspace-detail .table-session-summary")).toHaveCount(0);
     expect(photo!.width).toBeLessThanOrEqual(64);
     expect(photo!.height).toBeLessThanOrEqual(64);

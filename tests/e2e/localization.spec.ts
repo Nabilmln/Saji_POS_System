@@ -5,6 +5,7 @@ test("language persists across customer pages and generated dish photos stay foc
   await data.pool.query("UPDATE menu_items SET name='Nasi Goreng', image_url=null WHERE id=$1", [data.menuId]);
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto(`/order/${data.token}`);
+  await expect(page.getByLabel("Nama pemesan *", { exact: true })).toBeVisible();
   await page.getByRole("button", { name: "English", exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute("lang", "en");
   await page.getByLabel("Your name *", { exact: true }).fill("Maya");
@@ -74,7 +75,7 @@ test("English owner sections and cashier order-to-receipt workflow preserve perm
     await cashier.getByRole("button", { name: "Confirm", exact: true }).click();
     await cashier.getByRole("button", { name: /^Served:/ }).click();
     await expect(cashier.getByRole("button", { name: /^Served:/ })).toHaveAttribute("aria-pressed", "true");
-    await cashier.getByRole("link", { name: "View bill & payment", exact: true }).click();
+    await cashier.getByRole("link", { name: "Payment", exact: true }).click();
     await cashier.getByLabel("Cash received (IDR)", { exact: true }).fill("100000");
     await cashier.getByRole("checkbox", { name: "I have reviewed the latest bill and the cash received", exact: true }).check();
     await cashier.getByRole("button", { name: "Confirm payment", exact: true }).click();

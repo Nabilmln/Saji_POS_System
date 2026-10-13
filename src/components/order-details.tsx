@@ -19,10 +19,12 @@ export function OrderDetails({ orders, busy = "", onConfirm, onServe, onVoid }: 
     {order.note && <p className="order-note">{order.note}</p>}
     {order.items.filter((item) => !item.voided).map((item) => <div className="pos-item" key={item.id}>
       <Photo src={item.imageUrl ?? null} alt={item.menuName} menuName={item.menuName} className="order-item-photo" />
+      <div className="order-item-body">
       <div className="order-item-copy"><strong>{item.menuName} <span className="order-item-quantity">x{item.quantity}</span></strong><span className="order-item-price">{money(item.lineTotalIdr)}</span>{item.customerNote && <small>{t("Catatan:")}{" "}{item.customerNote}</small>}</div>
       <div className="pos-item-actions">
         {onServe ? <Button className={`secondary-button order-serve-button ${item.served ? "is-served" : ""}`} disabled={item.served || order.status === "PENDING" || Boolean(busy)} aria-pressed={item.served} aria-label={t("Tersaji: {0} x{1}", { "0": item.menuName, "1": item.quantity })} onClick={() => onServe(item.id)}>{item.served && <CheckIcon size={14} aria-hidden="true" />}{t("Tersaji")}</Button> : <span className="muted">{item.served ? t("Tersaji") : t("Belum tersaji")}</span>}
         {onVoid && <Button className="secondary-button danger-text order-remove-button" disabled={Boolean(busy)} onClick={() => onVoid(item)}>{t("Hapus")}</Button>}
+      </div>
       </div>
     </div>)}
     {order.status === "PENDING" && !order.voidedAt && onConfirm && <Button className="primary-button full-width" disabled={Boolean(busy)} onClick={() => onConfirm(order.id)}>{busy === `confirm:${order.id}` ? t("Memproses…") : t("Konfirmasi")}</Button>}

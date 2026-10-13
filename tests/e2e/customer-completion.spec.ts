@@ -27,7 +27,7 @@ test("confirmed cash payment thanks every guest, clears drafts, and requires a f
     const before = (await (await alice.request.get(`/api/public/orders/${aliceOrder.id}`, { headers: { Authorization: `Bearer ${aliceOrder.token}` } })).json()).data;
     expect(before.status).toBe("SERVED"); expect(before.session.status).toBe("OPEN");
     await expect(alice.locator(".customer-completion:visible")).toHaveCount(0);
-    await page.getByRole("link", { name: "Lihat tagihan & pembayaran" }).click();
+    await page.getByRole("link", { name: "Pembayaran", exact: true }).click();
     await page.getByLabel("Uang diterima (Rp)").fill("50000");
     await page.getByRole("checkbox", { name: /Saya sudah memeriksa/ }).check();
     await page.getByRole("button", { name: "Konfirmasi pembayaran", exact: true }).click();

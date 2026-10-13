@@ -11,9 +11,9 @@ import { LanguageSwitch } from "@/components/ui/language-switch";
 
 const DetailTarget = createContext<HTMLElement | null>(null);
 
-export function DetailPane({ children }: { children: ReactNode }) {
+export function DetailPane({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
   const target = useContext(DetailTarget);
-  return target ? createPortal(<div className="detail-pane">{children}</div>, target) : null;
+  return target ? createPortal(<div className={`detail-pane${footer ? " detail-pane-with-footer" : ""}`}>{footer ? <><div className="detail-pane-content">{children}</div><div className="detail-pane-footer">{footer}</div></> : children}</div>, target) : null;
 }
 
 export function CustomerShell({ tableNumber, children, footer }: {
