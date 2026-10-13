@@ -4,7 +4,7 @@ import { useLocale } from "@/components/locale-provider";
 
 import { StatusBadge } from "@/components/ui/status-badge";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { usePagination } from "@/lib/use-pagination";
 import { MenuCard } from "@/components/menu-card";
@@ -75,6 +75,7 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
   const [placed, setPlaced] = useState(false);
   const [updatedAt, setUpdatedAt] = useState<Date | null>(null);
   const [uncertain, setUncertain] = useState(false);
+  const checkoutInFlight = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -96,10 +97,6 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
   }, [storage, tableToken, view]);
-
-  useEffect(() => {
-    if (table && guest) sessionStorage.setItem(`${storage}:cart`, JSON.stringify(cart));
-  }, [cart, guest, storage, table]);
 
   const filteredMenuItems = menu?.categories.filter((category) => (!categoryId || category.id === categoryId)).flatMap((category) => category.items).filter((item) => item.name.toLocaleLowerCase("id-ID").includes(search.trim().toLocaleLowerCase("id-ID"))) ?? [];
   const currentMenuPage = Math.min(menuPage, Math.max(1, Math.ceil(filteredMenuItems.length / menuPageSize)));
@@ -169,13 +166,16 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
   }
 
   function editCart(item: CartItem, quantity: number) {
-    if (uncertain) return;
-    setCart((current) => changeCart(current, item, quantity));
+    if (uncertain || busy) return;
+    const next = changeCart(cart, item, quantity);
+    sessionStorage.setItem(`${storage}:cart`, JSON.stringify(next));
+    setCart(next);
     sessionStorage.removeItem(`${storage}:requestKey`);
   }
 
   async function checkout() {
-    if (!table || !guest || !cart.length || busy) return;
+    if (!table || !guest || !cart.length || checkoutInFlight.current) return;
+    checkoutInFlight.current = true;
     setBusy(true); setError("");
     const requestKey = sessionStorage.getItem(`${storage}:requestKey`) ?? crypto.randomUUID();
     sessionStorage.setItem(`${storage}:requestKey`, requestKey);
@@ -200,7 +200,7 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
       setUncertain(retryRequired);
       if (!retryRequired) sessionStorage.removeItem(`${storage}:requestKey`);
       setError(retryRequired ? "Koneksi terputus. Pesanan mungkin sudah terkirim. Tekan Coba Lagi untuk memeriksa tanpa menggandakan pesanan." : (cause as Error).message);
-    } finally { setBusy(false); }
+    } finally { checkoutInFlight.current = false; setBusy(false); }
   }
 
   if (loading) return <CustomerShell><LoadingState className="loading-block" role="status">{t("Memeriksa kode QR meja…")}</LoadingState></CustomerShell>;

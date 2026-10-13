@@ -4,7 +4,7 @@ import { useLocale } from "@/components/locale-provider";
 
 import { usePolling } from "@/lib/use-polling";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { adminApi, AdminApiError, jsonRequest } from "@/lib/admin/client";
 import { changeCart, cartSubtotal, type CartItem } from "@/lib/customer/cart";
@@ -19,7 +19,7 @@ import { ReceiptPreview } from "@/components/pos-receipt";
 
 type Table = { id: string; tableNumber: string; status: "AVAILABLE" | "OCCUPIED" | "RESERVED"; session: { id: string; billRevision: string } | null; orders: Order[]; bill: { grandTotalIdr: string } | null };
 type Menu = { categories: { id: string; name: string; items: { id: string; name: string; description: string | null; imageUrl: string | null; priceIdr: string }[] }[] };
-type Draft = { customerName: string; note: string; cart: CartItem[]; key: string };
+type Draft = { customerName: string; note: string; cart: CartItem[]; key: string; uncertain?: boolean };
 
 export function PosTable({ tableId }: { tableId: string }) {
   const { t, money } = useLocale();
@@ -37,6 +37,7 @@ export function PosTable({ tableId }: { tableId: string }) {
   const [closing, setClosing] = useState<"EMPTY" | "ALL_VOID" | null>(null);
   const [showManual, setShowManual] = useState(false);
   const [receiptSessionId, setReceiptSessionId] = useState("");
+  const manualInFlight = useRef(false);
   const { page: menuPage, setPage: setMenuPage, pageSize: menuPageSize, setPageSize: setMenuPageSize } = usePagination();
   const [search, setSearch] = useState("");
   const filteredMenuItems = menu?.categories.flatMap((category) => category.items).filter((item) => item.name.toLocaleLowerCase("id-ID").includes(search.trim().toLocaleLowerCase("id-ID"))) ?? [];
@@ -61,16 +62,15 @@ export function PosTable({ tableId }: { tableId: string }) {
     return () => window.clearTimeout(initial);
   }, [storageKey]);
   useEffect(() => {
-    if (draft.key) sessionStorage.setItem(storageKey, JSON.stringify(draft));
-  }, [draft, storageKey]);
-  useEffect(() => {
     if (!showManual || menu) return;
     adminApi<Menu>("/api/staff/menus").then(setMenu).catch(() => setError("Menu belum dapat dimuat. Coba lagi."));
   }, [showManual, menu]);
 
   function editDraft(changes: Partial<Draft>) {
-    if (busy === "manual") return;
-    setDraft((current) => ({ ...current, ...changes, key: crypto.randomUUID() }));
+    if (manualInFlight.current || draft.uncertain) return;
+    const next = { ...draft, ...changes, key: crypto.randomUUID() };
+    sessionStorage.setItem(storageKey, JSON.stringify(next));
+    setDraft(next);
   }
   async function mutate(path: string, init: RequestInit, action: string) {
     setBusy(action); setError(""); setNotice("");
@@ -83,11 +83,13 @@ export function PosTable({ tableId }: { tableId: string }) {
   }
   async function submitManual(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (manualInFlight.current) return;
     if (!draft.cart.length) { setError("Pilih setidaknya satu menu."); return; }
     const key = draft.key || crypto.randomUUID();
     const payload = { clientRequestKey: key, customerName: draft.customerName.trim(), note: draft.note.trim(), items: draft.cart.map((item) => ({ menuItemId: item.id, quantity: item.quantity, note: item.note.trim() })) };
-    setDraft((current) => ({ ...current, key }));
-    sessionStorage.setItem(storageKey, JSON.stringify({ ...draft, key }));
+    manualInFlight.current = true;
+    setDraft({ ...draft, key, uncertain: true });
+    sessionStorage.setItem(storageKey, JSON.stringify({ ...draft, key, uncertain: true }));
     setBusy("manual"); setError(""); setNotice("");
     try {
       await adminApi(`/api/staff/tables/${tableId}/orders`, { ...jsonRequest("POST", payload), headers: { "Content-Type": "application/json", "Idempotency-Key": key } });
@@ -95,8 +97,12 @@ export function PosTable({ tableId }: { tableId: string }) {
       setNotice("Pesanan tersimpan sebagai Menunggu. Konfirmasikan saat siap diproses."); await refresh();
     } catch (cause) {
       await refresh();
+      if (cause instanceof AdminApiError && ["MENU_UNAVAILABLE", "VALIDATION_ERROR", "TABLE_RESERVED", "TABLE_NOT_FOUND"].includes(cause.code)) {
+        const editable = { ...draft, key, uncertain: false };
+        setDraft(editable); sessionStorage.setItem(storageKey, JSON.stringify(editable));
+      }
       setError(cause instanceof AdminApiError && cause.code === "MENU_UNAVAILABLE" ? "Menu berubah. Periksa ketersediaan sebelum mencoba lagi." : "Belum dapat memastikan pesanan tersimpan. Coba lagi tanpa mengubah isian untuk memakai kunci transaksi yang sama.");
-    } finally { setBusy(""); }
+    } finally { manualInFlight.current = false; setBusy(""); }
   }
   async function submitVoid(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); if (!voidItem) return;
@@ -130,6 +136,8 @@ export function PosTable({ tableId }: { tableId: string }) {
       {table.session && <PosBillPreview key={table.session.id} sessionId={table.session.id} />}
       {showManual && <Panel className="admin-panel"><h2>{t("Order manual")}</h2><p className="muted">{t("Order baru masuk status Menunggu dan perlu dikonfirmasi.")}</p>
         <form onSubmit={(event) => void submitManual(event)}>
+          {draft.uncertain && <Alert className="inline-alert info">{t("Pengiriman pesanan sebelumnya belum pasti. Coba lagi sebelum mengubah pesanan.")}</Alert>}
+          <fieldset className="order-draft" disabled={busy === "manual" || draft.uncertain}>
           <div className="admin-form-grid"><label>{t("Nama pelanggan / label")}<Input className="text-field" required maxLength={120} value={draft.customerName} onChange={(event) => editDraft({ customerName: event.target.value })} /></label><label>{t("Catatan order (opsional)")}<Input className="text-field" maxLength={500} value={draft.note} onChange={(event) => editDraft({ note: event.target.value })} /></label></div>
           <label className="field-label">{t("Cari menu")}<Input className="text-field" value={search} onChange={(event) => { setSearch(event.target.value); setMenuPage(1); }} placeholder={t("Nama menu")} /></label>
           {!menu ? <p className="muted">{t("Memuat menu…")}{" "}<Button type="button" className="text-button" onClick={() => { setMenu(null); adminApi<Menu>("/api/staff/menus").then(setMenu).catch(() => setError("Menu belum dapat dimuat.")); }}>{t("Coba lagi")}</Button></p> : menu.categories.map((category) => {
@@ -142,7 +150,8 @@ export function PosTable({ tableId }: { tableId: string }) {
           })}
           {menu && <Pagination pageSize={menuPageSize} onPageSizeChange={setMenuPageSize} page={currentMenuPage} hasNext={currentMenuPage * menuPageSize < filteredMenuItems.length} total={filteredMenuItems.length} onChange={setMenuPage} />}
           {draft.cart.length > 0 && <div className="summary-card"><h3>{t("Ringkasan order")}</h3>{draft.cart.map((item) => <div className="cart-row" key={item.id}><div className="cart-row-head"><strong>{item.quantity}× {item.name}</strong><span>{money(BigInt(item.priceIdr) * BigInt(item.quantity))}</span></div><Input className="text-field cart-note" aria-label={t("Catatan {0}", { "0": item.name })} maxLength={500} placeholder={t("Catatan item (opsional)")} value={item.note} onChange={(event) => editDraft({ cart: draft.cart.map((entry) => entry.id === item.id ? { ...entry, note: event.target.value } : entry) })} /></div>)}<div className="money-row"><strong>{t("Subtotal menu")}</strong><strong>{money(cartSubtotal(draft.cart))}</strong></div></div>}
-          <div className="admin-actions"><Button className="primary-button" disabled={busy === "manual" || !draft.cart.length || !menu}>{busy === "manual" ? t("Menyimpan…") : t("Simpan order Menunggu")}</Button></div>
+          </fieldset>
+          <div className="admin-actions"><Button className="primary-button" disabled={busy === "manual" || !draft.cart.length || !menu}>{busy === "manual" ? t("Menyimpan…") : draft.uncertain ? t("Coba Lagi dengan Aman") : t("Simpan order Menunggu")}</Button></div>
         </form>
       </Panel>}
       <DetailPane>{table.session && receiptSessionId === table.session.id ? <ReceiptPreview key={table.session.id} sessionId={table.session.id} onClose={() => setReceiptSessionId("")} /> : <OrderDetails orders={table.orders} busy={busy}

@@ -91,3 +91,4 @@ h1,h2,h3,p{overflow-wrap:break-word}h1,h2,h3{letter-spacing:-.025em;line-height:
   .receipt-preview .receipt-unpaid-note,.receipt-preview .status-chip{color:#000;background:#fff;border:1px solid #333}
   .receipt-preview .pos-receipt-line,.receipt-preview .pos-receipt-totals{break-inside:avoid}
 }
+.order-draft{border:0;padding:0;margin:0;min-width:0}.session-tally{margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border)}.session-tally summary{font-weight:600;cursor:pointer;margin-bottom:12px}.session-tally .money-row{font-size:12px;gap:12px}.session-tally .money-row span{min-width:0;overflow-wrap:anywhere}
