@@ -11,7 +11,7 @@ import Link from "next/link";
 import { Selection, Pagination, Panel, Button, Alert, Input, Textarea } from "@/components/ui/controls";
 import { DataTable } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { LIST_PAGE_SIZE } from "@/lib/pagination";
+import { usePagination } from "@/lib/use-pagination";
 import { adminPage, adminApi, jsonRequest } from "@/lib/admin/client";
 
 type Reservation = { id: string; tableId: string; tableNumber: string; customerName: string; customerContact: string; guestCount: number; reservedFor: string; notes: string | null; status: "RESERVED" | "CHECKED_IN" | "CANCELLED" };
@@ -25,7 +25,7 @@ export function PosReservations() {
   const [rows, setRows] = useState<Reservation[]>([]);
   const [tables, setTables] = useState<Table[]>([]);
   const [status, setStatus] = useState("RESERVED");
-  const [page, setPage] = useState(1);
+  const { page, setPage, pageSize, setPageSize } = usePagination();
   const [creating, setCreating] = useState(false);
   const [cancelId, setCancelId] = useState("");
   const [reason, setReason] = useState("");
@@ -34,11 +34,11 @@ export function PosReservations() {
   const [notice, setNotice] = useState("");
   const [loaded, setLoaded] = useState(false);
   const load = useCallback(async () => {
-    const query = new URLSearchParams({ page: String(page), pageSize: String(LIST_PAGE_SIZE) }); if (status) query.set("status", status);
+    const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) }); if (status) query.set("status", status);
     try { const [reservations, available] = await Promise.all([adminPage<Reservation>(`/api/staff/reservations?${query}`), adminApi<Table[]>("/api/staff/tables?status=AVAILABLE")]); setRows(reservations.items); setHasNext(reservations.hasNext); setTables(available); setError(""); }
     catch { setError("Reservasi belum dapat dimuat. Periksa koneksi lalu segarkan."); }
     finally { setLoaded(true); }
-  }, [status, page]);
+  }, [status, page, pageSize]);
   usePolling(load);
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const form = event.currentTarget; const data = new FormData(form);
@@ -72,5 +72,5 @@ export function PosReservations() {
       <th scope="row">{item.customerName}<details><summary>{t("Lihat kontak")}</summary><span>{item.customerContact}</span>{item.notes && <p>{item.notes}</p>}</details></th><td>{item.tableNumber}</td><td>{item.guestCount}</td><td className="date-cell">{formatDateTime(item.reservedFor, locale)}</td><td><StatusBadge status={item.status}>{labels[item.status]}</StatusBadge></td>
       <td><div className="admin-row-actions">{item.status === "RESERVED" ? <><Button disabled={busy} onClick={() => void checkIn(item)}>{t("Check-in")}</Button><Button className="text-button danger-text" disabled={busy} onClick={() => { setCancelId(item.id); setReason(""); }}>{t("Batalkan reservasi")}</Button></> : item.status === "CHECKED_IN" && <Link className="secondary-button" href={`/pos/tables/${item.tableId}`}>{t("Lihat meja")}</Link>}</div></td>
     </tr>)}</DataTable> : <p className="empty-state">{t("Tidak ada reservasi pada status ini.")}</p>}
-  </Panel><Pagination page={page} hasNext={hasNext} onChange={setPage} disabled={busy} /></div>;
+  </Panel><Pagination pageSize={pageSize} onPageSizeChange={setPageSize} page={page} hasNext={hasNext} onChange={setPage} disabled={busy} /></div>;
 }

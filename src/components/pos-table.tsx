@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { adminApi, AdminApiError, jsonRequest } from "@/lib/admin/client";
 import { changeCart, cartSubtotal, type CartItem } from "@/lib/customer/cart";
-import { LIST_PAGE_SIZE } from "@/lib/pagination";
+import { usePagination } from "@/lib/use-pagination";
 import { MenuCard } from "@/components/menu-card";
 import { Selection, Alert, Button, LoadingState, EmptyState, Panel, Input, Textarea, Pagination } from "@/components/ui/controls";
 import { DetailPane } from "@/components/app-shells";
@@ -35,11 +35,11 @@ export function PosTable({ tableId }: { tableId: string }) {
   const [closeReason, setCloseReason] = useState("");
   const [closing, setClosing] = useState<"EMPTY" | "ALL_VOID" | null>(null);
   const [showManual, setShowManual] = useState(false);
-  const [menuPage, setMenuPage] = useState(1);
+  const { page: menuPage, setPage: setMenuPage, pageSize: menuPageSize, setPageSize: setMenuPageSize } = usePagination();
   const [search, setSearch] = useState("");
   const filteredMenuItems = menu?.categories.flatMap((category) => category.items).filter((item) => item.name.toLocaleLowerCase("id-ID").includes(search.trim().toLocaleLowerCase("id-ID"))) ?? [];
-  const currentMenuPage = Math.min(menuPage, Math.max(1, Math.ceil(filteredMenuItems.length / LIST_PAGE_SIZE)));
-  const visibleMenuIds = new Set(filteredMenuItems.slice((currentMenuPage - 1) * LIST_PAGE_SIZE, currentMenuPage * LIST_PAGE_SIZE).map((item) => item.id));
+  const currentMenuPage = Math.min(menuPage, Math.max(1, Math.ceil(filteredMenuItems.length / menuPageSize)));
+  const visibleMenuIds = new Set(filteredMenuItems.slice((currentMenuPage - 1) * menuPageSize, currentMenuPage * menuPageSize).map((item) => item.id));
   const storageKey = `pos-manual:${tableId}`;
 
   const refresh = useCallback(async () => {
@@ -138,7 +138,7 @@ export function PosTable({ tableId }: { tableId: string }) {
               return <MenuCard key={item.id} menu={item} className="pos-menu-card"><div className="stepper"><Button type="button" aria-label={t("Kurangi {0}", { "0": item.name })} disabled={!selected} onClick={() => editDraft({ cart: changeCart(draft.cart, cartItem, cartItem.quantity - 1) })}>−</Button><span>{cartItem.quantity}</span><Button type="button" aria-label={t("Tambah {0}", { "0": item.name })} disabled={cartItem.quantity >= 99} onClick={() => editDraft({ cart: changeCart(draft.cart, cartItem, cartItem.quantity + 1) })}>+</Button></div></MenuCard>;
             })}</div></div> : null;
           })}
-          {menu && <Pagination page={currentMenuPage} hasNext={currentMenuPage * LIST_PAGE_SIZE < filteredMenuItems.length} total={filteredMenuItems.length} onChange={setMenuPage} />}
+          {menu && <Pagination pageSize={menuPageSize} onPageSizeChange={setMenuPageSize} page={currentMenuPage} hasNext={currentMenuPage * menuPageSize < filteredMenuItems.length} total={filteredMenuItems.length} onChange={setMenuPage} />}
           {draft.cart.length > 0 && <div className="summary-card"><h3>{t("Ringkasan order")}</h3>{draft.cart.map((item) => <div className="cart-row" key={item.id}><div className="cart-row-head"><strong>{item.quantity}× {item.name}</strong><span>{money(BigInt(item.priceIdr) * BigInt(item.quantity))}</span></div><Input className="text-field cart-note" aria-label={t("Catatan {0}", { "0": item.name })} maxLength={500} placeholder={t("Catatan item (opsional)")} value={item.note} onChange={(event) => editDraft({ cart: draft.cart.map((entry) => entry.id === item.id ? { ...entry, note: event.target.value } : entry) })} /></div>)}<div className="money-row"><strong>{t("Subtotal menu")}</strong><strong>{money(cartSubtotal(draft.cart))}</strong></div></div>}
           <div className="admin-actions"><Button className="primary-button" disabled={busy === "manual" || !draft.cart.length || !menu}>{busy === "manual" ? t("Menyimpan…") : t("Simpan order Menunggu")}</Button></div>
         </form>

@@ -7,7 +7,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { Alert, Panel, Button, Input, EmptyState, Pagination } from "@/components/ui/controls";
 import { DataTable } from "@/components/ui/data-table";
 import { ConfirmDelete } from "@/components/ui/confirm-delete";
-import { LIST_PAGE_SIZE } from "@/lib/pagination";
+import { usePagination } from "@/lib/use-pagination";
 
 import { useEffect, useState, type FormEvent } from "react";
 import { DetailPane } from "@/components/app-shells";
@@ -21,7 +21,7 @@ type Table = { id: string; tableNumber: string; status: "AVAILABLE" | "OCCUPIED"
 export function TableManager() {
   const { t } = useLocale();
   const [tables, setTables] = useState<Table[]>([]);
-  const [page, setPage] = useState(1);
+  const { page, setPage, pageSize, setPageSize } = usePagination();
   const [deleting, setDeleting] = useState<Table | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -38,7 +38,7 @@ export function TableManager() {
   useEffect(() => {
     let active = true;
     adminApi<Table[]>("/api/admin/tables")
-      .then((data) => { if (active) { setTables(data); setPage((current) => Math.min(current, Math.max(1, Math.ceil(data.length / LIST_PAGE_SIZE)))); setLoading(false); setError(""); } })
+      .then((data) => { if (active) { setTables(data); setLoading(false); setError(""); } })
       .catch((cause: Error) => { if (active) { setError(cause.message); setLoading(false); } });
     return () => { active = false; };
   }, [revision]);
@@ -92,6 +92,7 @@ export function TableManager() {
     } finally { setBusy(false); }
   }
 
+  const currentPage = Math.min(page, Math.max(1, Math.ceil(tables.length / pageSize)));
   const qrUrl = preview ? new URL(preview.orderUrl, typeof window === "undefined" ? "http://localhost" : window.location.origin).href : "";
   const downloadHref = qrSvg ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qrSvg)}` : "";
   return <div className="admin-stack">
@@ -107,7 +108,7 @@ export function TableManager() {
       </form>}
     </Panel>
     <Panel><h2>{t("Daftar meja")}</h2>
-      {loading ? <p className="loading-block" role="status">{t("Memuat meja…")}</p> : !tables.length ? <EmptyState className="empty-state"><h2>{t("Belum ada meja")}</h2><p>{t("Tambahkan meja untuk membuat kode QR.")}</p></EmptyState> : <DataTable caption={t("Daftar meja")} columns={[t("Nomor meja"), t("Status"), t("Pemesanan QR"), t("Tindakan")]}>{tables.slice((page - 1) * LIST_PAGE_SIZE, page * LIST_PAGE_SIZE).map((table) => <tr key={table.id}>
+      {loading ? <p className="loading-block" role="status">{t("Memuat meja…")}</p> : !tables.length ? <EmptyState className="empty-state"><h2>{t("Belum ada meja")}</h2><p>{t("Tambahkan meja untuk membuat kode QR.")}</p></EmptyState> : <DataTable caption={t("Daftar meja")} columns={[t("Nomor meja"), t("Status"), t("Pemesanan QR"), t("Tindakan")]}>{tables.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((table) => <tr key={table.id}>
         <th scope="row">{table.tableNumber}</th><td><StatusBadge status={table.status} /></td><td><StatusBadge status={table.isActive ? "ACTIVE" : "INACTIVE"} /></td>
         <td><div className="admin-row-actions">
           <Button className="text-button" disabled={busy || table.status !== "AVAILABLE"} onClick={() => begin(table)}>{t("Ubah nomor")}</Button>
@@ -117,7 +118,7 @@ export function TableManager() {
         </div></td>
       </tr>)}</DataTable>}
     </Panel>
-    <Pagination page={page} hasNext={page * LIST_PAGE_SIZE < tables.length} total={tables.length} onChange={setPage} disabled={busy || loading} />
+    <Pagination pageSize={pageSize} onPageSizeChange={setPageSize} page={currentPage} hasNext={currentPage * pageSize < tables.length} total={tables.length} onChange={setPage} disabled={busy || loading} />
     {deleting && <ConfirmDelete name={t("Meja {0}", { "0": deleting.tableNumber })} description={t("Meja ini dihapus dari daftar. Kode QR lama berhenti menerima pesanan; riwayat transaksi tetap tersimpan.")} onClose={() => setDeleting(null)} onConfirm={() => remove(deleting)} />}
     {preview && <DetailPane><Panel className="admin-panel qr-section" aria-labelledby="qr-title">
       <div className="admin-section-head"><div><h2 id="qr-title">{t("Meja")}{" "}{preview.tableNumber}</h2></div><Button className="text-button" onClick={() => setPreview(null)}>{t("Tutup")}</Button></div>

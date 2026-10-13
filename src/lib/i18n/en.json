@@ -596,5 +596,7 @@
   "Pelanggan": "Customer",
   "Tamu": "Guests",
   "Metode": "Method",
-  "Tunai": "Cash"
+  "Tunai": "Cash",
+  "Data per halaman": "Items per page",
+  "{0} data per halaman": "{0} items per page"
 }

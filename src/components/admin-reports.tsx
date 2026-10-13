@@ -9,7 +9,7 @@ import { reportRangeSchema } from "@/lib/admin/report-range";
 import { revenueDays, type RevenuePoint } from "@/lib/admin/report-chart";
 import { formatDate, restaurantDate } from "@/lib/time";
 
-import { LIST_PAGE_SIZE } from "@/lib/pagination";
+import { usePagination } from "@/lib/use-pagination";
 import { DetailPane } from "@/components/app-shells";
 import { RevenueChart } from "@/components/revenue-chart";
 import { Button, Input, Selection, EmptyState, Alert, LoadingState, Pagination } from "@/components/ui/controls";
@@ -26,7 +26,7 @@ export function AdminReports() {
   const [report, setReport] = useState<Report | null>(null);
   const [menus, setMenus] = useState<TopMenu[]>([]);
   const [busy, setBusy] = useState(true);
-  const [page, setPage] = useState(1);
+  const { page, setPage, pageSize, setPageSize } = usePagination();
   const [error, setError] = useState("");
   const load = useCallback(async (start: string, end: string) => {
     if (!reportRangeSchema.safeParse({ from: start, to: end }).success) { setError("Pilih rentang tanggal yang valid, maksimal 366 hari."); return; }
@@ -37,7 +37,7 @@ export function AdminReports() {
       setReport(revenue); setMenus(top); setPeriod({ from: start, to: end });
     } catch { setError("Laporan belum dapat dimuat. Periksa koneksi lalu coba lagi."); }
     finally { setBusy(false); }
-  }, []);
+  }, [setPage]);
   const choosePeriod = useCallback((value: string) => {
     setPreset(value);
     if (value === "custom") return;
@@ -59,7 +59,7 @@ export function AdminReports() {
       <section className="bento-cell bento-average"><TrendUpIcon size={20} className="metric-icon" /><p className="metric-label">{t("Rata-rata transaksi")}</p><p className="metric-value">{money(report.summary.paidTransactionCount ? BigInt(report.summary.revenueIdr) / BigInt(report.summary.paidTransactionCount) : 0n)}</p><p className="metric-foot">{t("Pendapatan dibagi transaksi")}</p></section>
       <section className="bento-cell bento-chart"><div className="chart-heading"><h2>{t("Tren penjualan")}</h2><span className="chart-unit">{t("IDR / hari")}</span></div>{report.summary.paidTransactionCount ? <RevenueChart from={period.from} to={period.to} points={report.points} /> : <EmptyState>{t("Belum ada pembayaran lunas pada periode ini.")}</EmptyState>}</section>
       <section className="bento-cell bento-menus"><h2>{t("Menu terlaris")}</h2>{menus.length ? menus.map((menu, index) => <div className="top-menu-row" key={menu.menuName}><span className="rank">{index + 1}</span><div><strong>{menu.menuName}</strong><small>{money(menu.grossSalesIdr)} {" "}{t("sebelum diskon/pajak")}</small></div><span className="quantity">{menu.quantitySold}<small>{t("terjual")}</small></span></div>) : <EmptyState>{t("Belum ada menu terjual.")}</EmptyState>}</section>
-      <section className="bento-cell bento-data"><details className="report-data"><summary>{t("Lihat angka harian")}</summary><div className="table-scroll"><table><caption>{t("Pendapatan harian (WIB)")}</caption><thead><tr><th>{t("Tanggal")}</th><th>{t("Transaksi")}</th><th>{t("Pendapatan lunas")}</th></tr></thead><tbody>{days.slice((page - 1) * LIST_PAGE_SIZE, page * LIST_PAGE_SIZE).map((day) => <tr key={day.date}><td>{formatDate(day.date, locale)}</td><td>{day.transactionCount}</td><td>{money(day.revenueIdr)}</td></tr>)}</tbody></table></div><Pagination page={page} hasNext={page * LIST_PAGE_SIZE < days.length} total={days.length} onChange={setPage} /></details></section>
+      <section className="bento-cell bento-data"><details className="report-data"><summary>{t("Lihat angka harian")}</summary><div className="table-scroll"><table><caption>{t("Pendapatan harian (WIB)")}</caption><thead><tr><th>{t("Tanggal")}</th><th>{t("Transaksi")}</th><th>{t("Pendapatan lunas")}</th></tr></thead><tbody>{days.slice((page - 1) * pageSize, page * pageSize).map((day) => <tr key={day.date}><td>{formatDate(day.date, locale)}</td><td>{day.transactionCount}</td><td>{money(day.revenueIdr)}</td></tr>)}</tbody></table></div><Pagination pageSize={pageSize} onPageSizeChange={setPageSize} page={page} hasNext={page * pageSize < days.length} total={days.length} onChange={setPage} /></details></section>
     </div><DetailPane><div className="detail-heading"><h2>{t("Rincian periode")}</h2></div><dl className="period-detail"><dt>{t("Dari tanggal")}</dt><dd>{period.from}</dd><dt>{t("Sampai tanggal")}</dt><dd>{period.to}</dd><dt>{t("Zona waktu")}</dt><dd>{t("WIB / Asia Jakarta")}</dd></dl><div className="detail-rule" />{best ? <><h3>{t("Penjualan tertinggi")}</h3><p className="metric-value">{money(best.revenueIdr)}</p><p className="muted">{formatDate(best.date, locale)} · {best.transactionCount} {" "}{t("transaksi")}</p></> : <p className="muted">{t("Ringkasan tersedia setelah ada pembayaran.")}</p>}<p className="detail-note">{t("Pesanan belum lunas dan uang kembalian tidak dihitung sebagai pendapatan.")}</p></DetailPane></> : busy ? <LoadingState>{t("Memuat ringkasan penjualan...")}</LoadingState> : <EmptyState>{t("Pilih periode lalu tampilkan laporan untuk mencoba lagi.")}</EmptyState>}
   </div>;
 }

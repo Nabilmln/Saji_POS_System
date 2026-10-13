@@ -2,7 +2,7 @@
 
 import { useLocale } from "@/components/locale-provider";
 import { Toast } from "./toast";
-import { LIST_PAGE_SIZE } from "@/lib/pagination";
+import { PAGE_SIZE_OPTIONS } from "@/lib/pagination";
 
 import { useId, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type TextareaHTMLAttributes, type HTMLAttributes } from "react";
 import * as Select from "@radix-ui/react-select";
@@ -62,7 +62,7 @@ export function LoadingState({ className = "loading-block", ...props }: HTMLAttr
   return <div className={className} role="status" {...props} />;
 }
 
-export function Pagination({ page, hasNext, onChange, disabled, total, label = "Navigasi halaman" }: { page: number; hasNext: boolean; onChange: (page: number) => void; disabled?: boolean; total?: number; label?: string }) {
+export function Pagination({ page, pageSize, onPageSizeChange, hasNext, onChange, disabled, total, label = "Navigasi halaman" }: { page: number; pageSize: number; onPageSizeChange: (size: number) => void; hasNext: boolean; onChange: (page: number) => void; disabled?: boolean; total?: number; label?: string }) {
   const { t } = useLocale();
-  return <nav className="pagination-panel" aria-label={t(label)}><div><span>{t("Halaman")}{" "}{page}{total !== undefined && ` / ${Math.max(1, Math.ceil(total / LIST_PAGE_SIZE))}`}</span><small>{t("Maksimal 25 data per halaman")}</small></div><div className="pagination-actions"><Button type="button" className="secondary-button" disabled={page === 1 || disabled} onClick={() => onChange(page - 1)}>{t("Sebelumnya")}</Button><Button type="button" className="secondary-button" disabled={!hasNext || disabled} onClick={() => onChange(page + 1)}>{t("Berikutnya")}</Button></div></nav>;
+  return <nav className="pagination-panel" aria-label={t(label)}><div><span>{t("Halaman")}{" "}{page}{total !== undefined && ` / ${Math.max(1, Math.ceil(total / pageSize))}`}</span><small>{t("{0} data per halaman", { "0": pageSize })}</small></div><Selection className="pagination-size" label="Data per halaman" kind="segments" value={String(pageSize)} onChange={(value) => onPageSizeChange(Number(value))} options={PAGE_SIZE_OPTIONS.map((size) => ({ value: String(size), label: String(size) }))} disabled={disabled} /><div className="pagination-actions"><Button type="button" className="secondary-button" disabled={page === 1 || disabled} onClick={() => onChange(page - 1)}>{t("Sebelumnya")}</Button><Button type="button" className="secondary-button" disabled={!hasNext || disabled} onClick={() => onChange(page + 1)}>{t("Berikutnya")}</Button></div></nav>;
 }

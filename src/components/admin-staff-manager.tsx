@@ -3,7 +3,7 @@
 import { useLocale } from "@/components/locale-provider";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { adminApi, adminPage, AdminApiError, jsonRequest } from "@/lib/admin/client";
-import { LIST_PAGE_SIZE } from "@/lib/pagination";
+import { usePagination } from "@/lib/use-pagination";
 import { formatDate } from "@/lib/time";
 import { PasswordInput, Pagination, Panel, Button, Alert, Input } from "@/components/ui/controls";
 import { DataTable } from "@/components/ui/data-table";
@@ -16,7 +16,7 @@ type Staff = { userId: string; email: string | null; displayName: string; role: 
 export function StaffManager() {
   const { t, locale } = useLocale();
   const [staff, setStaff] = useState<Staff[]>([]);
-  const [page, setPage] = useState(1);
+  const { page, setPage, pageSize, setPageSize } = usePagination();
   const [hasNext, setHasNext] = useState(false);
   const [editing, setEditing] = useState<Staff | "new" | null>(null);
   const [passwordEditing, setPasswordEditing] = useState(false);
@@ -32,11 +32,11 @@ export function StaffManager() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await adminPage<Staff>(`/api/admin/staff?page=${page}&pageSize=${LIST_PAGE_SIZE}`);
+      const result = await adminPage<Staff>(`/api/admin/staff?page=${page}&pageSize=${pageSize}`);
       setStaff(result.items); setHasNext(result.hasNext); setError("");
     } catch { setError("Daftar staf belum dapat dimuat. Coba lagi."); }
     finally { setLoading(false); }
-  }, [page]);
+  }, [page, pageSize]);
   useEffect(() => { const timer = window.setTimeout(() => void load(), 0); return () => window.clearTimeout(timer); }, [load]);
 
   function begin(item: Staff | "new", resetPassword = false) {
@@ -94,7 +94,7 @@ export function StaffManager() {
         <td><div className="admin-row-actions"><Button className="text-button" disabled={busy} onClick={() => begin(item)}>{t("Ubah nama")}</Button>{item.role === "CASHIER" ? <><Button className="text-button" disabled={busy} onClick={() => begin(item, true)}>{t("Atur kata sandi")}</Button><Button className={`text-button ${item.isActive ? "danger-text" : ""}`} disabled={busy} onClick={() => void toggle(item)}>{t(item.isActive ? "Nonaktifkan" : "Aktifkan")}</Button><Button className="text-button danger-text" disabled={busy} onClick={() => setDeleting(item)}>{t("Hapus")}</Button></> : <span className="protected-label">{t("Pemilik eksklusif")}</span>}</div></td>
       </tr>)}</DataTable> : <p className="empty-state">{t("Tidak ada staf pada halaman ini.")}</p>}
     </Panel>
-    <Pagination page={page} hasNext={hasNext} onChange={setPage} disabled={busy || loading} />
+    <Pagination pageSize={pageSize} onPageSizeChange={setPageSize} page={page} hasNext={hasNext} onChange={setPage} disabled={busy || loading} />
     <DetailPane><div className="detail-heading"><h2>{t(credentials ? "Kredensial kasir" : "Akses tim")}</h2>{credentials && <Button className="text-button" onClick={() => setCredentials(null)}>{t("Tutup")}</Button>}</div>
       {credentials ? <div className="credential-preview"><label>{t("Email")}<Input readOnly value={credentials.email} /></label><label>{t("Kata sandi kasir")}<PasswordInput readOnly autoComplete="off" value={credentials.password} /></label><p className="detail-note">{t("Salin dan bagikan secara pribadi. Kredensial ini hilang saat ditutup atau halaman dimuat ulang.")}</p></div> : <><p className="muted">{t("Pemilik mengelola akun kasir untuk restoran ini.")}</p><div className="detail-stat"><span>{t("Akun pada halaman ini")}</span><strong>{staff.length}</strong></div><p className="detail-note">{t("Email dapat dilihat. Kata sandi lama tidak dapat dibaca; atur kata sandi baru jika kasir lupa.")}</p></>}
     </DetailPane>

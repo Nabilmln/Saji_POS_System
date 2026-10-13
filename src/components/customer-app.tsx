@@ -6,7 +6,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { LIST_PAGE_SIZE } from "@/lib/pagination";
+import { usePagination } from "@/lib/use-pagination";
 import { MenuCard } from "@/components/menu-card";
 import { Selection, LoadingState, EmptyState, Button, Alert, Input, Pagination } from "@/components/ui/controls";
 import { CustomerShell } from "@/components/app-shells";
@@ -66,7 +66,7 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
   const [orders, setOrders] = useState<OwnOrder[]>([]);
   const [statuses, setStatuses] = useState<Record<string, OrderStatus>>({});
   const [name, setName] = useState("");
-  const [menuPage, setMenuPage] = useState(1);
+  const { page: menuPage, setPage: setMenuPage, pageSize: menuPageSize, setPageSize: setMenuPageSize } = usePagination();
   const [search, setSearch] = useState("");
   const [categoryId, setCategoryId] = useState("");
   const [loading, setLoading] = useState(true);
@@ -102,8 +102,8 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
   }, [cart, guest, storage, table]);
 
   const filteredMenuItems = menu?.categories.filter((category) => (!categoryId || category.id === categoryId)).flatMap((category) => category.items).filter((item) => item.name.toLocaleLowerCase("id-ID").includes(search.trim().toLocaleLowerCase("id-ID"))) ?? [];
-  const currentMenuPage = Math.min(menuPage, Math.max(1, Math.ceil(filteredMenuItems.length / LIST_PAGE_SIZE)));
-  const visibleMenuIds = new Set(filteredMenuItems.slice((currentMenuPage - 1) * LIST_PAGE_SIZE, currentMenuPage * LIST_PAGE_SIZE).map((item) => item.id));
+  const currentMenuPage = Math.min(menuPage, Math.max(1, Math.ceil(filteredMenuItems.length / menuPageSize)));
+  const visibleMenuIds = new Set(filteredMenuItems.slice((currentMenuPage - 1) * menuPageSize, currentMenuPage * menuPageSize).map((item) => item.id));
   const loadMenu = useCallback(async (token: string) => {
     setError("");
     try {
@@ -276,7 +276,7 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
           </MenuCard>;
         })}</div></section>;
       })}
-      {menu && <Pagination page={currentMenuPage} hasNext={currentMenuPage * LIST_PAGE_SIZE < filteredMenuItems.length} total={filteredMenuItems.length} onChange={setMenuPage} />}
+      {menu && <Pagination pageSize={menuPageSize} onPageSizeChange={setMenuPageSize} page={currentMenuPage} hasNext={currentMenuPage * menuPageSize < filteredMenuItems.length} total={filteredMenuItems.length} onChange={setMenuPage} />}
       {menu && !menu.categories.some((category) => (!categoryId || category.id === categoryId) && category.items.some((item) => item.name.toLocaleLowerCase("id-ID").includes(search.toLocaleLowerCase("id-ID")))) && <EmptyState className="empty-state"><h2>{t("Menu tidak ditemukan")}</h2><p>{t("Coba kata lain atau pilih kategori berbeda.")}</p></EmptyState>}
     </>}
   </CustomerShell>;

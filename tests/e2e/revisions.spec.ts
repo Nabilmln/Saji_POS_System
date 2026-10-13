@@ -109,26 +109,90 @@ test("deleting a menu and a settled table preserves receipts and permits a new t
   }
 });
 
-test("menu pages show 25 items, four or five columns, and three aligned desktop filters", async ({ page, data }, testInfo) => {
+test("menu page-size toggles reset paging, preserve row boundaries and stay separated from data", async ({ page, data }, testInfo) => {
   for (let index = 0; index < 26; index++) await data.pool.query("INSERT INTO menu_items(category_id,name,price_idr) VALUES($1,$2,10000)", [data.categoryId, `Revision batch ${String(index).padStart(2, "0")}`]);
   await page.setViewportSize({ width: 1440, height: 1000 }); await signIn(page, "admin"); await page.goto("/admin/menus");
   await page.getByLabel("Cari menu", { exact: true }).fill("Revision batch");
-  await expect(page.locator(".admin-menu-grid .menu-card")).toHaveCount(25);
+  await expect(page.locator(".admin-menu-grid .menu-card")).toHaveCount(20);
   expect(await page.locator(".admin-menu-grid").evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" ").length)).toBe(4);
   const filters = await page.locator(".menu-filters > *").evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().bottom));
   expect(Math.max(...filters) - Math.min(...filters)).toBeLessThanOrEqual(2);
   const pagination = page.locator("#menu-items .pagination-panel");
   await pagination.getByRole("button", { name: "Berikutnya" }).click();
-  await expect(page.locator(".admin-menu-grid .menu-card")).toHaveCount(1);
+  await expect(page.locator(".admin-menu-grid .menu-card")).toHaveCount(6);
   await expect(pagination.getByRole("button", { name: "Berikutnya" })).toBeDisabled();
+  await pagination.getByRole("radio", { name: "10", exact: true }).check();
+  await expect(page.locator(".admin-menu-grid .menu-card")).toHaveCount(10);
+  await expect(pagination).toContainText("Halaman 1 / 3");
+  await expect(page.locator(".admin-menu-grid .menu-card").first()).toContainText("Revision batch 00");
+  await pagination.getByRole("button", { name: "Berikutnya" }).click();
+  await expect(page.locator(".admin-menu-grid .menu-card").first()).toContainText("Revision batch 10");
+  await pagination.getByRole("radio", { name: "15", exact: true }).check();
+  await expect(page.locator(".admin-menu-grid .menu-card")).toHaveCount(15);
+  await expect(pagination).toContainText("Halaman 1 / 2");
+  await pagination.getByRole("button", { name: "Berikutnya" }).click();
+  await expect(page.locator(".admin-menu-grid .menu-card")).toHaveCount(11);
+  await expect(pagination.getByRole("button", { name: "Berikutnya" })).toBeDisabled();
+  await pagination.getByRole("radio", { name: "20", exact: true }).check();
+  await expect(page.locator(".admin-menu-grid .menu-card")).toHaveCount(20);
+  const listBox = await page.locator(".admin-menu-grid").boundingBox();
+  const pagerBox = await pagination.boundingBox();
+  expect(pagerBox!.y - (listBox!.y + listBox!.height)).toBeGreaterThanOrEqual(16);
+  const categoryTable = await page.locator("#menu-categories .data-table-wrap").boundingBox();
+  const categoryPager = await page.locator("#menu-categories .pagination-panel").boundingBox();
+  expect(categoryPager!.y - (categoryTable!.y + categoryTable!.height)).toBeGreaterThanOrEqual(16);
   await page.setViewportSize({ width: 1680, height: 1050 });
   expect(await page.locator(".admin-menu-grid").evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" ").length)).toBe(5);
-  await pagination.getByRole("button", { name: "Sebelumnya" }).click();
-  await expect(page.locator(".admin-menu-grid .menu-card")).toHaveCount(25);
   await page.screenshot({ path: testInfo.outputPath("menu-five-columns.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   expect((await call(page.request, "/admin/menus?pageSize=26")).status()).toBe(422);
   expect((await call(page.request, "/admin/staff?pageSize=26")).status()).toBe(422);
+});
+
+test("table and customer lists use the shared page-size toggle without losing page boundaries", async ({ page, data }, testInfo) => {
+  const tableIds = Array.from({ length: 26 }, () => randomUUID());
+  try {
+    for (const [index, id] of tableIds.entries()) {
+      await data.pool.query("INSERT INTO dining_tables(id,table_number,qr_token) VALUES($1,$2,$3)", [id, `Paging-${id.slice(0, 6)}-${index}`, randomUUID()]);
+      await data.pool.query("INSERT INTO menu_items(category_id,name,price_idr) VALUES($1,$2,10000)", [data.categoryId, `Page menu ${String(index).padStart(2, "0")}`]);
+    }
+    await signIn(page, "admin"); await page.goto("/admin/tables");
+    const pager = page.getByRole("navigation", { name: "Navigasi halaman" });
+    await expect(page.locator(".data-table tbody tr")).toHaveCount(20);
+    await pager.getByRole("radio", { name: "10", exact: true }).check();
+    await expect(page.locator(".data-table tbody tr")).toHaveCount(10);
+    await pager.getByRole("button", { name: "Berikutnya" }).click();
+    await expect(pager).toContainText("Halaman 2");
+    await pager.getByRole("radio", { name: "15", exact: true }).check();
+    await expect(page.locator(".data-table tbody tr")).toHaveCount(15);
+    await expect(pager).toContainText("Halaman 1");
+    const tableBox = await page.locator(".data-table-wrap").boundingBox();
+    const pagerBox = await pager.boundingBox();
+    expect(pagerBox!.y - (tableBox!.y + tableBox!.height)).toBeGreaterThanOrEqual(16);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await expect(page.getByRole("radio", { name: "15", exact: true })).toBeChecked();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath("table-pagination-mobile.png"), fullPage: true });
+
+    await page.goto(`/order/${data.token}`);
+    await page.getByLabel("Nama pemesan").fill("Pagination guest");
+    await page.getByRole("button", { name: "Lihat Menu", exact: true }).click();
+    await page.getByLabel("Cari menu", { exact: true }).fill("Page menu");
+    await expect(page.locator(".menu-card")).toHaveCount(20);
+    const customerPager = page.getByRole("navigation", { name: "Navigasi halaman" });
+    await customerPager.getByRole("radio", { name: "10", exact: true }).check();
+    await expect(page.locator(".menu-card")).toHaveCount(10);
+    await customerPager.getByRole("button", { name: "Berikutnya" }).click();
+    await expect(page.locator(".menu-card").first()).toContainText("Page menu 10");
+    await customerPager.getByRole("radio", { name: "15", exact: true }).check();
+    await expect(page.locator(".menu-card")).toHaveCount(15);
+    await expect(page.locator(".menu-card").first()).toContainText("Page menu 00");
+    await page.getByRole("button", { name: "English", exact: true }).click();
+    const englishPager = page.getByRole("navigation", { name: "Pagination" });
+    await expect(englishPager.getByRole("group", { name: "Items per page" })).toBeVisible();
+    await expect(englishPager).toContainText("15 items per page");
+  } finally { await data.pool.query("DELETE FROM dining_tables WHERE id=ANY($1::uuid[])", [tableIds]); }
 });
