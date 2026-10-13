@@ -2,9 +2,9 @@
 
 import { useLocale } from "@/components/locale-provider";
 
-import { Button, Input } from "@/components/ui/controls";
+import { CheckIcon } from "@phosphor-icons/react";
+import { Button } from "@/components/ui/controls";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { sessionItems } from "@/lib/staff/session-items";
 import { Photo } from "@/components/ui/photo";
 
 
@@ -13,12 +13,18 @@ export type StaffOrder = { id: string; customerName: string; source: "QR" | "MAN
 
 export function OrderDetails({ orders, busy = "", onConfirm, onServe, onVoid }: { orders: StaffOrder[]; busy?: string; onConfirm?: (id: string) => void; onServe?: (id: string) => void; onVoid?: (item: OrderItem) => void }) {
   const { t, money } = useLocale();
-  const tally = sessionItems(orders);
   orders = orders.filter((order) => !order.voidedAt && order.items.some((item) => !item.voided));
-  return <section className="order-details"><div className="detail-heading"><h2>{t("Pesanan sesi ini")}</h2><span className="count-label">{orders.length}</span></div>{tally.length > 0 && <details className="session-tally" open><summary>{t("Ringkasan menu sesi")}</summary>{tally.map((item, index) => <div className="money-row" key={index}><span>{item.quantity}× {item.menuName}</span><strong>{money(item.lineTotalIdr)}</strong></div>)}<div className="money-row"><span>{t("Subtotal menu")}</span><strong>{money(tally.reduce((sum, item) => sum + BigInt(item.lineTotalIdr), 0n))}</strong></div></details>}{orders.length ? orders.map((order) => <article className="pos-order" key={order.id}>
+  return <section className="order-details"><div className="detail-heading"><h2>{t("Pesanan sesi ini")}</h2><span className="count-label">{orders.length}</span></div>{orders.length ? orders.map((order) => <article className="pos-order" key={order.id}>
     <div className="order-heading"><div><h3>{order.customerName}</h3><p className="muted">#{order.id.slice(0, 8)} · {order.source === "QR" ? "QR" : t("Kasir")}</p></div><StatusBadge status={order.voidedAt ? "VOID" : order.status} /></div>
     {order.note && <p className="order-note">{order.note}</p>}
-    {order.items.filter((item) => !item.voided).map((item) => <div className="pos-item" key={item.id}><div className="order-item-main"><div className="order-item-copy"><strong>{item.quantity}× {item.menuName}</strong><span>{money(item.lineTotalIdr)}</span>{item.customerNote && <small>{t("Catatan:")}{" "}{item.customerNote}</small>}</div><Photo src={item.imageUrl ?? null} alt={item.menuName} menuName={item.menuName} className="order-item-photo" /></div><div className="pos-item-actions">{order.status !== "PENDING" && onServe ? <label className="check-row"><Input type="checkbox" checked={item.served} disabled={item.served || Boolean(busy)} onChange={() => onServe(item.id)} aria-label={t("Sudah disajikan: {0} {1}", { "0": item.quantity, "1": item.menuName })} />{t("Tersaji")}</label> : <span className="muted">{item.served ? t("Tersaji") : t("Belum tersaji")}</span>}{onVoid && <Button className="text-button danger-text" disabled={Boolean(busy)} onClick={() => onVoid(item)}>{t("Hapus")}</Button>}</div></div>)}
+    {order.items.filter((item) => !item.voided).map((item) => <div className="pos-item" key={item.id}>
+      <Photo src={item.imageUrl ?? null} alt={item.menuName} menuName={item.menuName} className="order-item-photo" />
+      <div className="order-item-copy"><strong>{item.menuName} <span className="order-item-quantity">x{item.quantity}</span></strong><span className="order-item-price">{money(item.lineTotalIdr)}</span>{item.customerNote && <small>{t("Catatan:")}{" "}{item.customerNote}</small>}</div>
+      <div className="pos-item-actions">
+        {onServe ? <Button className={`secondary-button order-serve-button ${item.served ? "is-served" : ""}`} disabled={item.served || order.status === "PENDING" || Boolean(busy)} aria-pressed={item.served} aria-label={t("Tersaji: {0} x{1}", { "0": item.menuName, "1": item.quantity })} onClick={() => onServe(item.id)}>{item.served && <CheckIcon size={14} aria-hidden="true" />}{t("Tersaji")}</Button> : <span className="muted">{item.served ? t("Tersaji") : t("Belum tersaji")}</span>}
+        {onVoid && <Button className="secondary-button danger-text order-remove-button" disabled={Boolean(busy)} onClick={() => onVoid(item)}>{t("Hapus")}</Button>}
+      </div>
+    </div>)}
     {order.status === "PENDING" && !order.voidedAt && onConfirm && <Button className="primary-button full-width" disabled={Boolean(busy)} onClick={() => onConfirm(order.id)}>{busy === `confirm:${order.id}` ? t("Memproses…") : t("Konfirmasi")}</Button>}
   </article>) : <p className="empty-state">{t("Belum ada pesanan pada sesi ini.")}</p>}</section>;
 }

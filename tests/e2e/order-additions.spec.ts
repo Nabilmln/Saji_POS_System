@@ -25,8 +25,8 @@ test("additional guest orders send only the new cart and combine session quantit
   expect(table.bill.subtotalIdr).toBe("60000");
   expect(table.orders.flatMap((order: { items: unknown[] }) => order.items)).toHaveLength(3);
   await page.goto(`/pos/tables/${data.tableId}`);
-  await expect(page.locator(".session-tally")).toContainText(`2\u00d7 ${data.menuName}`);
-  await expect(page.locator(".session-tally")).toContainText(/Rp\s*60\.000/);
+  await expect(page.locator(".pos-item").filter({ hasText: data.menuName })).toHaveCount(2);
+  await expect(page.locator(".session-tally")).toHaveCount(0);
   expect(errors).toEqual([]);
 });
 
@@ -49,7 +49,7 @@ test("manual additions keep an uncertain submission locked and replay it once", 
   await page.getByLabel("Nama pelanggan / label").fill("Guest");
   await page.getByRole("button", { name: `Tambah ${data.menuName}`, exact: true }).click();
   await page.getByRole("button", { name: "Simpan order Menunggu" }).click();
-  await expect(page.locator(".session-tally")).toContainText(`2\u00d7 ${data.menuName}`);
+  await expect(page.locator(".pos-item").filter({ hasText: data.menuName })).toHaveCount(2);
   const table = (await (await call(page.request, `/staff/tables/${data.tableId}`)).json()).data;
   expect(table.orders).toHaveLength(2);
   expect(table.bill.subtotalIdr).toBe("50000");

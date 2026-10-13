@@ -20,9 +20,9 @@ test("confirmed cash payment thanks every guest, clears drafts, and requires a f
     await signIn(page); await page.goto(`/pos/tables/${data.tableId}`);
     for (let index = 0; index < 2; index++) {
       await page.getByRole("button", { name: "Konfirmasi", exact: true }).first().click();
-      await expect(page.getByRole("checkbox", { name: /Sudah disajikan/ })).toHaveCount(index + 1);
-      await page.getByRole("checkbox", { name: /Sudah disajikan/ }).nth(index).click();
-      await expect(page.getByRole("checkbox", { name: /Sudah disajikan/ }).nth(index)).toBeChecked();
+      await expect(page.getByRole("button", { name: /^Tersaji:/ })).toHaveCount(2);
+      await page.getByRole("button", { name: /^Tersaji:/ }).nth(index).click();
+      await expect(page.getByRole("button", { name: /^Tersaji:/ }).nth(index)).toHaveAttribute("aria-pressed", "true");
     }
     const before = (await (await alice.request.get(`/api/public/orders/${aliceOrder.id}`, { headers: { Authorization: `Bearer ${aliceOrder.token}` } })).json()).data;
     expect(before.status).toBe("SERVED"); expect(before.session.status).toBe("OPEN");

@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect, signIn, call } from "./fixtures";
 
-test("order details show corresponding compact photos on the right in both languages", async ({ page, data }, testInfo) => {
+test("order details align left photos, title quantities, prices and action buttons in both languages", async ({ page, data }, testInfo) => {
   await signIn(page);
   await data.pool.query("UPDATE menu_items SET image_url='/images/menu/nasi-goreng.webp' WHERE id=$1", [data.menuId]);
   const key = randomUUID();
@@ -19,7 +19,15 @@ test("order details show corresponding compact photos on the right in both langu
     const image = row.getByRole("img", { name: data.menuName, exact: true });
     await expect(image).toBeVisible();
     const photo = await image.boundingBox(), copy = await row.locator(".order-item-copy").boundingBox();
-    expect(photo!.x).toBeGreaterThanOrEqual(copy!.x + copy!.width);
+    expect(photo!.x + photo!.width).toBeLessThanOrEqual(copy!.x);
+    await expect(row.locator(".order-item-copy strong")).toHaveText(`${data.menuName} x1`);
+    const actions = await row.locator(".pos-item-actions").boundingBox();
+    expect(actions!.x).toBe(copy!.x);
+    expect(actions!.y).toBeGreaterThanOrEqual(copy!.y + copy!.height);
+    await expect(row.getByRole("checkbox")).toHaveCount(0);
+    await expect(row.getByRole("button", { name: /^(Tersaji|Served):/ })).toBeDisabled();
+    await expect(row.getByRole("button", { name: /^(Hapus|Remove)$/ })).toBeVisible();
+    await expect(page.locator(".workspace-detail .session-tally, .workspace-detail .table-session-summary")).toHaveCount(0);
     expect(photo!.width).toBeLessThanOrEqual(64);
     expect(photo!.height).toBeLessThanOrEqual(64);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

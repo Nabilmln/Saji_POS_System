@@ -72,8 +72,8 @@ test("English owner sections and cashier order-to-receipt workflow preserve perm
     await cashier.getByRole("button", { name: "Save Pending order", exact: true }).click();
     await expect(cashier.locator(".inline-alert[role=status]")).toContainText("Order saved as Pending");
     await cashier.getByRole("button", { name: "Confirm", exact: true }).click();
-    await cashier.getByRole("checkbox", { name: /^Served:/ }).click();
-    await expect(cashier.getByRole("checkbox", { name: /^Served:/ })).toBeChecked();
+    await cashier.getByRole("button", { name: /^Served:/ }).click();
+    await expect(cashier.getByRole("button", { name: /^Served:/ })).toHaveAttribute("aria-pressed", "true");
     await cashier.getByRole("link", { name: "View bill & payment", exact: true }).click();
     await cashier.getByLabel("Cash received (IDR)", { exact: true }).fill("100000");
     await cashier.getByRole("checkbox", { name: "I have reviewed the latest bill and the cash received", exact: true }).check();

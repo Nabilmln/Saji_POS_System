@@ -16,7 +16,8 @@ test("table quick actions add orders, preview receipts and pay without navigatin
   await page.getByRole("button", { name: "Simpan order Menunggu" }).click();
   await expect(page.getByRole("button", { name: "Simpan order Menunggu" })).toHaveCount(0);
   await page.getByRole("button", { name: /Semua meja/, exact: false }).click();
-  await expect(pane.locator(".table-session-summary")).toContainText(/Rp\s*25\.000/);
+  await expect(pane.locator(".table-session-summary, .session-tally")).toHaveCount(0);
+  await expect(pane.locator(".pos-item .order-item-price")).toContainText(/Rp\s*25\.000/);
   await pane.getByRole("button", { name: "Lihat struk", exact: true }).click();
   await expect(pane.locator(".pos-receipt")).toContainText("Belum lunas");
   await expect(page).toHaveURL(/\/pos$/);
