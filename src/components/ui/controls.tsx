@@ -1,6 +1,8 @@
 "use client";
 
 import { useLocale } from "@/components/locale-provider";
+import { Toast } from "./toast";
+import { LIST_PAGE_SIZE } from "@/lib/pagination";
 
 import { useId, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type TextareaHTMLAttributes, type HTMLAttributes } from "react";
 import * as Select from "@radix-ui/react-select";
@@ -47,7 +49,8 @@ export function Panel({ className = "admin-panel", ...props }: HTMLAttributes<HT
   return <section className={className} {...props} />;
 }
 
-export function Alert({ className = "inline-alert", role, ...props }: HTMLAttributes<HTMLDivElement>) {
+export function Alert({ className = "inline-alert", role, toast = false, ...props }: HTMLAttributes<HTMLDivElement> & { toast?: boolean }) {
+  if (toast) return <Toast key={String(props.children)}>{props.children}</Toast>;
   return <div className={className} role={role ?? (className.includes("info") ? "status" : "alert")} {...props} />;
 }
 
@@ -59,7 +62,7 @@ export function LoadingState({ className = "loading-block", ...props }: HTMLAttr
   return <div className={className} role="status" {...props} />;
 }
 
-export function Pagination({ page, hasNext, onChange, disabled }: { page: number; hasNext: boolean; onChange: (page: number) => void; disabled?: boolean }) {
+export function Pagination({ page, hasNext, onChange, disabled, total, label = "Navigasi halaman" }: { page: number; hasNext: boolean; onChange: (page: number) => void; disabled?: boolean; total?: number; label?: string }) {
   const { t } = useLocale();
-  return <div className="pagination"><span>{t("Halaman")}{" "}{page}</span><div><Button className="secondary-button" disabled={page === 1 || disabled} onClick={() => onChange(page - 1)}>{t("Sebelumnya")}</Button><Button className="secondary-button" disabled={!hasNext || disabled} onClick={() => onChange(page + 1)}>{t("Berikutnya")}</Button></div></div>;
+  return <nav className="pagination-panel" aria-label={t(label)}><div><span>{t("Halaman")}{" "}{page}{total !== undefined && ` / ${Math.max(1, Math.ceil(total / LIST_PAGE_SIZE))}`}</span><small>{t("Maksimal 25 data per halaman")}</small></div><div className="pagination-actions"><Button type="button" className="secondary-button" disabled={page === 1 || disabled} onClick={() => onChange(page - 1)}>{t("Sebelumnya")}</Button><Button type="button" className="secondary-button" disabled={!hasNext || disabled} onClick={() => onChange(page + 1)}>{t("Berikutnya")}</Button></div></nav>;
 }

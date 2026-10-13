@@ -51,7 +51,7 @@ export function LoginForm({ role = "CASHIER" }: { role?: "ADMIN" | "CASHIER" }) 
       {!resetting && <><label className="field-label" htmlFor="staff-password">{t("Kata sandi")}</label>
       <PasswordInput id="staff-password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} /></>}
       {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
-      {notice && <Alert className="inline-alert info" role="status">{t(notice)}</Alert>}
+      {notice && <Alert toast className="inline-alert info" role="status">{t(notice)}</Alert>}
       <Button className="primary-button full-width" disabled={busy}>{busy ? t("Memproses…") : resetting ? t("Kirim tautan pengaturan") : t("Masuk")}</Button>
       <Button type="button" className="text-button" disabled={busy} onClick={() => { setResetting(!resetting); setError(""); setNotice(""); }}>{resetting ? t("Kembali ke masuk") : t("Lupa kata sandi?")}</Button>
     </form>

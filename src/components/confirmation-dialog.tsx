@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, type ReactNode } from "react";
 
-export function ConfirmationDialog({ titleId, onClose, children }: { titleId: string; onClose: () => void; children: ReactNode }) {
+export function ConfirmationDialog({ titleId, descriptionId, onClose, children, busy = false, className = "pos-dialog" }: { titleId: string; descriptionId?: string; onClose: () => void; children: ReactNode; busy?: boolean; className?: string }) {
   const dialog = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const element = dialog.current;
@@ -10,5 +10,5 @@ export function ConfirmationDialog({ titleId, onClose, children }: { titleId: st
     element?.showModal();
     return () => { element?.close(); trigger?.focus(); };
   }, []);
-  return <dialog ref={dialog} className="pos-dialog" aria-labelledby={titleId} onCancel={(event) => { event.preventDefault(); onClose(); }}>{children}</dialog>;
+  return <dialog ref={dialog} className={className} aria-labelledby={titleId} aria-describedby={descriptionId} onCancel={(event) => { event.preventDefault(); if (!busy) onClose(); }}>{children}</dialog>;
 }
