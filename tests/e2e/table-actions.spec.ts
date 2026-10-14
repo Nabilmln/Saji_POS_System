@@ -67,6 +67,8 @@ test("bill follows the order list and table actions stay at the bottom while det
       await page.getByRole("button", { name: width === 390 ? "English" : "Bahasa Indonesia", exact: true }).click();
       await expect(pane.locator(".pos-item")).toHaveCount(10);
       const content = pane.locator(".detail-pane-content"), footer = pane.locator(".detail-pane-footer");
+      expect(await content.evaluate((element) => getComputedStyle(element).scrollbarWidth)).toBe("none");
+      expect(await content.evaluate((element) => element instanceof HTMLElement && element.clientWidth === element.offsetWidth)).toBe(true);
       await expect(footer.getByRole("button", { name: /^(Lihat struk|View receipt)$/ })).toBeVisible();
       await expect(pane.getByRole("heading", { name: /^(Rincian tagihan|Bill details)$/ })).toHaveCount(1);
       await expect(page.locator(".staff-content .pos-bill-lines")).toHaveCount(0);
@@ -78,6 +80,12 @@ test("bill follows the order list and table actions stay at the bottom while det
       const after = await footer.boundingBox();
       expect(Math.abs(before!.y - after!.y)).toBeLessThan(1);
       expect(await content.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+      await content.focus();
+      await expect(content).toBeFocused();
+      const previousScroll = await content.evaluate((element) => element.scrollTop);
+      await page.keyboard.press("PageUp");
+      await expect.poll(() => content.evaluate((element) => element.scrollTop)).toBeLessThan(previousScroll);
+      await content.evaluate((element) => { element.scrollTop = element.scrollHeight; });
       expect(after!.y + after!.height).toBeLessThanOrEqual(844);
       await expect(pane.locator(".pos-bill-total")).toContainText(width === 390 ? /250,000/ : /250\.000/);
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

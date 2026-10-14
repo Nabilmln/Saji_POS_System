@@ -13,7 +13,8 @@ const DetailTarget = createContext<HTMLElement | null>(null);
 
 export function DetailPane({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
   const target = useContext(DetailTarget);
-  return target ? createPortal(<div className={`detail-pane${footer ? " detail-pane-with-footer" : ""}`}>{footer ? <><div className="detail-pane-content">{children}</div><div className="detail-pane-footer">{footer}</div></> : children}</div>, target) : null;
+  const { t } = useLocale();
+  return target ? createPortal(<div className={`detail-pane${footer ? " detail-pane-with-footer" : ""}`}>{footer ? <><div className="detail-pane-content" tabIndex={0} role="region" aria-label={t("Rincian pilihan")}>{children}</div><div className="detail-pane-footer">{footer}</div></> : children}</div>, target) : null;
 }
 
 export function CustomerShell({ tableNumber, children, footer }: {

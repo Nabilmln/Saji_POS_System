@@ -33,12 +33,15 @@ test("order details align left photos, title quantities, prices and action butto
     const remove = await row.getByRole("button", { name: /^(Hapus|Remove)$/ }).boundingBox();
     expect(remove!.y).toBe(served!.y);
     expect(remove!.x - (served!.x + served!.width)).toBeCloseTo(8, 0);
+    expect(Math.abs(remove!.x + remove!.width - (copy!.x + copy!.width))).toBeLessThan(1);
+    expect((await row.boundingBox())!.height).toBeLessThanOrEqual(76);
     await expect(page.locator(".workspace-detail .session-tally, .workspace-detail .table-session-summary")).toHaveCount(0);
-    expect(photo!.width).toBeLessThanOrEqual(64);
-    expect(photo!.height).toBeLessThanOrEqual(64);
+    expect(photo!.width).toBeLessThanOrEqual(48);
+    expect(photo!.height).toBeLessThanOrEqual(48);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     await page.screenshot({ path: testInfo.outputPath(`order-photos-${width}.png`), fullPage: true });
   }
   await expect(page.locator(".pos-item").filter({ hasText: "Teh Demo" }).locator(".photo-placeholder")).toBeVisible();
+  await expect(page.locator(".pos-item").filter({ hasText: "Teh Demo" }).locator(".photo-placeholder span")).toBeHidden();
 });
