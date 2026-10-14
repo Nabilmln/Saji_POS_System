@@ -8,6 +8,7 @@ import { StatusBadge, statusLabels, orderStatusOptions } from "@/components/ui/s
 import { usePolling } from "@/lib/use-polling";
 
 import { useCallback, useEffect, useState } from "react";
+import { ArrowsClockwiseIcon } from "@phosphor-icons/react";
 import { DataTable } from "@/components/ui/data-table";
 import { usePagination } from "@/lib/use-pagination";
 import { adminPage, adminApi, jsonRequest } from "@/lib/admin/client";
@@ -50,6 +51,7 @@ export function PosOverview() {
   const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState("");
   const [syncedAt, setSyncedAt] = useState<Date | null>(null);
+  const [syncFailed, setSyncFailed] = useState(false);
   useEffect(() => {
     const timer = window.setTimeout(() => {
       try {
@@ -67,8 +69,8 @@ export function PosOverview() {
       if (orderTable) params.set("tableId", orderTable);
       if (orderDate) params.set("date", orderDate);
       const [nextTables, nextOrders] = await Promise.all([adminApi<Table[]>("/api/staff/tables"), adminPage<Order>(`/api/staff/orders?${params}`)]);
-      setTables(nextTables); setOrders(nextOrders.items); setHasNext(nextOrders.hasNext); setError(""); setSyncedAt(new Date());
-    } catch { setError("Data belum tersinkron. Periksa koneksi lalu coba lagi."); }
+      setTables(nextTables); setOrders(nextOrders.items); setHasNext(nextOrders.hasNext); setError(""); setSyncedAt(new Date()); setSyncFailed(false);
+    } catch { setError("Data belum tersinkron. Periksa koneksi lalu coba lagi."); setSyncFailed(true); }
     finally { setLoaded(true); }
   }, [orderStatus, orderTable, orderDate, orderPage, orderPageSize]);
   usePolling(refresh);
@@ -103,8 +105,10 @@ export function PosOverview() {
   if (workspace === "PAYMENT" && paymentSessionId) return <PosPayment key={paymentSessionId} sessionId={paymentSessionId} onClose={closeWorkspace} onViewReceipt={(paymentId) => { setReceipt({ paymentId }); closeWorkspace(); }} />;
   return <div className="admin-stack">
     <Panel className="admin-panel">
-      <div className="admin-section-head"><div><h2>{t("Ringkasan meja")}</h2></div><Button className="secondary-button" onClick={() => void refresh()}>{t("Segarkan")}</Button></div>
-      <p className="muted">{syncedAt ? t("Terakhir sinkron {0}", { "0": syncedAt.toLocaleTimeString(locale === "en" ? "en-GB" : "id-ID", { timeZone: "Asia/Jakarta" }) }) : t("Menunggu data…")} {" "}{t("· Diperbarui otomatis setiap 5 detik saat tab aktif.")}</p>
+      <div className="admin-section-head pos-overview-head"><div><h2>{t("Ringkasan meja")}</h2></div><div className="pos-sync-actions">
+        <div className="pos-sync-status" title={t("Diperbarui otomatis setiap 5 detik saat tab aktif.")}><ArrowsClockwiseIcon size={15} aria-hidden="true" /><span>{syncFailed ? t("Belum tersinkron") : syncedAt ? t("Tersinkron") : t("Menunggu data…")}</span>{syncedAt && <time dateTime={syncedAt.toISOString()}>{syncedAt.toLocaleTimeString(locale === "en" ? "en-GB" : "id-ID", { timeZone: "Asia/Jakarta", hour12: false })}</time>}</div>
+        <Button className="secondary-button" onClick={() => void refresh()}>{t("Segarkan")}</Button>
+      </div></div>
       {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}{notice && <Alert toast className="inline-alert info">{t(notice)}</Alert>}
       <div className="admin-filters">
         <label>{t("Cari meja")}<Input className="text-field" value={query} maxLength={30} onChange={(event) => { setQuery(event.target.value); setTablePage(1); }} placeholder={t("Nomor meja")} /></label>

@@ -23,6 +23,18 @@ test("table cards show count badges and a compact accessible View table button",
     const buttonBox = await button.boundingBox(), cardBox = await card.boundingBox();
     expect(buttonBox!.height).toBeGreaterThanOrEqual(36);
     expect(buttonBox!.x + buttonBox!.width).toBeLessThanOrEqual(cardBox!.x + cardBox!.width);
+    const innerWidth = await card.evaluate((element) => element.clientWidth - parseFloat(getComputedStyle(element).paddingLeft) - parseFloat(getComputedStyle(element).paddingRight));
+    expect(buttonBox!.width).toBeCloseTo(innerWidth, 0);
+    const pending = await card.locator(".pos-order-counts .pending").boundingBox(), active = await card.locator(".pos-order-counts .active").boundingBox();
+    const badgeGap = Math.abs(pending!.y - active!.y) < 1 ? active!.x - pending!.x - pending!.width : active!.y - pending!.y - pending!.height;
+    expect(badgeGap).toBeGreaterThanOrEqual(8);
+    const sync = page.locator(".pos-sync-status");
+    await expect(sync).toContainText(width === 320 ? "Synced" : "Tersinkron");
+    await expect(sync.locator("svg")).toHaveCount(1);
+    await expect(sync.locator("time")).toHaveText(/\d{2}[.:]\d{2}[.:]\d{2}/);
+    const syncBox = await sync.boundingBox(), refreshBox = await page.locator(".pos-sync-actions").getByRole("button").boundingBox();
+    expect(syncBox!.x + syncBox!.width).toBeLessThanOrEqual(refreshBox!.x);
+    expect(Math.abs(syncBox!.y + syncBox!.height / 2 - refreshBox!.y - refreshBox!.height / 2)).toBeLessThan(1);
     expect(await card.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
     await button.focus();
     await page.keyboard.press("Enter");
@@ -33,6 +45,13 @@ test("table cards show count badges and a compact accessible View table button",
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     await page.screenshot({ path: testInfo.outputPath(`table-card-badges-${width}.png`), fullPage: true });
   }
+  const syncedTime = await page.locator(".pos-sync-status time").getAttribute("datetime");
+  await page.route("**/api/staff/tables", (route) => route.abort("failed"), { times: 1 });
+  await page.locator(".pos-sync-actions").getByRole("button", { name: "Refresh", exact: true }).click();
+  await expect(page.locator(".pos-sync-status")).toContainText("Not synced");
+  await expect(page.locator(".pos-sync-status time")).toHaveAttribute("datetime", syncedTime!);
+  await page.locator(".pos-sync-actions").getByRole("button", { name: "Refresh", exact: true }).click();
+  await expect(page.locator(".pos-sync-status")).toContainText("Synced");
 });
 
 test("table quick actions add orders, preview receipts and pay without navigating", async ({ page, data }, testInfo) => {

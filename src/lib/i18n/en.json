@@ -1,4 +1,7 @@
 {
+  "Tersinkron": "Synced",
+  "Belum tersinkron": "Not synced",
+  "Diperbarui otomatis setiap 5 detik saat tab aktif.": "Updates every 5 seconds while the tab is visible.",
   "Tersaji: {0} x{1}": "Served: {0} x{1}",
   "Terima kasih, {0}!": "Thank you, {0}!",
   "Pembayaran telah dikonfirmasi kasir.": "Your payment has been confirmed by the cashier.",
