@@ -12,13 +12,13 @@ test("table cards show count badges and a compact accessible View table button",
     clientRequestKey: key, customerName: "Table badge guest", items: [{ menuItemId: data.menuId, quantity: 1 }],
   }, key)).status()).toBe(201);
   await page.locator(".staff-content").getByRole("button", { name: "Segarkan", exact: true }).click();
-  for (const width of [1440, 320]) {
+  for (const width of [1440, 1024, 390, 320]) {
     await page.setViewportSize({ width, height: 900 });
-    if (width === 320) await page.getByRole("button", { name: "English", exact: true }).click();
-    await expect(card.locator(".pos-order-counts .pending")).toHaveText(width === 320 ? "1 Pending" : "1 Menunggu");
-    await expect(card.locator(".pos-order-counts .active")).toHaveText(width === 320 ? "1 Active" : "1 Aktif");
+    if (width === 390) await page.getByRole("button", { name: "English", exact: true }).click();
+    await expect(card.locator(".pos-order-counts .pending")).toHaveText(width <= 390 ? "1 Pending" : "1 Menunggu");
+    await expect(card.locator(".pos-order-counts .active")).toHaveText(width <= 390 ? "1 Active" : "1 Aktif");
     const button = card.getByRole("button", { name: new RegExp(data.tableNumber) });
-    await expect(button).toHaveText(width === 320 ? "View table" : "Lihat meja");
+    await expect(button).toHaveText(width <= 390 ? "View table" : "Lihat meja");
     await expect(card.getByRole("button")).toHaveCount(1);
     const buttonBox = await button.boundingBox(), cardBox = await card.boundingBox();
     expect(buttonBox!.height).toBeGreaterThanOrEqual(36);
@@ -29,12 +29,15 @@ test("table cards show count badges and a compact accessible View table button",
     const badgeGap = Math.abs(pending!.y - active!.y) < 1 ? active!.x - pending!.x - pending!.width : active!.y - pending!.y - pending!.height;
     expect(badgeGap).toBeGreaterThanOrEqual(8);
     const sync = page.locator(".pos-sync-status");
-    await expect(sync).toContainText(width === 320 ? "Synced" : "Tersinkron");
+    await expect(sync).toContainText(width <= 390 ? "Synced" : "Tersinkron");
     await expect(sync.locator("svg")).toHaveCount(1);
-    await expect(sync.locator("time")).toHaveText(/\d{2}[.:]\d{2}[.:]\d{2}/);
+    await expect(sync.locator("time")).toHaveText(/^\d{2}:\d{2}:\d{2}$/);
+    await expect(sync.locator("svg")).toHaveCSS("animation-name", "sync-orbit");
+    expect(await sync.locator("svg").evaluate((element) => element.getAnimations().some((animation) => animation.playState === "running"))).toBe(true);
     const syncBox = await sync.boundingBox(), refreshBox = await page.locator(".pos-sync-actions").getByRole("button").boundingBox();
     expect(syncBox!.x + syncBox!.width).toBeLessThanOrEqual(refreshBox!.x);
     expect(Math.abs(syncBox!.y + syncBox!.height / 2 - refreshBox!.y - refreshBox!.height / 2)).toBeLessThan(1);
+    expect(Math.abs(syncBox!.height - refreshBox!.height)).toBeLessThan(1);
     expect(await card.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
     await button.focus();
     await page.keyboard.press("Enter");
@@ -45,11 +48,20 @@ test("table cards show count badges and a compact accessible View table button",
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     await page.screenshot({ path: testInfo.outputPath(`table-card-badges-${width}.png`), fullPage: true });
   }
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await expect(page.locator(".pos-sync-status svg")).toHaveCSS("animation-name", "none");
+  await page.emulateMedia({ reducedMotion: "no-preference" });
   const syncedTime = await page.locator(".pos-sync-status time").getAttribute("datetime");
   await page.route("**/api/staff/tables", (route) => route.abort("failed"), { times: 1 });
   await page.locator(".pos-sync-actions").getByRole("button", { name: "Refresh", exact: true }).click();
   await expect(page.locator(".pos-sync-status")).toContainText("Not synced");
   await expect(page.locator(".pos-sync-status time")).toHaveAttribute("datetime", syncedTime!);
+  await page.getByRole("button", { name: "Bahasa Indonesia", exact: true }).click();
+  await expect(page.locator(".pos-sync-status")).toContainText("Belum tersinkron");
+  const failedSyncBox = await page.locator(".pos-sync-status").boundingBox(), failedRefreshBox = await page.locator(".pos-sync-actions").getByRole("button").boundingBox();
+  expect(failedSyncBox!.x + failedSyncBox!.width).toBeLessThanOrEqual(failedRefreshBox!.x);
+  expect(Math.abs(failedSyncBox!.y - failedRefreshBox!.y)).toBeLessThan(1);
+  await page.getByRole("button", { name: "English", exact: true }).click();
   await page.locator(".pos-sync-actions").getByRole("button", { name: "Refresh", exact: true }).click();
   await expect(page.locator(".pos-sync-status")).toContainText("Synced");
 });

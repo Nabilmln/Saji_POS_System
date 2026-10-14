@@ -106,7 +106,7 @@ export function PosOverview() {
   return <div className="admin-stack">
     <Panel className="admin-panel">
       <div className="admin-section-head pos-overview-head"><div><h2>{t("Ringkasan meja")}</h2></div><div className="pos-sync-actions">
-        <div className="pos-sync-status" title={t("Diperbarui otomatis setiap 5 detik saat tab aktif.")}><ArrowsClockwiseIcon size={15} aria-hidden="true" /><span>{syncFailed ? t("Belum tersinkron") : syncedAt ? t("Tersinkron") : t("Menunggu data…")}</span>{syncedAt && <time dateTime={syncedAt.toISOString()}>{syncedAt.toLocaleTimeString(locale === "en" ? "en-GB" : "id-ID", { timeZone: "Asia/Jakarta", hour12: false })}</time>}</div>
+        <div className="pos-sync-status" title={t("Diperbarui otomatis setiap 5 detik saat tab aktif.")}><ArrowsClockwiseIcon size={15} aria-hidden="true" /><span title={syncFailed ? t("Belum tersinkron") : syncedAt ? t("Tersinkron") : t("Menunggu data…")}>{syncFailed ? t("Belum tersinkron") : syncedAt ? t("Tersinkron") : t("Menunggu data…")}</span>{syncedAt && <time dateTime={syncedAt.toISOString()}>{syncedAt.toLocaleTimeString("en-GB", { timeZone: "Asia/Jakarta", hour12: false })}</time>}</div>
         <Button className="secondary-button" onClick={() => void refresh()}>{t("Segarkan")}</Button>
       </div></div>
       {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}{notice && <Alert toast className="inline-alert info">{t(notice)}</Alert>}
