@@ -2,7 +2,6 @@
 
 import { useLocale } from "@/components/locale-provider";
 
-import { CheckIcon } from "@phosphor-icons/react";
 import { Button } from "@/components/ui/controls";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { Photo } from "@/components/ui/photo";
@@ -22,7 +21,7 @@ export function OrderDetails({ orders, busy = "", onConfirm, onServe, onVoid }: 
       <div className="order-item-body">
       <div className="order-item-copy"><strong>{item.menuName} <span className="order-item-quantity">x{item.quantity}</span></strong><span className="order-item-price">{money(item.lineTotalIdr)}</span>{item.customerNote && <small>{t("Catatan:")}{" "}{item.customerNote}</small>}</div>
       <div className="pos-item-actions">
-        {onServe ? <Button className={`secondary-button order-serve-button ${item.served ? "is-served" : ""}`} disabled={item.served || order.status === "PENDING" || Boolean(busy)} aria-pressed={item.served} aria-label={t("Tersaji: {0} x{1}", { "0": item.menuName, "1": item.quantity })} onClick={() => onServe(item.id)}>{item.served && <CheckIcon size={14} aria-hidden="true" />}{t("Tersaji")}</Button> : <span className="muted">{item.served ? t("Tersaji") : t("Belum tersaji")}</span>}
+        {onServe ? <Button className={`primary-button order-serve-button ${item.served ? "is-served" : ""}`} disabled={item.served || order.status === "PENDING" || Boolean(busy)} aria-pressed={item.served} aria-label={t("Tersaji: {0} x{1}", { "0": item.menuName, "1": item.quantity })} onClick={() => onServe(item.id)}>{t("Tersaji")}</Button> : <span className="muted">{item.served ? t("Tersaji") : t("Belum tersaji")}</span>}
         {onVoid && <Button className="secondary-button danger-text order-remove-button" disabled={Boolean(busy)} onClick={() => onVoid(item)}>{t("Hapus")}</Button>}
       </div>
       </div>
