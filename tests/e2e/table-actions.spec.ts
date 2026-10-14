@@ -2,6 +2,39 @@ import AxeBuilder from "@axe-core/playwright";
 import { randomUUID } from "node:crypto";
 import { test, expect, signIn, call } from "./fixtures";
 
+test("table cards show count badges and a compact accessible View table button", async ({ page, data }, testInfo) => {
+  await signIn(page);
+  const card = page.locator(".pos-table-card").filter({ hasText: data.tableNumber });
+  await expect(card.locator(".pos-order-counts .pending")).toHaveText("0 Menunggu");
+  await expect(card.locator(".pos-order-counts .active")).toHaveText("0 Aktif");
+  const key = randomUUID();
+  expect((await call(page.request, `/staff/tables/${data.tableId}/orders`, "POST", {
+    clientRequestKey: key, customerName: "Table badge guest", items: [{ menuItemId: data.menuId, quantity: 1 }],
+  }, key)).status()).toBe(201);
+  await page.locator(".staff-content").getByRole("button", { name: "Segarkan", exact: true }).click();
+  for (const width of [1440, 320]) {
+    await page.setViewportSize({ width, height: 900 });
+    if (width === 320) await page.getByRole("button", { name: "English", exact: true }).click();
+    await expect(card.locator(".pos-order-counts .pending")).toHaveText(width === 320 ? "1 Pending" : "1 Menunggu");
+    await expect(card.locator(".pos-order-counts .active")).toHaveText(width === 320 ? "1 Active" : "1 Aktif");
+    const button = card.getByRole("button", { name: new RegExp(data.tableNumber) });
+    await expect(button).toHaveText(width === 320 ? "View table" : "Lihat meja");
+    await expect(card.getByRole("button")).toHaveCount(1);
+    const buttonBox = await button.boundingBox(), cardBox = await card.boundingBox();
+    expect(buttonBox!.height).toBeGreaterThanOrEqual(36);
+    expect(buttonBox!.x + buttonBox!.width).toBeLessThanOrEqual(cardBox!.x + cardBox!.width);
+    expect(await card.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+    await button.focus();
+    await page.keyboard.press("Enter");
+    await expect(button).toHaveAttribute("aria-pressed", "true");
+    await expect(page.locator(".workspace-detail .order-details")).toBeVisible();
+    await expect(page).toHaveURL(/\/pos$/);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+    await page.screenshot({ path: testInfo.outputPath(`table-card-badges-${width}.png`), fullPage: true });
+  }
+});
+
 test("table quick actions add orders, preview receipts and pay without navigating", async ({ page, data }, testInfo) => {
   await signIn(page);
   await page.setViewportSize({ width: 1440, height: 1000 });
