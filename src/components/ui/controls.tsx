@@ -4,7 +4,7 @@ import { useLocale } from "@/components/locale-provider";
 import { Toast } from "./toast";
 import { PAGE_SIZE_OPTIONS } from "@/lib/pagination";
 
-import { useId, useState, type ButtonHTMLAttributes, type InputHTMLAttributes, type TextareaHTMLAttributes, type HTMLAttributes } from "react";
+import { useId, useState, type ButtonHTMLAttributes, type ComponentProps, type InputHTMLAttributes, type TextareaHTMLAttributes, type HTMLAttributes } from "react";
 import * as Select from "@radix-ui/react-select";
 import { CaretDownIcon, CaretUpIcon, CheckIcon, EyeIcon, EyeSlashIcon } from "@phosphor-icons/react";
 
@@ -12,7 +12,7 @@ export function Button({ className, type, ...props }: ButtonHTMLAttributes<HTMLB
   return <button type={type} className={`button ${className ?? "primary-button"}`} {...props} />;
 }
 
-export function Input({ className, type, ...props }: InputHTMLAttributes<HTMLInputElement>) {
+export function Input({ className, type, ...props }: ComponentProps<"input">) {
   return <input type={type} className={className ?? (type === "checkbox" || type === "radio" ? undefined : "text-field")} {...props} />;
 }
 

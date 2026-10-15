@@ -10,7 +10,7 @@ test("reservation creation, cancellation, check-in and empty-session closure wor
     await page.getByLabel("Kontak pelanggan").fill("08123456789");
     await page.getByRole("combobox", { name: "Meja tersedia" }).click();
     await page.getByRole("option", { name: `Meja ${data.tableNumber}`, exact: true }).click();
-    await page.getByLabel("Waktu reservasi (WIB)").fill("2026-10-20T12:30");
+    await page.getByLabel("Waktu reservasi (WIB)", { exact: true }).fill("2026-10-20T12:30");
     await page.getByRole("button", { name: "Simpan reservasi" }).click();
     await expect(page.locator(".data-table tbody tr")).toContainText("Nadia Reservasi");
   }

@@ -1,5 +1,7 @@
 "use client";
 
+import { DatePicker } from "@/components/ui/date-picker";
+
 import { useLocale } from "@/components/locale-provider";
 import { formatDateTime } from "@/lib/time";
 
@@ -124,7 +126,7 @@ export function PosOverview() {
     <Pagination label="Navigasi meja" pageSize={tablePageSize} onPageSizeChange={setTablePageSize} page={currentTablePage} hasNext={currentTablePage * tablePageSize < visible.length} total={visible.length} onChange={setTablePage} />
     <Panel className="admin-panel">
       <div className="admin-section-head"><div><h2>{t("Inbox")}{" "}</h2></div></div>
-      <div className="admin-filters"><Selection label={t("Status pesanan")} value={orderStatus} onChange={(value) => { setOrderStatus(value as Order["status"] | "ALL"); setOrderPage(1); }} options={[{ value: "ALL", label: t("Semua") }, ...orderStatusOptions.map((option) => ({ ...option, label: t(option.label) }))]} /><Selection label={t("Meja")} kind="dropdown" value={orderTable} onChange={(value) => { setOrderTable(value); setOrderPage(1); }} options={[{ value: "", label: t("Semua meja") }, ...tables.map((table) => ({ value: table.id, label: t("Meja {0}", { "0": table.tableNumber }) }))]} /><label>{t("Tanggal")}<Input className="text-field" type="date" value={orderDate} onChange={(event) => { setOrderDate(event.target.value); setOrderPage(1); }} /></label></div>
+      <div className="admin-filters"><Selection label={t("Status pesanan")} value={orderStatus} onChange={(value) => { setOrderStatus(value as Order["status"] | "ALL"); setOrderPage(1); }} options={[{ value: "ALL", label: t("Semua") }, ...orderStatusOptions.map((option) => ({ ...option, label: t(option.label) }))]} /><Selection label={t("Meja")} kind="dropdown" value={orderTable} onChange={(value) => { setOrderTable(value); setOrderPage(1); }} options={[{ value: "", label: t("Semua meja") }, ...tables.map((table) => ({ value: table.id, label: t("Meja {0}", { "0": table.tableNumber }) }))]} /><DatePicker label="Tanggal" value={orderDate} onChange={(value) => { setOrderDate(value); setOrderPage(1); }} /></div>
       {orders.length ? <DataTable caption={t("Inbox pesanan")} columns={[t("Order"), t("Pelanggan"), t("Meja"), t("Waktu pesanan"), t("Status"), t("Tindakan")]}>{orders.map((order) => <tr key={order.id}>
         <th scope="row">{order.id.slice(0, 8)}<small className="table-secondary">{order.source === "QR" ? "QR" : t("Kasir")} {"\u00b7"} {order.itemCount} {t("item")}</small></th><td>{order.customerName}</td><td>{order.tableNumber}</td><td className="date-cell">{formatDateTime(order.createdAt, locale)}</td><td><StatusBadge status={order.status} /></td>
         <td><div className="admin-row-actions">{order.status === "PENDING" && <Button disabled={busy === `confirm:${order.id}`} onClick={() => void updateOrder(`/api/staff/orders/${order.id}/confirm`, "POST", {}, `confirm:${order.id}`)}>{busy === `confirm:${order.id}` ? t("Memproses\u2026") : t("Konfirmasi")}</Button>}<Button className="secondary-button" onClick={() => selectTable(order.tableId)}>{t("Detail")}</Button></div></td>

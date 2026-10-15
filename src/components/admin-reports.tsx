@@ -1,5 +1,7 @@
 "use client";
 
+import { DatePicker } from "@/components/ui/date-picker";
+
 import { useLocale } from "@/components/locale-provider";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -12,7 +14,7 @@ import { formatDate, restaurantDate } from "@/lib/time";
 import { usePagination } from "@/lib/use-pagination";
 import { DetailPane } from "@/components/app-shells";
 import { RevenueChart } from "@/components/revenue-chart";
-import { Button, Input, Selection, EmptyState, Alert, LoadingState, Pagination } from "@/components/ui/controls";
+import { Button, Selection, EmptyState, Alert, LoadingState, Pagination } from "@/components/ui/controls";
 
 type Report = { summary: { revenueIdr: string; paidTransactionCount: number }; points: RevenuePoint[] };
 type TopMenu = { menuName: string; quantitySold: number; grossSalesIdr: string };
@@ -51,7 +53,7 @@ export function AdminReports() {
   const days = period && report ? revenueDays(period.from, period.to, report.points) : [];
   const best = report?.points.reduce<RevenuePoint | null>((current, point) => !current || BigInt(point.revenueIdr) > BigInt(current.revenueIdr) ? point : current, null);
   return <div className="admin-stack">
-    <form className="report-filters" onSubmit={submit}><Selection label={t("Periode penjualan")} value={preset} onChange={choosePeriod} disabled={busy} options={[{ value: "today", label: t("Hari ini") }, { value: "week", label: t("7 hari") }, { value: "month", label: t("30 hari") }, { value: "custom", label: t("Kustom") }]} />{preset === "custom" && <><label>{t("Dari tanggal")}<Input type="date" required value={from} onChange={(event) => setFrom(event.target.value)} /></label><label>{t("Sampai tanggal")}<Input type="date" required value={to} onChange={(event) => setTo(event.target.value)} /></label></>}<Button type="submit" disabled={busy}>{busy ? t("Memuat...") : t("Tampilkan laporan")}</Button></form>
+    <form className="report-filters" onSubmit={submit}><Selection label={t("Periode penjualan")} value={preset} onChange={choosePeriod} disabled={busy} options={[{ value: "today", label: t("Hari ini") }, { value: "week", label: t("7 hari") }, { value: "month", label: t("30 hari") }, { value: "custom", label: t("Kustom") }]} />{preset === "custom" && <><DatePicker label="Dari tanggal" required disabled={busy} value={from} onChange={setFrom} /><DatePicker label="Sampai tanggal" required disabled={busy} value={to} onChange={setTo} /></>}<Button type="submit" disabled={busy}>{busy ? t("Memuat...") : t("Tampilkan laporan")}</Button></form>
     {error && <Alert>{t(error)}</Alert>}
     {report && period ? <><p className="report-period">{formatDate(period.from, locale, "long")} {" "}{t("hingga")}{" "}{formatDate(period.to, locale, "long")} {" "}{t("· WIB · Hanya transaksi lunas")}</p><div className="sales-bento report-summary">
       <section className="bento-cell bento-revenue"><ChartLineUpIcon size={20} className="metric-icon" /><p className="metric-label">{t("Pendapatan lunas")}</p><p className="metric-value">{money(report.summary.revenueIdr)}</p><p className="metric-foot">{t("Total tagihan, setelah diskon dan pajak")}</p></section>
