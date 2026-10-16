@@ -9,3 +9,16 @@ export function revenueDays(from: string, to: string, points: RevenuePoint[]): R
   }
   return result;
 }
+
+export function revenueInsights(days: RevenuePoint[]) {
+  const paidDays = days.filter((day) => day.transactionCount > 0);
+  const total = days.reduce((sum, day) => sum + BigInt(day.revenueIdr), 0n);
+  const best = paidDays.reduce<RevenuePoint | null>((current, day) =>
+    !current || BigInt(day.revenueIdr) > BigInt(current.revenueIdr) ? day : current, null);
+  return {
+    paidDays: paidDays.length,
+    averageDailyIdr: days.length ? total / BigInt(days.length) : 0n,
+    best,
+    bestSharePercent: best && total > 0n ? Number(BigInt(best.revenueIdr) * 1000n / total) / 10 : null,
+  };
+}

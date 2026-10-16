@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { ReceiptIcon, TrendUpIcon, ChartLineUpIcon } from "@phosphor-icons/react";
 import { adminApi } from "@/lib/admin/client";
 import { reportRangeSchema } from "@/lib/admin/report-range";
-import { revenueDays, type RevenuePoint } from "@/lib/admin/report-chart";
+import { revenueDays, revenueInsights, type RevenuePoint } from "@/lib/admin/report-chart";
 import { formatDate, restaurantDate } from "@/lib/time";
 
 import { usePagination } from "@/lib/use-pagination";
@@ -51,7 +51,8 @@ export function AdminReports() {
   useEffect(() => { const timer = window.setTimeout(() => choosePeriod("week"), 0); return () => window.clearTimeout(timer); }, [choosePeriod]);
   function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); void load(from, to); }
   const days = period && report ? revenueDays(period.from, period.to, report.points) : [];
-  const best = report?.points.reduce<RevenuePoint | null>((current, point) => !current || BigInt(point.revenueIdr) > BigInt(current.revenueIdr) ? point : current, null);
+  const insights = revenueInsights(days);
+  const peakShare = insights.bestSharePercent === null ? null : new Intl.NumberFormat(locale === "en" ? "en-GB" : "id-ID", { style: "percent", maximumFractionDigits: 1 }).format(insights.bestSharePercent / 100);
   return <div className="admin-stack">
     <form className="report-filters" onSubmit={submit}><Selection label={t("Periode penjualan")} value={preset} onChange={choosePeriod} disabled={busy} options={[{ value: "today", label: t("Hari ini") }, { value: "week", label: t("7 hari") }, { value: "month", label: t("30 hari") }, { value: "custom", label: t("Kustom") }]} />{preset === "custom" && <><DatePicker label="Dari tanggal" required disabled={busy} value={from} onChange={setFrom} /><DatePicker label="Sampai tanggal" required disabled={busy} value={to} onChange={setTo} /></>}<Button type="submit" disabled={busy}>{busy ? t("Memuat...") : t("Tampilkan laporan")}</Button></form>
     {error && <Alert>{t(error)}</Alert>}
@@ -62,6 +63,39 @@ export function AdminReports() {
       <section className="bento-cell bento-chart"><div className="chart-heading"><h2>{t("Tren penjualan")}</h2><span className="chart-unit">{t("IDR / hari")}</span></div>{report.summary.paidTransactionCount ? <RevenueChart from={period.from} to={period.to} points={report.points} /> : <EmptyState>{t("Belum ada pembayaran lunas pada periode ini.")}</EmptyState>}</section>
       <section className="bento-cell bento-menus"><h2>{t("Menu terlaris")}</h2>{menus.length ? menus.map((menu, index) => <div className="top-menu-row" key={menu.menuName}><span className="rank">{index + 1}</span><div><strong>{menu.menuName}</strong><small>{money(menu.grossSalesIdr)} {" "}{t("sebelum diskon/pajak")}</small></div><span className="quantity">{menu.quantitySold}<small>{t("terjual")}</small></span></div>) : <EmptyState>{t("Belum ada menu terjual.")}</EmptyState>}</section>
       <section className="bento-cell bento-data"><details className="report-data"><summary>{t("Lihat angka harian")}</summary><div className="table-scroll"><table><caption>{t("Pendapatan harian (WIB)")}</caption><thead><tr><th>{t("Tanggal")}</th><th>{t("Transaksi")}</th><th>{t("Pendapatan lunas")}</th></tr></thead><tbody>{days.slice((page - 1) * pageSize, page * pageSize).map((day) => <tr key={day.date}><td>{formatDate(day.date, locale)}</td><td>{day.transactionCount}</td><td>{money(day.revenueIdr)}</td></tr>)}</tbody></table></div><Pagination pageSize={pageSize} onPageSizeChange={setPageSize} page={page} hasNext={page * pageSize < days.length} total={days.length} onChange={setPage} /></details></section>
-    </div><DetailPane><div className="detail-heading"><h2>{t("Rincian periode")}</h2></div><dl className="period-detail"><dt>{t("Dari tanggal")}</dt><dd>{period.from}</dd><dt>{t("Sampai tanggal")}</dt><dd>{period.to}</dd><dt>{t("Zona waktu")}</dt><dd>{t("WIB / Asia Jakarta")}</dd></dl><div className="detail-rule" />{best ? <><h3>{t("Penjualan tertinggi")}</h3><p className="metric-value">{money(best.revenueIdr)}</p><p className="muted">{formatDate(best.date, locale)} · {best.transactionCount} {" "}{t("transaksi")}</p></> : <p className="muted">{t("Ringkasan tersedia setelah ada pembayaran.")}</p>}<p className="detail-note">{t("Pesanan belum lunas dan uang kembalian tidak dihitung sebagai pendapatan.")}</p></DetailPane></> : busy ? <LoadingState>{t("Memuat ringkasan penjualan...")}</LoadingState> : <EmptyState>{t("Pilih periode lalu tampilkan laporan untuk mencoba lagi.")}</EmptyState>}
+    </div><DetailPane>
+      <section className="report-insights" aria-label={t("Rincian periode")} aria-busy={busy}>
+        <div className="detail-heading"><h2>{t("Rincian periode")}</h2></div>
+        <div className="insight-period">
+          <div className="insight-period-meta"><span>{t(days.length === 1 ? "1 hari" : "{0} hari", { 0: days.length })}</span><span title="Asia/Jakarta">WIB · UTC+7</span></div>
+          <dl className="insight-dates">
+            <div><dt>{t("Dari tanggal")}</dt><dd><time dateTime={period.from}>{formatDate(period.from, locale)}</time></dd></div>
+            <div><dt>{t("Sampai tanggal")}</dt><dd><time dateTime={period.to}>{formatDate(period.to, locale)}</time></dd></div>
+          </dl>
+        </div>
+        {busy && <p className="insight-updating" role="status">{t("Memperbarui ringkasan…")}</p>}
+        <section className="insight-peak" aria-label={t("Penjualan tertinggi")}>
+          <h3>{t("Penjualan tertinggi")}</h3>
+          {insights.best ? <>
+            <p className="insight-amount">{money(insights.best.revenueIdr)}</p>
+            <p className="insight-peak-date"><time dateTime={insights.best.date}>{formatDate(insights.best.date, locale)}</time><span>{t(insights.best.transactionCount === 1 ? "1 transaksi" : "{0} transaksi", { 0: insights.best.transactionCount })}</span></p>
+            {peakShare !== null && <div className="insight-share">
+              <p><strong>{peakShare}</strong> {t("dari pendapatan periode")}</p>
+              <div className="insight-share-track" aria-hidden="true"><span style={{ width: `${insights.bestSharePercent}%` }} /></div>
+            </div>}
+          </> : <p className="insight-empty">{t("Belum ada pembayaran lunas pada periode ini.")}</p>}
+        </section>
+        <section className="insight-activity" aria-label={t("Ritme penjualan")}>
+          <h3>{t("Ritme penjualan")}</h3>
+          <dl>
+            <div className="insight-daily-average"><dt>{t("Rata-rata per hari")}</dt><dd>{money(insights.averageDailyIdr)}</dd></div>
+            <div><dt>{t("Hari dengan transaksi lunas")}</dt><dd>{insights.paidDays}<span> / {days.length}</span></dd></div>
+            <div><dt>{t("Hari tanpa transaksi lunas")}</dt><dd>{days.length - insights.paidDays}</dd></div>
+          </dl>
+          <p className="insight-caption">{t("Rata-rata mencakup semua hari dalam periode, termasuk hari tanpa pembayaran.")}</p>
+        </section>
+        <p className="insight-scope">{t("Pesanan belum lunas dan uang kembalian tidak dihitung sebagai pendapatan.")}</p>
+      </section>
+    </DetailPane></> : busy ? <LoadingState>{t("Memuat ringkasan penjualan...")}</LoadingState> : <EmptyState>{t("Pilih periode lalu tampilkan laporan untuk mencoba lagi.")}</EmptyState>}
   </div>;
 }
