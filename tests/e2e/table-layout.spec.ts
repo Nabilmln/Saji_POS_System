@@ -38,6 +38,8 @@ test("admin and cashier tables share compact centered cells and stacked timestam
     if (target.name === "daily-sales") await page.getByText("Lihat angka harian", { exact: true }).click();
     const table = page.locator(".data-table");
     await expect(table.locator("tbody tr").first()).toBeVisible();
+    await expect(table.locator("caption")).toHaveCount(0);
+    await expect(table).toHaveAccessibleName(/.+/);
     for (const width of [1280, 390]) {
       if (width === 390) await page.getByRole("button", { name: "English", exact: true }).click();
       await page.setViewportSize({ width, height: 900 });

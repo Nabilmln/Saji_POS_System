@@ -70,14 +70,13 @@ h1,h2,h3,p{overflow-wrap:break-word}h1,h2,h3{letter-spacing:-.025em;line-height:
 /* Shared list, feedback, and destructive-action surfaces. */
 .data-table-wrap{max-width:100%;margin-top:18px;border:1px solid var(--border);border-radius:8px;overscroll-behavior-inline:contain}
 .data-table{width:100%;min-width:560px;table-layout:fixed;border-collapse:collapse;font-size:12px;font-variant-numeric:tabular-nums;line-height:1.45}
-.data-table caption{text-align:center;padding:8px 12px;color:var(--text-muted);background:var(--surface-muted);font-size:11px}
 .data-table th,.data-table td{min-width:0;padding:10px 6px;text-align:center;vertical-align:middle;border-bottom:1px solid var(--border);overflow-wrap:anywhere}
 .data-table thead th{font-size:11px;color:var(--text-muted);font-weight:650;white-space:normal;background:var(--surface-muted)}
 .data-table tbody th{font-weight:650}
 .data-table tbody tr:last-child>*{border-bottom:0}
 .data-table tbody tr:hover{background:var(--surface-muted)}
 .data-table .admin-row-actions{width:auto;flex-wrap:wrap;justify-content:center;align-items:center;gap:4px}
-.data-table .secondary-button,.data-table .primary-button,.data-table .text-button{font-size:11px;min-height:32px;padding:5px 6px;max-width:100%;white-space:normal}
+.data-table .secondary-button,.data-table .primary-button,.data-table .text-button{flex:0 1 auto;width:fit-content;font-size:11px;min-height:32px;padding:5px 6px;max-width:100%;white-space:normal;text-align:center}
 .data-table .status-chip{max-width:100%;white-space:normal;overflow-wrap:anywhere}
 .data-table .money-cell{white-space:normal}
 .table-date-time{display:inline-grid;gap:3px;white-space:nowrap}
@@ -90,7 +89,7 @@ h1,h2,h3,p{overflow-wrap:break-word}h1,h2,h3{letter-spacing:-.025em;line-height:
 .reservation-list thead th:nth-child(3){width:7%}.reservation-list thead th:nth-child(4){width:8%}
 .reservation-list thead th:nth-child(6){width:13%}.reservation-list thead th:nth-child(7),.reservation-list thead th:nth-child(8){width:15%}
 .reservation-description{white-space:pre-wrap}
-.reservation-list .admin-row-actions{flex-direction:column;align-items:stretch;gap:4px}
+.reservation-list .admin-row-actions{flex-direction:column}
 .table-secondary{display:block;color:var(--text-muted);font-size:11px;font-weight:400;margin-top:4px}
 .pagination-panel{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-top:18px;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:12px}
 .pagination-panel>div:first-child{display:grid;gap:3px}.pagination-panel small{font-size:11px;color:var(--text-muted)}

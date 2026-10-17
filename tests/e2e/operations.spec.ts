@@ -30,6 +30,11 @@ test("reservation creation, cancellation, check-in and empty-session closure wor
   const alignments = await page.locator(".data-table th,.data-table td").evaluateAll((cells) => cells.map((cell) => getComputedStyle(cell).textAlign));
   expect(alignments.every((alignment) => alignment === "center")).toBe(true);
   const tableWrap = page.locator(".reservation-list .data-table-wrap");
+  await expect(tableWrap.locator("caption")).toHaveCount(0);
+  await expect(tableWrap.getByRole("table", { name: "Daftar reservasi", exact: true })).toBeVisible();
+  const checkInWidth = await row.getByRole("button", { name: "Check-in", exact: true }).boundingBox();
+  const actionWidth = await row.locator(".admin-row-actions").boundingBox();
+  expect(checkInWidth!.width).toBeLessThan(actionWidth!.width - 8);
   expect(await tableWrap.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath("reservation-columns-id-desktop.png"), fullPage: true });
   await page.getByRole("button", { name: "English", exact: true }).click();
