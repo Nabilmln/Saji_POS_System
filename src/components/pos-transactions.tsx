@@ -3,13 +3,12 @@
 import { DatePicker } from "@/components/ui/date-picker";
 
 import { useLocale } from "@/components/locale-provider";
-import { formatDateTime } from "@/lib/time";
 
 import { useCallback, useEffect, useState } from "react";
 import { DetailPane } from "@/components/app-shells";
 import { ReceiptPreview } from "@/components/pos-receipt";
 import { Pagination, Panel, Button, Alert, LoadingState } from "@/components/ui/controls";
-import { DataTable } from "@/components/ui/data-table";
+import { DataTable, TableDateTime } from "@/components/ui/data-table";
 import { usePagination } from "@/lib/use-pagination";
 import { adminPage } from "@/lib/admin/client";
 
@@ -46,6 +45,6 @@ export function PosTransactions({ initialReceiptId = "" }: { initialReceiptId?: 
     <div className="admin-filters"><DatePicker label="Dari tanggal" value={from} onChange={(value) => { setFrom(value); setPage(1); }} /><DatePicker label="Sampai tanggal" value={to} onChange={(value) => { setTo(value); setPage(1); }} /></div>
     {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
   </Panel><Panel><h2>{t("Daftar transaksi")}</h2>
-    {!loaded ? <LoadingState>{t("Memuat transaksi\u2026")}</LoadingState> : rows.length ? <DataTable caption={t("Daftar transaksi")} columns={[t("Transaksi"), t("Meja"), t("Waktu pembayaran"), t("Total"), t("Metode"), t("Tindakan")]}>{rows.map((row) => <tr key={row.id}><th scope="row">{row.id.slice(0, 8)}</th><td>{row.tableNumber}</td><td className="date-cell">{formatDateTime(row.paidAt, locale)}</td><td className="money-cell">{money(row.grandTotalIdr)}</td><td>{t("Tunai")}</td><td><Button className="secondary-button" aria-pressed={receiptId === row.id} onClick={() => setReceiptId(row.id)}>{t("Lihat struk")}</Button></td></tr>)}</DataTable> : <p className="empty-state">{t("Belum ada transaksi lunas pada rentang ini.")}</p>}
+    {!loaded ? <LoadingState>{t("Memuat transaksi\u2026")}</LoadingState> : rows.length ? <DataTable caption={t("Daftar transaksi")} columns={[t("Transaksi"), t("Meja"), t("Waktu"), t("Total"), t("Metode"), t("Tindakan")]}>{rows.map((row) => <tr key={row.id}><th scope="row">{row.id.slice(0, 8)}</th><td>{row.tableNumber}</td><td className="date-cell"><TableDateTime value={row.paidAt} locale={locale} /></td><td className="money-cell">{money(row.grandTotalIdr)}</td><td>{t("Tunai")}</td><td><Button className="secondary-button" aria-pressed={receiptId === row.id} onClick={() => setReceiptId(row.id)}>{t("Lihat struk")}</Button></td></tr>)}</DataTable> : <p className="empty-state">{t("Belum ada transaksi lunas pada rentang ini.")}</p>}
   </Panel><Pagination pageSize={pageSize} onPageSizeChange={setPageSize} page={page} hasNext={hasNext} onChange={setPage} />{receiptId && <DetailPane><ReceiptPreview key={receiptId} paymentId={receiptId} onClose={() => setReceiptId("")} /></DetailPane>}</div>;
 }

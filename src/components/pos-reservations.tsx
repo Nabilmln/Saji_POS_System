@@ -3,7 +3,6 @@
 import { DatePicker } from "@/components/ui/date-picker";
 
 import { useLocale } from "@/components/locale-provider";
-import { formatDate, formatTime } from "@/lib/time";
 
 import { usePolling } from "@/lib/use-polling";
 
@@ -11,7 +10,7 @@ import { useCallback, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Selection, Pagination, Panel, Button, Alert, Input, Textarea } from "@/components/ui/controls";
-import { DataTable } from "@/components/ui/data-table";
+import { DataTable, TableDateTime } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { usePagination } from "@/lib/use-pagination";
 import { adminPage, adminApi, jsonRequest } from "@/lib/admin/client";
@@ -71,7 +70,7 @@ export function PosReservations() {
     <div className="admin-section-head"><Selection label={t("Status reservasi")} value={status} onChange={(value) => { setStatus(value); setPage(1); }} options={[{ value: "", label: t("Semua") }, ...Object.entries(labels).map(([value, label]) => ({ value, label: t(label) }))]} /><Button className="secondary-button" onClick={() => void load()}>{t("Segarkan")}</Button></div>
     {cancelId && rows.some((row) => row.id === cancelId && row.status === "RESERVED") && <form className="admin-form" onSubmit={cancel}><h3>{t("Batalkan reservasi")}: {rows.find((row) => row.id === cancelId)?.customerName}</h3><label>{t("Alasan pembatalan")}<Textarea required minLength={5} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} /></label><div className="admin-actions"><Button disabled={busy}>{t("Konfirmasi pembatalan")}</Button><Button type="button" className="secondary-button" onClick={() => setCancelId("")}>{t("Kembali")}</Button></div></form>}
     {!loaded ? <p className="loading-block" role="status">{t("Memuat reservasi\u2026")}</p> : rows.length ? <DataTable caption={t("Daftar reservasi")} columns={[t("Pelanggan"), t("Kontak"), t("Meja"), t("Tamu"), t("Waktu"), t("Status"), t("Deskripsi"), t("Tindakan")]}>{rows.map((item) => <tr key={item.id}>
-      <th scope="row">{item.customerName}</th><td className="reservation-contact">{item.customerContact}</td><td>{item.tableNumber}</td><td>{item.guestCount}</td><td className="reservation-time"><time dateTime={item.reservedFor}>{formatDate(item.reservedFor, locale)}<span>{formatTime(item.reservedFor, locale)} WIB</span></time></td><td><StatusBadge status={item.status}>{labels[item.status]}</StatusBadge></td><td className="reservation-description">{item.notes || <span className="muted">{t("Tanpa catatan")}</span>}</td>
+      <th scope="row">{item.customerName}</th><td className="reservation-contact">{item.customerContact}</td><td>{item.tableNumber}</td><td>{item.guestCount}</td><td className="date-cell"><TableDateTime value={item.reservedFor} locale={locale} /></td><td><StatusBadge status={item.status}>{labels[item.status]}</StatusBadge></td><td className="reservation-description">{item.notes || <span className="muted">{t("Tanpa catatan")}</span>}</td>
       <td><div className="admin-row-actions">{item.status === "RESERVED" ? <><Button disabled={busy} onClick={() => void checkIn(item)}>{t("Check-in")}</Button><Button className="text-button danger-text" aria-label={t("Batalkan reservasi")} disabled={busy} onClick={() => { setCancelId(item.id); setReason(""); }}>{t("Batalkan")}</Button></> : item.status === "CHECKED_IN" && <Link className="secondary-button" href={`/pos/tables/${item.tableId}`}>{t("Lihat meja")}</Link>}</div></td>
     </tr>)}</DataTable> : <p className="empty-state">{t("Tidak ada reservasi pada status ini.")}</p>}
   </Panel><Pagination pageSize={pageSize} onPageSizeChange={setPageSize} page={page} hasNext={hasNext} onChange={setPage} disabled={busy} /></div>;
