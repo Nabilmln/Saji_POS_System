@@ -6,11 +6,14 @@ export function formatDate(value: string | Date, locale: "id" | "en", month: "sh
   }).format(new Date(value));
 }
 
-export function formatDateTime(value: string | Date, locale: "id" | "en"): string {
-  const time = new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "id-ID", {
+export function formatTime(value: string | Date, locale: "id" | "en"): string {
+  return new Intl.DateTimeFormat(locale === "en" ? "en-GB" : "id-ID", {
     timeZone: RESTAURANT_TIME_ZONE, hour: "2-digit", minute: "2-digit", hourCycle: "h23",
   }).format(new Date(value));
-  return `${formatDate(value, locale)} · ${time} WIB`;
+}
+
+export function formatDateTime(value: string | Date, locale: "id" | "en"): string {
+  return `${formatDate(value, locale)} · ${formatTime(value, locale)} WIB`;
 }
 
 const restaurantDateFormatter = new Intl.DateTimeFormat("en-US", {

@@ -4,6 +4,7 @@ import { test, expect, signIn, call } from "./fixtures";
 
 test("reservation creation, cancellation, check-in and empty-session closure work", async ({ page, data }, testInfo) => {
   await signIn(page); await page.goto("/pos/reservations");
+  await page.setViewportSize({ width: 1280, height: 900 });
   async function reserve(notes = "") {
     await page.getByRole("button", { name: "Tambah reservasi" }).click();
     await page.getByLabel("Nama pelanggan", { exact: true }).fill("Nadia Reservasi");
@@ -18,13 +19,22 @@ test("reservation creation, cancellation, check-in and empty-session closure wor
   const description = "Dekat jendela.\nSiapkan kursi bayi.";
   await reserve(description);
   const row = page.getByRole("row").filter({ hasText: "Nadia Reservasi" });
-  await expect(page.getByRole("columnheader")).toHaveText(["Pelanggan", "Kontak", "Deskripsi", "Meja", "Tamu", "Waktu reservasi (WIB)", "Status", "Tindakan"]);
+  await expect(page.getByRole("columnheader")).toHaveText(["Pelanggan", "Kontak", "Meja", "Tamu", "Waktu", "Status", "Deskripsi", "Tindakan"]);
   await expect(row.locator(".reservation-contact")).toHaveText("08123456789");
   await expect(row.locator(".reservation-description")).toHaveText(description);
   await expect(row.locator("details")).toHaveCount(0);
   await expect(row.locator(".reservation-description")).toHaveCSS("white-space", "pre-wrap");
+  await expect(row.locator(".reservation-time time")).toHaveAttribute("datetime", "2026-10-20T05:30:00.000Z");
+  await expect(row.locator(".reservation-time span")).toHaveText("12.30 WIB");
+  await expect(row.locator(".reservation-time span")).toHaveCSS("display", "block");
+  const tableWrap = page.locator(".reservation-list .data-table-wrap");
+  expect(await tableWrap.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath("reservation-columns-id-desktop.png"), fullPage: true });
   await page.getByRole("button", { name: "English", exact: true }).click();
+  await expect(page.getByRole("columnheader", { name: "Time", exact: true })).toBeVisible();
+  await expect(row.locator(".reservation-time span")).toHaveText("12:30 WIB");
+  expect(await tableWrap.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
+  await page.screenshot({ path: testInfo.outputPath("reservation-compact-en-desktop.png"), fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(page.getByRole("columnheader", { name: "Contact", exact: true })).toBeVisible();
   await expect(page.getByRole("columnheader", { name: "Description", exact: true })).toBeVisible();
