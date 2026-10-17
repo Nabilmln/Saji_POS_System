@@ -80,6 +80,8 @@ h1,h2,h3,p{overflow-wrap:break-word}h1,h2,h3{letter-spacing:-.025em;line-height:
 .data-table .secondary-button,.data-table .primary-button{font-size:12px;min-height:34px;padding:6px 10px}
 .data-table details{font-weight:400;font-size:11px;color:var(--text-muted);margin-top:5px}
 .date-cell,.money-cell{white-space:nowrap;font-variant-numeric:tabular-nums}
+.reservation-contact{min-width:140px;max-width:200px;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.reservation-description{min-width:180px;max-width:260px;white-space:pre-wrap;overflow-wrap:anywhere}
 .table-secondary{display:block;color:var(--text-muted);font-size:11px;font-weight:400;margin-top:4px}
 .pagination-panel{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-top:18px;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:12px}
 .pagination-panel>div:first-child{display:grid;gap:3px}.pagination-panel small{font-size:11px;color:var(--text-muted)}

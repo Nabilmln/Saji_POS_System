@@ -2,24 +2,45 @@ import { randomUUID } from "node:crypto";
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect, signIn, call } from "./fixtures";
 
-test("reservation creation, cancellation, check-in and empty-session closure work", async ({ page, data }) => {
+test("reservation creation, cancellation, check-in and empty-session closure work", async ({ page, data }, testInfo) => {
   await signIn(page); await page.goto("/pos/reservations");
-  async function reserve() {
+  async function reserve(notes = "") {
     await page.getByRole("button", { name: "Tambah reservasi" }).click();
     await page.getByLabel("Nama pelanggan", { exact: true }).fill("Nadia Reservasi");
     await page.getByLabel("Kontak pelanggan").fill("08123456789");
     await page.getByRole("combobox", { name: "Meja tersedia" }).click();
     await page.getByRole("option", { name: `Meja ${data.tableNumber}`, exact: true }).click();
     await page.getByLabel("Waktu reservasi (WIB)", { exact: true }).fill("2026-10-20T12:30");
+    await page.getByLabel("Catatan", { exact: true }).fill(notes);
     await page.getByRole("button", { name: "Simpan reservasi" }).click();
     await expect(page.locator(".data-table tbody tr")).toContainText("Nadia Reservasi");
   }
-  await reserve();
+  const description = "Dekat jendela.\nSiapkan kursi bayi.";
+  await reserve(description);
+  const row = page.getByRole("row").filter({ hasText: "Nadia Reservasi" });
+  await expect(page.getByRole("columnheader")).toHaveText(["Pelanggan", "Kontak", "Deskripsi", "Meja", "Tamu", "Waktu reservasi (WIB)", "Status", "Tindakan"]);
+  await expect(row.locator(".reservation-contact")).toHaveText("08123456789");
+  await expect(row.locator(".reservation-description")).toHaveText(description);
+  await expect(row.locator("details")).toHaveCount(0);
+  await expect(row.locator(".reservation-description")).toHaveCSS("white-space", "pre-wrap");
+  await page.screenshot({ path: testInfo.outputPath("reservation-columns-id-desktop.png"), fullPage: true });
+  await page.getByRole("button", { name: "English", exact: true }).click();
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole("columnheader", { name: "Contact", exact: true })).toBeVisible();
+  await expect(page.getByRole("columnheader", { name: "Description", exact: true })).toBeVisible();
+  await row.locator(".reservation-description").scrollIntoViewIfNeeded();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+  await page.screenshot({ path: testInfo.outputPath("reservation-columns-en-mobile.png"), fullPage: true });
+  await page.getByRole("button", { name: "Bahasa Indonesia", exact: true }).click();
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.getByRole("button", { name: "Batalkan reservasi", exact: true }).click();
   await page.getByLabel("Alasan pembatalan").fill("Pelanggan membatalkan kunjungan");
   await page.getByRole("button", { name: "Konfirmasi pembatalan" }).click();
   await expect(page.getByText("Tidak ada reservasi pada status ini.")).toBeVisible();
-  await reserve(); page.once("dialog", (dialog) => dialog.accept());
+  await reserve();
+  await expect(row.locator(".reservation-description")).toHaveText("Tanpa catatan");
+  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Check-in", exact: true }).click();
   await expect(page).toHaveURL(new RegExp(`/pos/tables/${data.tableId}$`));
   await page.getByRole("button", { name: "Tutup sesi kosong" }).click();
