@@ -7,7 +7,7 @@ import { staffProfiles } from "@/db/schema";
 import { hasValidMutationOrigin, authorizeStaff, type StaffIdentity, type StaffRole } from "./access";
 import { auth } from "./server";
 
-async function requireRole(request: Request, role: StaffRole): Promise<StaffIdentity | Response> {
+async function requireRole(request: Request, role: StaffRole | null): Promise<StaffIdentity | Response> {
   await connection();
   if (!hasValidMutationOrigin(request)) {
     return apiError(403, "INVALID_ORIGIN", "Same-origin request required");
@@ -24,6 +24,10 @@ async function requireRole(request: Request, role: StaffRole): Promise<StaffIden
     columns: { userId: true, displayName: true, role: true, isActive: true },
   });
   return authorizeStaff(userId, profile as StaffIdentity | undefined, role);
+}
+
+export function requireAccount(request: Request) {
+  return requireRole(request, null);
 }
 
 export function requireStaff(request: Request) {

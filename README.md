@@ -9,7 +9,7 @@ npm ci
 npm run dev
 ```
 
-Open <http://localhost:3000>. Customer QR ordering, cashier operations and the owner workspace are available. Cashiers use `/login`; the exclusive owner uses `/owner-login`.
+Open <http://localhost:3000>. Customer QR ordering, cashier operations and the owner workspace are available. Both the exclusive owner and cashiers use `/login`; the account's stored role determines the workspace. Old `/owner-login` links redirect to `/login`.
 
 ```bash
 npm run lint
@@ -42,7 +42,7 @@ The seed adds fictional menu items, tables, and settings and can be repeated. To
 
 ## Staff authentication (BE-03)
 
-Neon Managed Auth is proxied at `/api/auth/*`; the browser SDK is in `src/lib/auth/client.ts`. Email/password sign-in, sign-out, and session requests use that SDK. `/api/staff/me` and `/api/admin/me` verify the session and an active `staff_profiles` row on the server. The admin endpoint requires `ADMIN`; staff endpoints require `CASHIER`. The roles cannot use each other's workspace or APIs. Owner login is `/owner-login`; cashier login is `/login`. Future staff and admin handlers must call `requireStaff(request)` or `requireAdmin(request)` before reading or changing protected data; those guards also reject cross-origin mutations.
+Neon Managed Auth is proxied at `/api/auth/*`; the browser SDK is in `src/lib/auth/client.ts`. Email/password sign-in, sign-out, and session requests use that SDK. Everyone signs in at `/login`, then `GET /api/me` verifies the session and an active, non-deleted `staff_profiles` row to resolve the account role. Owners go to `/admin/reports`; cashiers go to `/pos`. Role selection or query parameters cannot change access. `/api/staff/me` still requires `CASHIER` and `/api/admin/me` requires `ADMIN`; the roles cannot use each other's workspace or APIs. The owner creates cashier accounts and public signup stays closed. Future staff and admin handlers must call `requireStaff(request)` or `requireAdmin(request)` before reading or changing protected data; those guards also reject cross-origin mutations. `requireAccount` is for identity discovery only, not role-specific operations.
 
 Set `NEON_AUTH_BASE_URL` and a unique `NEON_AUTH_COOKIE_SECRET` (at least 32 characters) in `.env.local` and on the app host. Do not expose the cookie secret to the browser. On the linked Neon `production` branch, public email signup is disabled and the shared Google OAuth provider has been removed. Verify those settings before deploying staff login or after changing Auth configuration:
 

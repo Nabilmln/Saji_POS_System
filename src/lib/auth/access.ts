@@ -12,13 +12,13 @@ export type StaffIdentity = {
 export function authorizeStaff(
   sessionUserId: string | undefined,
   profile: StaffIdentity | undefined,
-  requiredRole: StaffRole = "CASHIER",
+  requiredRole: StaffRole | null = "CASHIER",
 ): StaffIdentity | Response {
   if (!sessionUserId) return apiError(401, "UNAUTHORIZED", "Sign in required");
   if (!profile || profile.userId !== sessionUserId || !profile.isActive) {
     return apiError(403, "STAFF_ACCESS_DENIED", "Active staff account required");
   }
-  if (profile.role !== requiredRole) {
+  if (requiredRole !== null && profile.role !== requiredRole) {
     return apiError(403, "FORBIDDEN", `${requiredRole === "ADMIN" ? "Owner" : "Cashier"} access required`);
   }
   return profile;

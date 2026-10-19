@@ -19,6 +19,17 @@ describe("staff access", () => {
     expect(authorizeStaff(admin.userId, admin, "CASHIER")).toHaveProperty("status", 403);
   });
 
+  it("resolves either active account for shared sign-in without changing role-specific access", () => {
+    const admin: StaffIdentity = { ...cashier, role: "ADMIN" };
+    expect(authorizeStaff(cashier.userId, cashier, null)).toEqual(cashier);
+    expect(authorizeStaff(admin.userId, admin, null)).toEqual(admin);
+    expect(authorizeStaff(undefined, undefined, null)).toHaveProperty("status", 401);
+    expect(authorizeStaff(cashier.userId, undefined, null)).toHaveProperty("status", 403);
+    expect(authorizeStaff("other-user", cashier, null)).toHaveProperty("status", 403);
+    expect(authorizeStaff(cashier.userId, { ...cashier, isActive: false }, null)).toHaveProperty("status", 403);
+    expect(authorizeStaff(admin.userId, admin)).toHaveProperty("status", 403);
+  });
+
   it("rejects cross-origin mutations", () => {
     const url = "https://pos.example/api/admin/settings/billing";
     expect(hasValidMutationOrigin(new Request(url, { method: "PUT" }))).toBe(false);

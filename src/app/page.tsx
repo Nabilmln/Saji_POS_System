@@ -13,6 +13,6 @@ export default function Home() {
     <p>{t("Pindai kode QR di meja Anda untuk melihat menu dan mulai memesan.")}</p>
     <hr />
     <p className="muted">{t("Arahkan kamera ponsel ke kode QR yang tersedia di meja.")}</p>
-    <div className="entry-access"><Link className="secondary-button" href="/login">{t("Masuk Kasir")}</Link><Link className="text-button" href="/owner-login">{t("Masuk Pemilik")}</Link></div>
+    <div className="entry-access"><Link className="secondary-button" href="/login">{t("Masuk")}</Link></div>
   </main>;
 }

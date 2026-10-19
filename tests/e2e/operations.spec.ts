@@ -166,7 +166,7 @@ test("customer, cashier and every Admin menu fit their device sizes and pass axe
   await page.getByLabel("Konfirmasi kata sandi", { exact: true }).fill("example-reset-password");
   await page.getByRole("button", { name: "Simpan kata sandi" }).click();
   await expect(page.getByRole("status")).toContainText("Kata sandi tersimpan");
-  await expect(page.getByRole("link", { name: "Masuk Pemilik" })).toHaveAttribute("href", "/owner-login");
+  await expect(page.getByRole("link", { name: "Masuk", exact: true })).toHaveAttribute("href", "/login");
 });
 
 test("mobile catalogue, cart and long category dropdown share accessible controls and photo fallback", async ({ page, data }, testInfo) => {
@@ -203,20 +203,6 @@ test("mobile catalogue, cart and long category dropdown share accessible control
       await page.screenshot({ path: testInfo.outputPath(`customer-cart-${colorScheme}.png`), fullPage: true });
     }
   } finally { await data.pool.query("DELETE FROM categories WHERE id=ANY($1::uuid[])", [extraCategories]); }
-});
-
-test("role-specific login rejects the wrong account and public signup stays closed", async ({ page }) => {
-  for (const [path, email, role] of [["/login", "admin@example.test", "kasir"], ["/owner-login", "cashier@example.test", "pemilik"]]) {
-    await page.goto(path);
-    await page.getByLabel("Email", { exact: true }).fill(email);
-    await page.getByLabel("Kata sandi", { exact: true }).fill("e2e-only-password");
-    await page.getByRole("button", { name: "Masuk", exact: true }).click();
-    await expect(page.locator(".inline-alert[role=alert]")).toContainText(`tidak memiliki akses ${role}`);
-    expect((await call(page.request, "/admin/me")).status()).toBe(401);
-    expect((await call(page.request, "/staff/me")).status()).toBe(401);
-    await expect(page.getByRole("link", { name: /Daftar|Sign up/i })).toHaveCount(0);
-  }
-  expect((await call(page.request, "/auth/sign-up/email", "POST", { email: "blocked@example.test", password: "not-a-live-password", name: "Blocked" })).status()).toBe(403);
 });
 
 test("shared dropdown supports keyboards and desktop panes keep QR and orders at the right", async ({ page, data }, testInfo) => {

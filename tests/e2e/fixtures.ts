@@ -38,7 +38,7 @@ export const test = base.extend<{ data: Data }>({
 export { expect };
 
 export async function signIn(page: Page, role: "admin" | "cashier" = "cashier") {
-  await page.goto(role === "admin" ? "/owner-login" : "/login");
+  await page.goto("/login");
   await page.getByLabel("Email", { exact: true }).fill(`${role}@example.test`);
   await page.getByLabel("Kata sandi", { exact: true }).fill("e2e-only-password");
   await page.getByRole("button", { name: "Masuk", exact: true }).click();

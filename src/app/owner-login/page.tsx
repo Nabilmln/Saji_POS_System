@@ -1,3 +1,3 @@
-import { LoginForm } from "@/components/login-form";
+import { redirect } from "next/navigation";
 
-export default function OwnerLoginPage() { return <LoginForm role="ADMIN" />; }
+export default function OwnerLoginPage() { redirect("/login"); }
