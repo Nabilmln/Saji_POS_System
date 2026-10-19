@@ -152,6 +152,7 @@ test("customer, cashier and every Admin menu fit their device sizes and pass axe
     if (role && role !== currentRole) { await signIn(page, role); currentRole = role; }
     await page.setViewportSize({ width: target.width, height: target.height }); await page.goto(target.path);
     await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
+    await expect(page).toHaveTitle("Saji");
     await expect(page.locator(".loading-block")).toHaveCount(0);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), target.name).toBe(true);
     expect((await new AxeBuilder({ page }).analyze()).violations, target.name).toEqual([]);

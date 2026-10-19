@@ -4,10 +4,13 @@ import { useLocale } from "@/components/locale-provider";
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
+import { ArrowRightIcon } from "@phosphor-icons/react";
 import { isAuthApiError } from "@neondatabase/auth/next";
 import { authClient } from "@/lib/auth/client";
 import { adminApi, AdminApiError } from "@/lib/admin/client";
-import { EntryHeader } from "@/components/ui/entry-header";
+import { Brand } from "@/components/ui/brand";
+import { LanguageSwitch } from "@/components/ui/language-switch";
 import { PasswordInput, Input, Alert, Button } from "@/components/ui/controls";
 
 export function LoginForm() {
@@ -45,10 +48,18 @@ export function LoginForm() {
     finally { setBusy(false); }
   }
 
-  return <main className="entry-page login-page">
-    <EntryHeader />
-    <h1>{t("Masuk")}</h1>
-    <p className="muted">{t("Gunakan email dan kata sandi akun Anda.")}</p>
+  return <main className="login-page">
+    <header className="login-header"><Brand /><LanguageSwitch /></header>
+    <aside className="login-brand-panel" aria-label={t("Tentang Saji")}>
+      <div className="login-brand-story">
+        <Image className="login-emblem" src="/icon.svg" alt="" width={192} height={192} unoptimized priority />
+        <p className="login-brand-line">{t("Dari meja ke pembayaran.")}</p>
+        <p className="login-brand-description">{t("Pesanan, meja, dan pembayaran dalam satu ruang kerja.")}</p>
+      </div>
+    </aside>
+    <section className="login-panel" aria-labelledby="login-heading"><div className="login-panel-inner">
+    <h1 id="login-heading">{t(resetting ? "Atur kata sandi" : "Masuk ke Saji")}</h1>
+    <p className="login-intro">{t(resetting ? "Kirim tautan pemulihan ke email akun Anda." : "Gunakan email dan kata sandi akun Anda.")}</p>
     <form onSubmit={submit} className="login-form">
       <label className="field-label" htmlFor="staff-email">{t("Email")}</label>
       <Input className="text-field" id="staff-email" type="email" autoComplete="username" required value={email} onChange={(event) => setEmail(event.target.value)} />
@@ -56,9 +67,10 @@ export function LoginForm() {
       <PasswordInput id="staff-password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} /></>}
       {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
       {notice && <Alert toast className="inline-alert info" role="status">{t(notice)}</Alert>}
-      <Button className="primary-button full-width" disabled={busy}>{busy ? t("Memproses…") : resetting ? t("Kirim tautan pengaturan") : t("Masuk")}</Button>
+      <Button className="primary-button full-width" disabled={busy}>{busy ? t("Memproses…") : resetting ? t("Kirim tautan pengaturan") : t("Masuk")}{!busy && !resetting && <ArrowRightIcon size={16} aria-hidden="true" />}</Button>
       <Button type="button" className="text-button" disabled={busy} onClick={() => { setResetting(!resetting); setError(""); setNotice(""); }}>{resetting ? t("Kembali ke masuk") : t("Lupa kata sandi?")}</Button>
     </form>
     <p className="login-footnote">{t("Akun kasir dibuat oleh pemilik. Tidak ada pendaftaran mandiri.")}</p>
+    </div></section>
   </main>;
 }

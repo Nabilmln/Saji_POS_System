@@ -3,7 +3,7 @@ import { LocaleProvider } from "@/components/locale-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Saji | Restaurant Workspace",
+  title: "Saji",
   description: "Lihat menu dan pesan langsung dari meja Anda",
 };
 

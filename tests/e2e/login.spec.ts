@@ -66,12 +66,25 @@ test("shared sign-in rejects inactive and deleted profiles even with a valid Aut
 test("legacy owner links and password recovery use the shared localized login", async ({ page }, testInfo) => {
   await page.goto("/owner-login");
   await expect(page).toHaveURL(/\/login$/);
-  await expect(page.getByRole("heading", { name: "Masuk", exact: true })).toBeVisible();
-  for (const [width, theme] of [[1280, "light"], [390, "dark"]] as const) {
+  await expect(page.getByRole("heading", { name: "Masuk ke Saji", exact: true })).toBeVisible();
+  await expect(page).toHaveTitle("Saji");
+  await expect(page.locator(".login-header .brand-mark img")).toHaveAttribute("src", "/icon.svg");
+  await expect(page.locator("link[rel=icon][type='image/svg+xml']")).toHaveAttribute("href", /^\/icon\.svg/);
+  const mark = await page.request.get("/icon.svg");
+  expect(mark.status()).toBe(200);
+  const vector = await mark.text();
+  expect(vector).toContain('fill="#111111"');
+  expect(vector).toContain('fill="#f5bb00"');
+  const favicon = await page.request.get("/favicon.ico");
+  expect(favicon.status()).toBe(200);
+  expect((await favicon.body()).readUInt16LE(2)).toBe(1);
+  for (const [width, theme] of [[1280, "light"], [1024, "dark"], [390, "light"], [320, "dark"]] as const) {
     await page.setViewportSize({ width, height: 900 });
     await page.emulateMedia({ colorScheme: theme });
     if (width === 390) await page.getByRole("button", { name: "English", exact: true }).click();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    await expect(page.locator(".login-brand-panel")).toBeVisible({ visible: width >= 640 });
+    await expect(page.getByRole("button", { name: width >= 640 ? "Masuk" : "Sign in", exact: true })).toBeVisible();
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     await page.screenshot({ path: testInfo.outputPath(`shared-login-${width}-${theme}.png`), fullPage: true });
   }
