@@ -4,9 +4,9 @@ import { test, expect, call } from "./fixtures";
 test("one login routes by the stored account role and keeps owner access exclusive", async ({ page }) => {
   expect((await call(page.request, "/me")).status()).toBe(401);
   await page.goto("/");
-  await expect(page.locator(".entry-access a")).toHaveCount(1);
-  await page.getByRole("link", { name: "Masuk", exact: true }).click();
   await expect(page).toHaveURL(/\/login$/);
+  await expect(page.getByRole("heading", { name: "Masuk ke Saji", exact: true })).toBeVisible();
+  await expect(page.getByLabel("Email", { exact: true })).toBeVisible();
   await expect(page.locator(".login-form select,.login-form input[type=radio]")).toHaveCount(0);
   await expect(page.getByRole("link", { name: /Daftar|Sign up/i })).toHaveCount(0);
   await page.getByLabel("Email", { exact: true }).fill("cashier@example.test");
@@ -68,7 +68,7 @@ test("legacy owner links and password recovery use the shared localized login", 
   await expect(page).toHaveURL(/\/login$/);
   await expect(page.getByRole("heading", { name: "Masuk ke Saji", exact: true })).toBeVisible();
   await expect(page).toHaveTitle("Saji");
-  await expect(page.locator(".login-header .brand-mark img")).toHaveAttribute("src", "/icon.svg");
+  await expect(page.locator(".login-panel .brand-mark img")).toHaveAttribute("src", "/icon.svg");
   await expect(page.locator("link[rel=icon][type='image/svg+xml']")).toHaveAttribute("href", /^\/icon\.svg/);
   const mark = await page.request.get("/icon.svg");
   expect(mark.status()).toBe(200);
@@ -79,11 +79,15 @@ test("legacy owner links and password recovery use the shared localized login", 
   expect(favicon.status()).toBe(200);
   expect((await favicon.body()).readUInt16LE(2)).toBe(1);
   for (const [width, theme] of [[1280, "light"], [1024, "dark"], [390, "light"], [320, "dark"]] as const) {
-    await page.setViewportSize({ width, height: 900 });
+    await page.setViewportSize({ width, height: width < 640 ? 740 : 900 });
     await page.emulateMedia({ colorScheme: theme });
     if (width === 390) await page.getByRole("button", { name: "English", exact: true }).click();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
-    await expect(page.locator(".login-brand-panel")).toBeVisible({ visible: width >= 640 });
+    await expect(page.locator(".login-brand-panel")).toHaveCount(0);
+    const panel = await page.locator(".login-panel").boundingBox();
+    expect(panel!.width).toBeLessThanOrEqual(416);
+    const header = await page.locator(".login-header").boundingBox();
+    expect(panel!.y).toBeGreaterThanOrEqual(header!.y + header!.height);
     await expect(page.getByRole("button", { name: width >= 640 ? "Masuk" : "Sign in", exact: true })).toBeVisible();
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     await page.screenshot({ path: testInfo.outputPath(`shared-login-${width}-${theme}.png`), fullPage: true });

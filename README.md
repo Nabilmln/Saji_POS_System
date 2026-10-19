@@ -9,7 +9,7 @@ npm ci
 npm run dev
 ```
 
-Open <http://localhost:3000>. Customer QR ordering, cashier operations and the owner workspace are available. Both the exclusive owner and cashiers use `/login`; the account's stored role determines the workspace. Old `/owner-login` links redirect to `/login`.
+Open <http://localhost:3000>. Customer QR ordering, cashier operations and the owner workspace are available. Opening the main URL redirects straight to `/login`. Both the exclusive owner and cashiers use `/login`; the account's stored role determines the workspace. Old `/owner-login` links redirect to `/login`.
 
 ```bash
 npm run lint

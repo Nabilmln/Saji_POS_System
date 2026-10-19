@@ -1,27 +1,21 @@
 @import "tailwindcss";
 @import "@fontsource-variable/dm-sans";
 
-.login-page{position:relative;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);min-height:100dvh;background:var(--surface)}
-.login-header{position:absolute;top:32px;left:40px;right:40px;z-index:1;display:flex;align-items:center;justify-content:space-between;gap:16px}
-.login-header .brand{color:var(--primary-text)}.login-header .brand-caption{color:var(--primary-text)}
-.login-brand-panel{display:flex;align-items:center;justify-content:center;padding:112px 48px 64px;background:var(--primary);color:var(--primary-text);min-width:0}
-.login-brand-story{width:100%;max-width:400px}
-.login-emblem{display:block;width:clamp(120px,14vw,192px);height:auto;margin-bottom:40px;border-radius:20px}
-.login-brand-line{font-size:clamp(32px,3.8vw,54px);font-weight:700;line-height:1.08;letter-spacing:-.035em;margin:0 0 24px;text-wrap:balance}
-.login-brand-description{font-size:14px;line-height:1.65;max-width:29ch;margin:0}
-.login-panel{display:grid;place-items:center;min-width:0;padding:120px 48px 64px}
-.login-panel-inner{width:100%;max-width:360px}
-.login-panel h1{font-size:27px;font-weight:650;line-height:1.2;margin:0 0 12px;letter-spacing:-.03em}
+.login-page{display:grid;grid-template-rows:auto 1fr;min-height:100dvh;padding:24px;gap:24px;background:var(--background)}
+.login-header{display:flex;justify-content:flex-end;width:100%;max-width:1120px;margin:0 auto}
+.login-panel{align-self:center;justify-self:center;width:100%;max-width:416px;min-width:0;margin-bottom:60px;padding:32px;background:var(--surface);border:1px solid var(--border);border-radius:16px}
+.login-panel>.brand{margin-bottom:28px}
+.login-panel h1{font-size:23px;font-weight:650;line-height:1.25;margin:0 0 8px;letter-spacing:-.025em}
 .login-intro{font-size:13px;color:var(--text-muted);line-height:1.65;margin:0}
-.login-panel .login-form{margin-top:32px}
+.login-panel .login-form{margin-top:24px}
 .login-panel .login-form>.field-label:first-child{margin-top:0}
 .login-panel .login-form .text-field{min-height:44px;border-radius:8px}
 .login-panel .password-reveal{top:4px}
-.login-panel .login-form>.primary-button{min-height:44px;justify-content:space-between;padding-inline:16px;margin-top:24px}
+.login-panel .login-form>.primary-button{min-height:44px;padding-inline:16px;margin-top:24px}
 .login-panel .login-form>.text-button{display:flex;margin:12px auto 0}
-.login-panel .login-footnote{font-size:11px;line-height:1.65;margin:28px 0 0;padding-top:20px;border-top:1px solid var(--border);color:var(--text-muted)}
-@media(max-width:899px){.login-page{grid-template-columns:minmax(0,.85fr) minmax(0,1fr)}.login-header{left:28px;right:28px;top:28px}.login-brand-panel{padding-inline:28px}.login-panel{padding-inline:32px}.login-emblem{width:128px}.login-brand-line{font-size:36px}}
-@media(max-width:639px){.login-page{display:block}.login-header{top:24px;left:24px;right:24px}.login-header .brand{color:var(--foreground)}.login-header .brand-caption{color:var(--text-muted)}.login-brand-panel{display:none}.login-panel{min-height:100dvh;padding:112px 24px 48px}.login-panel h1{font-size:25px}.login-panel .login-form{margin-top:28px}}
+.login-panel .login-footnote{font-size:11px;line-height:1.65;margin:24px 0 0;padding-top:16px;border-top:1px solid var(--border);color:var(--text-muted)}
+@media(max-width:639px){.login-page{padding:16px;gap:20px}.login-panel{padding:24px;margin-bottom:24px}.login-panel>.brand{margin-bottom:24px}.login-panel h1{font-size:22px}}
+@media(max-height:720px){.login-panel{margin-bottom:0}}
 
 .report-insights{display:grid;gap:20px;min-width:0;font-variant-numeric:tabular-nums}
 .report-insights .detail-heading h2{margin:0}
