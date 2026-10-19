@@ -47,20 +47,22 @@ export function LoginForm() {
   }
 
   return <main className="login-page">
-    <header className="login-header"><LanguageSwitch /></header>
     <section className="login-panel" aria-labelledby="login-heading">
-    <Brand />
+    <header className="login-header"><Brand /><LanguageSwitch /></header>
     <h1 id="login-heading">{t(resetting ? "Atur kata sandi" : "Masuk ke Saji")}</h1>
     <p className="login-intro">{t(resetting ? "Kirim tautan pemulihan ke email akun Anda." : "Gunakan email dan kata sandi akun Anda.")}</p>
     <form onSubmit={submit} className="login-form">
       <label className="field-label" htmlFor="staff-email">{t("Email")}</label>
       <Input className="text-field" id="staff-email" type="email" autoComplete="username" required value={email} onChange={(event) => setEmail(event.target.value)} />
-      {!resetting && <><label className="field-label" htmlFor="staff-password">{t("Kata sandi")}</label>
+      {!resetting && <><div className="login-password-label">
+        <label className="field-label" htmlFor="staff-password">{t("Kata sandi")}</label>
+        <Button type="button" className="text-button" disabled={busy} onClick={() => { setResetting(true); setError(""); setNotice(""); }}>{t("Lupa kata sandi?")}</Button>
+      </div>
       <PasswordInput id="staff-password" autoComplete="current-password" required value={password} onChange={(event) => setPassword(event.target.value)} /></>}
       {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
       {notice && <Alert toast className="inline-alert info" role="status">{t(notice)}</Alert>}
       <Button className="primary-button full-width" disabled={busy}>{busy ? t("Memproses…") : resetting ? t("Kirim tautan pengaturan") : t("Masuk")}</Button>
-      <Button type="button" className="text-button" disabled={busy} onClick={() => { setResetting(!resetting); setError(""); setNotice(""); }}>{resetting ? t("Kembali ke masuk") : t("Lupa kata sandi?")}</Button>
+      {resetting && <Button type="button" className="text-button" disabled={busy} onClick={() => { setResetting(false); setError(""); setNotice(""); }}>{t("Kembali ke masuk")}</Button>}
     </form>
     <p className="login-footnote">{t("Akun kasir dibuat oleh pemilik. Tidak ada pendaftaran mandiri.")}</p>
     </section>

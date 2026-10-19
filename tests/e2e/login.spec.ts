@@ -86,12 +86,25 @@ test("legacy owner links and password recovery use the shared localized login", 
     await expect(page.locator(".login-brand-panel")).toHaveCount(0);
     const panel = await page.locator(".login-panel").boundingBox();
     expect(panel!.width).toBeLessThanOrEqual(416);
+    expect(Math.abs(panel!.x + panel!.width / 2 - width / 2)).toBeLessThanOrEqual(1);
+    const viewport = page.viewportSize()!;
+    expect(Math.abs(panel!.y + panel!.height / 2 - viewport.height / 2)).toBeLessThanOrEqual(1);
     const header = await page.locator(".login-header").boundingBox();
-    expect(panel!.y).toBeGreaterThanOrEqual(header!.y + header!.height);
+    expect(header!.y).toBeGreaterThan(panel!.y);
+    const brand = await page.locator(".login-header .brand").boundingBox();
+    const language = await page.getByRole("group", { name: /Language|Bahasa/ }).boundingBox();
+    expect(language!.x).toBeGreaterThanOrEqual(brand!.x + brand!.width + 8);
+    expect(language!.x + language!.width).toBeLessThan(panel!.x + panel!.width);
     await expect(page.getByRole("button", { name: width >= 640 ? "Masuk" : "Sign in", exact: true })).toBeVisible();
     expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
     await page.screenshot({ path: testInfo.outputPath(`shared-login-${width}-${theme}.png`), fullPage: true });
   }
+  await page.setViewportSize({ width: 390, height: 420 });
+  await expect(page.locator(".login-header")).toBeVisible();
+  await page.getByRole("button", { name: "Sign in", exact: true }).scrollIntoViewIfNeeded();
+  await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeInViewport();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.setViewportSize({ width: 390, height: 740 });
   await page.getByRole("button", { name: "Bahasa Indonesia", exact: true }).click();
   await page.getByRole("button", { name: "Lupa kata sandi?", exact: true }).click();
   await page.getByLabel("Email", { exact: true }).fill("admin@example.test");
