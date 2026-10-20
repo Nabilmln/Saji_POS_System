@@ -10,7 +10,6 @@ export async function POST(request: Request) {
   if (image instanceof Response) return image;
   try {
     const id = randomUUID();
-    // shortcut: retain replaced/abandoned uploads; add reference cleanup if storage usage grows.
     const result = await menuImageObject(id, { method: "PUT", body: new Uint8Array(image), headers: { "Content-Type": "image/webp", "Cache-Control": "public, max-age=31536000, immutable" } });
     if (!result.ok) return apiError(503, "IMAGE_UPLOAD_FAILED", "Image upload unavailable; try again");
     return apiSuccess({ imageUrl: `/api/menu-images/${id}` }, 201);

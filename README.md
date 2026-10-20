@@ -105,4 +105,17 @@ Owners can choose or drag and drop a photo in the new/edit menu form, preview it
 
 Uploads use the existing private Neon `images` bucket. Configure `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ENDPOINT_URL_S3` and `AWS_REGION` on the app host as well as `.env.local` (see `.env.example`). These are Neon storage credentials, kept on the server. The app exposes only normalized `menus/{uuid}.webp` objects through `/api/menu-images/{uuid}` for customer/cashier display, with an immutable cache policy; unrelated private bucket objects remain inaccessible. See [Neon storage setup](https://neon.com/docs/storage/get-started) for credentials. No local filesystem storage is used, so files persist across app deployments.
 
-An upload failure stops the menu save and leaves the form available for retry. Removing/replacing a photo or deleting a menu does not delete stored objects or invalidate cached copies. Abandoned uploads are retained; review storage usage and add cleanup if volume warrants it. Menu photos are intended for public display, so do not upload confidential images.
+An upload failure stops the menu save and leaves the form available for retry. Menu photos are intended for public display, so do not upload confidential images.
+
+### Unused photo cleanup
+
+Run these maintenance commands with the database and storage credentials for the **same Neon branch**:
+
+```bash
+npm run photos:cleanup
+npm run photos:cleanup -- --apply
+```
+
+The first command previews candidates. `--apply` removes only managed `images/menus/{uuid}.webp` files older than 24 hours with no menu reference. It keeps recent uploads, photos referenced by active or archived menus, matching legacy absolute image URLs, bundled assets and unrelated bucket files. Replacing/removing a menu photo makes its old file eligible once no other menu references it and the age threshold is met; abandoning an upload works the same way. Deleting a menu keeps its photo while the archived menu still references it for order history.
+
+Cleanup and menu saves coordinate with database locks; a save cannot attach a managed photo that cleanup has already removed. Failed deletes stop the command with a nonzero exit status and can be retried. No menu, account, reservation, order or payment rows are deleted by this command. Run it manually or schedule this command on your host; no background job is installed. Deleting storage files does not invalidate already cached browser/CDN copies.

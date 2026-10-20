@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { categories, menuItems } from "@/db/schema";
 import { apiError, apiSuccess, apiValidationError } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/auth/guards";
+import { checkMenuPhoto } from "@/lib/menu-photo-cleanup";
 import { idSchema, menuData, menuSchema, missingCategory, parseBody } from "@/lib/admin/master-data";
 
 const querySchema = z.strictObject({
@@ -43,6 +44,8 @@ export async function POST(request: Request) {
   if (body instanceof Response) return body;
   try {
     return await db.transaction(async (tx) => {
+      const imageError = await checkMenuPhoto(tx, body.imageUrl, new URL(request.url).origin);
+      if (imageError) return imageError;
       const [category] = await tx.select({ id: categories.id }).from(categories)
         .where(and(eq(categories.id, body.categoryId), isNull(categories.deletedAt))).for("share");
       if (!category) return apiError(422, "CATEGORY_NOT_FOUND", "Choose an existing category");

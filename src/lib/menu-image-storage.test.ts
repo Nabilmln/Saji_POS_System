@@ -1,7 +1,7 @@
 import { afterEach, expect, it, vi } from "vitest";
 import sharp from "sharp";
 vi.mock("server-only", () => ({}));
-import { readMenuImage, menuImageObject } from "./menu-image-storage";
+import { readMenuImage, menuImageObject, listMenuImages } from "./menu-image-storage";
 import { MAX_MENU_IMAGE_BYTES } from "./menu-images";
 
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
@@ -51,4 +51,31 @@ it("signs only the configured private menu object with server credentials", asyn
   expect(fetch).toHaveBeenCalledOnce();
   vi.stubEnv("AWS_SECRET_ACCESS_KEY", "");
   expect(() => menuImageObject("11111111-1111-4111-8111-111111111111")).toThrow("not configured");
+});
+
+it("lists every page and ignores unmanaged keys and missing object dates", async () => {
+  vi.stubEnv("AWS_ACCESS_KEY_ID", "test-key"); vi.stubEnv("AWS_SECRET_ACCESS_KEY", "test-secret");
+  vi.stubEnv("AWS_REGION", "ap-southeast-1"); vi.stubEnv("AWS_ENDPOINT_URL_S3", "https://storage.example.test");
+  const id = "11111111-1111-4111-8111-111111111111";
+  const fetch = vi.fn(async (request: Request) => {
+    const url = new URL(request.url);
+    expect(url.searchParams.get("prefix")).toBe("menus/");
+    if (!url.searchParams.has("continuation-token")) return new Response('<ListBucketResult><IsTruncated>true</IsTruncated><Contents><Key>menus/unrelated.txt</Key><LastModified>2020-01-01T00:00:00Z</LastModified></Contents><NextContinuationToken>a&amp;b</NextContinuationToken></ListBucketResult>');
+    expect(url.searchParams.get("continuation-token")).toBe("a&b");
+    return new Response(`<ListBucketResult><IsTruncated>false</IsTruncated><Contents><Key>menus/${id}.webp</Key><LastModified>2020-01-01T00:00:00Z</LastModified></Contents><Contents><Key>menus/${id}.webp</Key></Contents></ListBucketResult>`);
+  });
+  vi.stubGlobal("fetch", fetch);
+  const images = []; for await (const image of listMenuImages()) images.push(image);
+  expect(images).toEqual([{ id, modifiedAt: Date.parse("2020-01-01T00:00:00Z") }]);
+  expect(fetch).toHaveBeenCalledTimes(2);
+});
+
+it("fails closed on malformed or incomplete listings and invalid object IDs", async () => {
+  vi.stubEnv("AWS_ACCESS_KEY_ID", "test-key"); vi.stubEnv("AWS_SECRET_ACCESS_KEY", "test-secret");
+  vi.stubEnv("AWS_REGION", "ap-southeast-1"); vi.stubEnv("AWS_ENDPOINT_URL_S3", "https://storage.example.test");
+  for (const xml of ["not xml", "<ListBucketResult><IsTruncated>true</IsTruncated></ListBucketResult>", '<!DOCTYPE test [<!ENTITY x "test">]><ListBucketResult><IsTruncated>false</IsTruncated></ListBucketResult>']) {
+    vi.stubGlobal("fetch", async () => new Response(xml));
+    await expect(async () => { for await (const image of listMenuImages()) void image; }).rejects.toThrow();
+  }
+  expect(() => menuImageObject("../secret", { method: "DELETE" })).toThrow("Invalid menu image ID");
 });

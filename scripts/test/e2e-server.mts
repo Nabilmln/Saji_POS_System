@@ -84,18 +84,38 @@ const authServer = createServer(async (request, response) => {
 await new Promise<void>((resolve) => authServer.listen(3101, "127.0.0.1", resolve));
 // Loopback object-store fixture prevents browser tests from touching the real bucket.
 const images = new Map<string, Buffer>();
+const imageTimes = new Map<string, Date>();
 let failedUploads = 0;
+let failedDeletes = 0;
 const storageServer = createServer(async (request, response) => {
-  const path = new URL(request.url!, "http://127.0.0.1:3102").pathname;
+  const storageUrl = new URL(request.url!, "http://127.0.0.1:3102");
+  const path = storageUrl.pathname;
   if (request.method === "POST" && path === "/fail-next-upload") { failedUploads = 2; response.writeHead(204); response.end(); return; }
+  if (request.method === "POST" && path === "/fail-next-delete") { failedDeletes = 2; response.writeHead(204); response.end(); return; }
+  if (request.method === "POST" && path === "/age-photos") {
+    for (const key of images.keys()) imageTimes.set(key, new Date(Date.now() - 48 * 60 * 60 * 1000));
+    response.writeHead(204); response.end(); return;
+  }
   if (!request.headers.authorization?.startsWith("AWS4-HMAC-SHA256 Credential=e2e-storage-key/")) { response.writeHead(403); response.end(); return; }
+  if (request.method === "GET" && path === "/images" && storageUrl.searchParams.get("list-type") === "2") {
+    const all = [...images.keys()].sort();
+    const cursor = storageUrl.searchParams.get("continuation-token");
+    const remaining = all.filter((key) => !cursor || key > cursor);
+    const page = remaining.slice(0, 2);
+    const truncated = remaining.length > 2;
+    response.writeHead(200, { "Content-Type": "application/xml" });
+    response.end(`<ListBucketResult><IsTruncated>${truncated}</IsTruncated>${page.map((key) => `<Contents><Key>${key.slice("/images/".length)}</Key><LastModified>${imageTimes.get(key)!.toISOString()}</LastModified></Contents>`).join("")}${truncated ? `<NextContinuationToken>${page.at(-1)}</NextContinuationToken>` : ""}</ListBucketResult>`); return;
+  }
   if (!/^\/images\/menus\/[0-9a-f-]+\.webp$/.test(path)) { response.writeHead(404); response.end(); return; }
   if (request.method === "PUT") {
     const chunks: Buffer[] = []; for await (const chunk of request) chunks.push(Buffer.from(chunk));
     if (failedUploads > 0) { failedUploads--; response.writeHead(503); response.end(); return; }
-    images.set(path, Buffer.concat(chunks)); response.writeHead(200); response.end();
-  } else if (request.method === "GET" && images.has(path)) {
-    response.writeHead(200, { "Content-Type": "image/webp" }); response.end(images.get(path));
+    images.set(path, Buffer.concat(chunks)); imageTimes.set(path, new Date()); response.writeHead(200); response.end();
+  } else if (["GET", "HEAD"].includes(request.method!) && images.has(path)) {
+    response.writeHead(200, { "Content-Type": "image/webp", "Last-Modified": imageTimes.get(path)!.toUTCString() }); response.end(request.method === "HEAD" ? undefined : images.get(path));
+  } else if (request.method === "DELETE") {
+    if (failedDeletes > 0) { failedDeletes--; response.writeHead(503); response.end(); return; }
+    images.delete(path); imageTimes.delete(path); response.writeHead(204); response.end();
   } else { response.writeHead(404); response.end(); }
 });
 await new Promise<void>((resolve) => storageServer.listen(3102, "127.0.0.1", resolve));

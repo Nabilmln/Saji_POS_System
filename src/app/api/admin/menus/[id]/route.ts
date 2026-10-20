@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { categories, menuItems } from "@/db/schema";
 import { apiError, apiSuccess } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/auth/guards";
+import { checkMenuPhoto } from "@/lib/menu-photo-cleanup";
 import { menuData, menuPatchSchema, missingCategory, parseBody, parseId } from "@/lib/admin/master-data";
 
 type Context = { params: Promise<{ id: string }> };
@@ -25,6 +26,10 @@ export async function PATCH(request: Request, context: Context) {
   if (body instanceof Response) return body;
   try {
     return await db.transaction(async (tx) => {
+      if (body.imageUrl !== undefined) {
+        const imageError = await checkMenuPhoto(tx, body.imageUrl, new URL(request.url).origin);
+        if (imageError) return imageError;
+      }
       if (body.categoryId !== undefined) {
         const [category] = await tx.select({ id: categories.id }).from(categories)
           .where(and(eq(categories.id, body.categoryId), isNull(categories.deletedAt))).for("share");

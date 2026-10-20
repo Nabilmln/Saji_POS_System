@@ -14,6 +14,7 @@ const messages: Record<string, string> = {
   CATEGORY_NOT_FOUND: "Kategori tidak ditemukan.",
   MENU_NOT_FOUND: "Menu tidak ditemukan.",
   INVALID_IMAGE: "Pilih foto JPG, PNG, atau WebP yang valid.",
+  IMAGE_NOT_FOUND: "Foto tidak lagi tersedia. Pilih dan unggah ulang foto.",
   IMAGE_TOO_LARGE: "Ukuran foto maksimal 3 MB.",
   IMAGE_UPLOAD_FAILED: "Foto belum dapat diunggah. Coba lagi sebelum menyimpan menu.",
   TABLE_EXISTS: "Nomor meja sudah digunakan.",

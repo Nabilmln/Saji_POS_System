@@ -15,6 +15,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx scripts/db/seed.ts",
     "db:health": "tsx scripts/db/health.ts",
+    "photos:cleanup": "node --conditions=react-server --import tsx scripts/storage/cleanup-menu-photos.ts",
     "auth:bootstrap-admin": "tsx scripts/db/bootstrap-admin.ts"
   },
   "dependencies": {
@@ -26,6 +27,7 @@
     "@radix-ui/react-select": "^2.4.1",
     "aws4fetch": "^1.0.20",
     "drizzle-orm": "^0.45.4",
+    "fast-xml-parser": "^5.11.2",
     "next": "16.4.0",
     "pg": "^8.23.1",
     "qrcode": "^1.5.4",
