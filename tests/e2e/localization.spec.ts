@@ -12,7 +12,7 @@ test("language persists across customer pages and generated dish photos stay foc
   await page.getByRole("button", { name: "View menu", exact: true }).click();
   const dish = page.locator(".menu-card").filter({ hasText: "Nasi Goreng" });
   await expect(dish.getByRole("img", { name: "Nasi Goreng", exact: true })).toHaveAttribute("src", /\/images\/menu\/nasi-goreng\.webp$/);
-  await expect(dish.getByText("Illustration", { exact: true })).toBeVisible();
+  await expect(dish.locator(".photo-caption")).toHaveCount(0);
   await expect(dish).toContainText(/IDR\s*25,000/);
   expect(await dish.locator(".photo-frame").evaluate((element) => getComputedStyle(element).backgroundColor)).toBe("rgb(255, 255, 255)");
   await expect(dish.getByRole("img")).toHaveJSProperty("naturalWidth", 640);

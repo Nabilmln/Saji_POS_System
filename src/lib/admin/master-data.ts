@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { apiError, apiValidationError } from "../api-response";
 import { moneyIdrSchema } from "../contracts";
+import { MENU_IMAGE_PATH } from "../menu-images";
 
 const name = (max: number) => z.string().trim().min(1).max(max);
 export const idSchema = z.uuid();
@@ -11,10 +12,11 @@ export const categorySchema = z.strictObject({
 });
 export const categoryPatchSchema = categorySchema.partial().refine((value) => Object.keys(value).length > 0);
 
-export const imageUrlSchema = z.url().max(2048).refine((value) => {
+export const imageUrlSchema = z.union([z.string().regex(MENU_IMAGE_PATH), z.url().max(2048).refine((value) => {
+  if (!URL.canParse(value)) return false;
   const url = new URL(value);
   return url.protocol === "https:" && !url.username && !url.password && !url.hash;
-}, "Use an HTTPS image URL without credentials or a fragment");
+}, "Use an HTTPS image URL without credentials or a fragment")]);
 
 export const menuSchema = z.strictObject({
   categoryId: idSchema,

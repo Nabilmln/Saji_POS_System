@@ -7,6 +7,10 @@ it("validates master data and returns a relative QR destination", () => {
   expect(imageUrlSchema.safeParse("javascript:alert(1)").success).toBe(false);
   expect(imageUrlSchema.safeParse("https://user:pass@example.com/p.png").success).toBe(false);
   expect(imageUrlSchema.safeParse("https://example.com/p.png").success).toBe(true);
+  expect(imageUrlSchema.safeParse("/api/menu-images/11111111-1111-4111-8111-111111111111").success).toBe(true);
+  for (const path of ["/api/menu-images/../secret", "/api/menu-images/not-an-id", "//evil.test/photo", "/api/admin/staff", "data:image/png;base64,abc"]) {
+    expect(imageUrlSchema.safeParse(path).success).toBe(false);
+  }
   expect(menuSchema.safeParse({
     categoryId: "11111111-1111-4111-8111-111111111111",
     name: "Tea", description: null, priceIdr: "25000", imageUrl: null, isAvailable: true,

@@ -82,10 +82,27 @@ const authServer = createServer(async (request, response) => {
   } catch { response.writeHead(500); response.end(); }
 });
 await new Promise<void>((resolve) => authServer.listen(3101, "127.0.0.1", resolve));
+// Loopback object-store fixture prevents browser tests from touching the real bucket.
+const images = new Map<string, Buffer>();
+let failedUploads = 0;
+const storageServer = createServer(async (request, response) => {
+  const path = new URL(request.url!, "http://127.0.0.1:3102").pathname;
+  if (request.method === "POST" && path === "/fail-next-upload") { failedUploads = 2; response.writeHead(204); response.end(); return; }
+  if (!request.headers.authorization?.startsWith("AWS4-HMAC-SHA256 Credential=e2e-storage-key/")) { response.writeHead(403); response.end(); return; }
+  if (!/^\/images\/menus\/[0-9a-f-]+\.webp$/.test(path)) { response.writeHead(404); response.end(); return; }
+  if (request.method === "PUT") {
+    const chunks: Buffer[] = []; for await (const chunk of request) chunks.push(Buffer.from(chunk));
+    if (failedUploads > 0) { failedUploads--; response.writeHead(503); response.end(); return; }
+    images.set(path, Buffer.concat(chunks)); response.writeHead(200); response.end();
+  } else if (request.method === "GET" && images.has(path)) {
+    response.writeHead(200, { "Content-Type": "image/webp" }); response.end(images.get(path));
+  } else { response.writeHead(404); response.end(); }
+});
+await new Promise<void>((resolve) => storageServer.listen(3102, "127.0.0.1", resolve));
 const app = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "--port", "3100"], {
   stdio: "inherit", windowsHide: true,
-  env: { ...process.env, DATABASE_URL: databaseUrl, DATABASE_URL_UNPOOLED: databaseUrl, NEON_AUTH_BASE_URL: "http://127.0.0.1:3101", NEON_AUTH_COOKIE_SECRET: "local-browser-test-cookie-secret-at-least-32-chars", CUSTOMER_TOKEN_SECRET: "local-browser-test-customer-secret-at-least-32-chars" },
+  env: { ...process.env, DATABASE_URL: databaseUrl, DATABASE_URL_UNPOOLED: databaseUrl, NEON_AUTH_BASE_URL: "http://127.0.0.1:3101", NEON_AUTH_COOKIE_SECRET: "local-browser-test-cookie-secret-at-least-32-chars", CUSTOMER_TOKEN_SECRET: "local-browser-test-customer-secret-at-least-32-chars", AWS_ACCESS_KEY_ID: "e2e-storage-key", AWS_SECRET_ACCESS_KEY: "e2e-storage-secret", AWS_ENDPOINT_URL_S3: "http://127.0.0.1:3102", AWS_REGION: "ap-southeast-1" },
 });
-const stop = () => { app.kill(); authServer.close(); void pool.end(); };
+const stop = () => { app.kill(); authServer.close(); storageServer.close(); void pool.end(); };
 process.on("SIGTERM", stop); process.on("SIGINT", stop);
-app.on("exit", (code) => { authServer.close(); void pool.end(); process.exitCode = code ?? 0; });
+app.on("exit", (code) => { authServer.close(); storageServer.close(); void pool.end(); process.exitCode = code ?? 0; });
