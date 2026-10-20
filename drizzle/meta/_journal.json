@@ -36,6 +36,13 @@
       "when": 1791901233395,
       "tag": "0004_huge_selene",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1792488387056,
+      "tag": "0005_deletable_categories",
+      "breakpoints": true
     }
   ]
 }

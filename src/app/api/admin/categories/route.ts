@@ -1,4 +1,4 @@
-import { asc, count, eq } from "drizzle-orm";
+import { and, asc, count, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { categories, menuItems } from "@/db/schema";
 import { apiSuccess } from "@/lib/api-response";
@@ -12,7 +12,8 @@ export async function GET(request: Request) {
     id: categories.id, name: categories.name, sortOrder: categories.sortOrder,
     isActive: categories.isActive, createdAt: categories.createdAt,
     menuCount: count(menuItems.id),
-  }).from(categories).leftJoin(menuItems, eq(menuItems.categoryId, categories.id))
+  }).from(categories).leftJoin(menuItems, and(eq(menuItems.categoryId, categories.id), isNull(menuItems.archivedAt)))
+    .where(isNull(categories.deletedAt))
     .groupBy(categories.id).orderBy(asc(categories.sortOrder), asc(categories.name));
   return apiSuccess(rows);
 }

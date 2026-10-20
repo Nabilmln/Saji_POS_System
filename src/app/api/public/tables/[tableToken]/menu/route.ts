@@ -28,14 +28,14 @@ export async function GET(request: Request, context: { params: Promise<{ tableTo
   }
 
   const categoryRows = await db.select({ id: categories.id, name: categories.name })
-    .from(categories).where(and(eq(categories.isActive, true),
+    .from(categories).where(and(eq(categories.isActive, true), isNull(categories.deletedAt),
       parsed.data.categoryId ? eq(categories.id, parsed.data.categoryId) : undefined))
     .orderBy(asc(categories.sortOrder), asc(categories.name));
   const items = categoryRows.length ? await db.select({
     id: menuItems.id, categoryId: menuItems.categoryId, name: menuItems.name,
     description: menuItems.description, imageUrl: menuItems.imageUrl, priceIdr: menuItems.priceIdr,
   }).from(menuItems).innerJoin(categories, eq(categories.id, menuItems.categoryId)).where(and(
-    eq(categories.isActive, true), eq(menuItems.isAvailable, true), isNull(menuItems.archivedAt),
+    eq(categories.isActive, true), isNull(categories.deletedAt), eq(menuItems.isAvailable, true), isNull(menuItems.archivedAt),
     parsed.data.categoryId ? eq(menuItems.categoryId, parsed.data.categoryId) : undefined,
     parsed.data.q ? ilike(menuItems.name, `%${parsed.data.q.replace(/[\\%_]/g, "\\$&")}%`) : undefined,
   )).orderBy(asc(menuItems.name), asc(menuItems.id)) : [];

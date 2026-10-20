@@ -38,7 +38,9 @@ npm run db:seed
 npm run db:health
 ```
 
-The seed adds fictional menu items, tables, and settings and can be repeated. To seed staff profiles, first create the two matching Neon Auth users, then set `SEED_ADMIN_USER_ID` and `SEED_CASHIER_USER_ID`. The local Auth stub exists only to satisfy the staff foreign key during local database tests; it does not authenticate users.
+The default seed initializes store settings only and never injects sample categories, menus, tables or staff. Optional demo data is an explicit development action: `npm run db:seed -- --demo`. Running it again can recreate missing demo tables; do not use demo seeding on a live store. To include demo staff profiles, first create the two matching Neon Auth users, then set `SEED_ADMIN_USER_ID` and `SEED_CASHIER_USER_ID` before the explicit demo seed. The local Auth stub exists only to satisfy the staff foreign key during local database tests; it does not authenticate users.
+
+Makanan and Minuman are ordinary demo categories and can be deleted like any category. Deletion removes the category from management and ordering, preserves its linked menu items and order history, and frees its name for reuse. Remaining menu items are marked as needing a category in the owner catalogue; edit them to choose an active category before selling them again. Category counts exclude deleted menus. Only the exclusive owner account is protected from deletion; occupied/reserved tables are temporarily protected until their active work is settled.
 
 ## Staff authentication (BE-03)
 

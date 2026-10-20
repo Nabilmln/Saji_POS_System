@@ -2,8 +2,8 @@ import { and, asc, count, eq, ilike, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { LIST_PAGE_SIZE } from "@/lib/pagination";
 import { db } from "@/db";
-import { menuItems } from "@/db/schema";
-import { apiSuccess, apiValidationError } from "@/lib/api-response";
+import { categories, menuItems } from "@/db/schema";
+import { apiError, apiSuccess, apiValidationError } from "@/lib/api-response";
 import { requireAdmin } from "@/lib/auth/guards";
 import { idSchema, menuData, menuSchema, missingCategory, parseBody } from "@/lib/admin/master-data";
 
@@ -42,10 +42,13 @@ export async function POST(request: Request) {
   const body = await parseBody(request, menuSchema);
   if (body instanceof Response) return body;
   try {
-    const [item] = await db.insert(menuItems).values({
-      ...body, priceIdr: BigInt(body.priceIdr),
-    }).returning();
-    return apiSuccess(menuData(item), 201);
+    return await db.transaction(async (tx) => {
+      const [category] = await tx.select({ id: categories.id }).from(categories)
+        .where(and(eq(categories.id, body.categoryId), isNull(categories.deletedAt))).for("share");
+      if (!category) return apiError(422, "CATEGORY_NOT_FOUND", "Choose an existing category");
+      const [item] = await tx.insert(menuItems).values({ ...body, priceIdr: BigInt(body.priceIdr) }).returning();
+      return apiSuccess(menuData(item), 201);
+    });
   } catch (error) {
     return missingCategory(error);
   }

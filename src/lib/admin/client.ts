@@ -11,7 +11,6 @@ export class AdminApiError extends Error {
 
 const messages: Record<string, string> = {
   CATEGORY_EXISTS: "Nama kategori sudah digunakan.",
-  CATEGORY_IN_USE: "Kategori masih memiliki menu. Nonaktifkan kategori ini.",
   CATEGORY_NOT_FOUND: "Kategori tidak ditemukan.",
   MENU_NOT_FOUND: "Menu tidak ditemukan.",
   INVALID_IMAGE: "Pilih foto JPG, PNG, atau WebP yang valid.",

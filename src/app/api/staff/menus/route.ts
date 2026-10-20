@@ -9,12 +9,12 @@ export async function GET(request: Request) {
   if (staff instanceof Response) return staff;
   const [categoryRows, items] = await Promise.all([
     db.select({ id: categories.id, name: categories.name }).from(categories)
-      .where(eq(categories.isActive, true)).orderBy(asc(categories.sortOrder), asc(categories.name)),
+      .where(and(eq(categories.isActive, true), isNull(categories.deletedAt))).orderBy(asc(categories.sortOrder), asc(categories.name)),
     db.select({
       id: menuItems.id, categoryId: menuItems.categoryId, name: menuItems.name,
       description: menuItems.description, imageUrl: menuItems.imageUrl, priceIdr: menuItems.priceIdr,
     }).from(menuItems).innerJoin(categories, eq(menuItems.categoryId, categories.id))
-      .where(and(eq(categories.isActive, true), eq(menuItems.isAvailable, true), isNull(menuItems.archivedAt)))
+      .where(and(eq(categories.isActive, true), isNull(categories.deletedAt), eq(menuItems.isAvailable, true), isNull(menuItems.archivedAt)))
       .orderBy(asc(menuItems.name), asc(menuItems.id)),
   ]);
   return apiSuccess({ categories: categoryRows.map((category) => ({

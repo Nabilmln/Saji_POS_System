@@ -14,10 +14,11 @@ loadEnvConfig(process.cwd());
 
 const adminId = process.env.SEED_ADMIN_USER_ID;
 const cashierId = process.env.SEED_CASHIER_USER_ID;
-if (Boolean(adminId) !== Boolean(cashierId)) {
+const demo = process.argv.includes("--demo");
+if (demo && Boolean(adminId) !== Boolean(cashierId)) {
   throw new Error("Set both SEED_ADMIN_USER_ID and SEED_CASHIER_USER_ID, or neither");
 }
-if (adminId && cashierId && adminId === cashierId) {
+if (demo && adminId && cashierId && adminId === cashierId) {
   throw new Error("Admin and cashier IDs must differ");
 }
 
@@ -28,6 +29,7 @@ async function main() {
   try {
   await db.transaction(async (tx) => {
     await tx.insert(storeSettings).values({ id: 1 }).onConflictDoNothing();
+    if (!demo) return;
 
     const categoryRows = [
       { id: "11111111-1111-4111-8111-111111111111", name: "Makanan", sortOrder: 1 },
@@ -56,7 +58,7 @@ async function main() {
       ]).onConflictDoNothing();
     }
   });
-  console.log(adminId ? "Demo catalog, tables, settings, and staff seeded" : "Demo catalog, tables, and settings seeded; staff awaits Auth users");
+  console.log(demo ? (adminId ? "Demo catalog, tables, settings, and staff seeded" : "Demo catalog, tables, and settings seeded; staff awaits Auth users") : "Store settings initialized; no demo records added");
   } finally {
     await pool.end();
   }

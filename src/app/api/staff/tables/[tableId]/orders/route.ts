@@ -42,7 +42,7 @@ export async function POST(request: Request, context: { params: Promise<{ tableI
         id: menuItems.id, name: menuItems.name, priceIdr: menuItems.priceIdr,
       }).from(menuItems).innerJoin(categories, eq(menuItems.categoryId, categories.id))
         .where(and(inArray(menuItems.id, menuIds), eq(menuItems.isAvailable, true),
-          isNull(menuItems.archivedAt), eq(categories.isActive, true))).for("share");
+          isNull(menuItems.archivedAt), eq(categories.isActive, true), isNull(categories.deletedAt))).for("share");
       if (available.length !== body.items.length) {
         return apiError(409, "MENU_UNAVAILABLE", "Refresh the menu and remove unavailable items");
       }

@@ -77,9 +77,10 @@ export const categories = pgTable(
     name: varchar("name", { length: 120 }).notNull(),
     sortOrder: integer("sort_order").notNull().default(0),
     isActive: boolean("is_active").notNull().default(true),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
     createdAt: createdAt(),
   },
-  (table) => [uniqueIndex("categories_name_lower_uniq").on(sql`lower(${table.name})`)],
+  (table) => [uniqueIndex("categories_name_lower_uniq").on(sql`lower(${table.name})`).where(sql`${table.deletedAt} IS NULL`)],
 );
 
 export const menuItems = pgTable(
