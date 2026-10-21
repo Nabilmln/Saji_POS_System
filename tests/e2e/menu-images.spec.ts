@@ -5,6 +5,77 @@ import { test, expect, signIn } from "./fixtures";
 const origin = { Origin: "http://localhost:3100" };
 const upload = { name: "menu.webp", mimeType: "image/webp", buffer: readFileSync("public/images/menu/es-teh.webp") };
 
+test("photo upload feedback is immediate, localized and follows the actual upload result", async ({ page, data }, testInfo) => {
+  await signIn(page, "admin");
+  await page.goto("/admin/menus");
+  await page.getByRole("button", { name: "Tambah Menu", exact: true }).click();
+  await page.getByRole("combobox", { name: "Kategori *", exact: true }).click();
+  await page.getByRole("option", { name: `Demo ${data.categoryId}`, exact: true }).click();
+  await page.getByLabel("Nama menu *", { exact: true }).fill(`Upload feedback ${data.menuId}`);
+  await page.getByLabel("Harga (Rp) *", { exact: true }).fill("12000");
+  await page.getByLabel("Unggah foto menu", { exact: true }).setInputFiles(upload);
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => { release = resolve; });
+  await page.route("**/api/admin/menu-images", async (route) => {
+    await held;
+    await route.fulfill({ status: 503, json: { error: { code: "IMAGE_UPLOAD_FAILED" } } });
+  }, { times: 1 });
+  try {
+    const feedbackMs = await page.evaluate(() => new Promise<number>((resolve) => {
+      const status = document.querySelector(".photo-upload-status")!;
+      const start = performance.now();
+      const observer = new MutationObserver(() => {
+        if (status.querySelector(".processing-spinner")) { observer.disconnect(); resolve(performance.now() - start); }
+      });
+      observer.observe(status, { childList: true, subtree: true });
+      document.querySelector<HTMLFormElement>(".detail-pane .admin-form")!.requestSubmit();
+    }));
+    testInfo.annotations.push({ type: "feedback", description: `Local upload feedback: ${feedbackMs.toFixed(1)} ms (target <200 ms; budget <500 ms)` });
+    expect(feedbackMs).toBeLessThan(500);
+    const status = page.locator(".photo-upload-status");
+    const spinner = status.locator(".processing-spinner");
+    await expect(status).toContainText("Mengunggah foto…");
+    await expect(spinner).toHaveAttribute("aria-hidden", "true");
+    await page.locator(".workspace-detail").focus();
+    await expect(page.locator(".workspace-detail")).toBeFocused();
+    await expect(page.getByRole("button", { name: "Menyimpan…", exact: true })).toBeDisabled();
+    for (const [width, language, theme] of [[1280, "id", "light"], [390, "en", "dark"]] as const) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.emulateMedia({ colorScheme: theme, reducedMotion: "no-preference" });
+      if (language === "en") await page.getByRole("button", { name: "English", exact: true }).click();
+      await status.scrollIntoViewIfNeeded();
+      await expect(status).toHaveText(language === "en" ? "Uploading photo…" : "Mengunggah foto…");
+      expect(await spinner.evaluate((element) => getComputedStyle(element).animationDuration)).toBe("0.5s");
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+      expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
+      await page.screenshot({ path: testInfo.outputPath(`photo-processing-${width}-${language}.png`), fullPage: true });
+    }
+    await page.emulateMedia({ reducedMotion: "reduce" });
+    expect(await spinner.evaluate((element) => getComputedStyle(element).animationName)).toBe("none");
+    await expect(spinner).toBeVisible();
+    expect((await data.pool.query("SELECT id FROM menu_items WHERE category_id=$1 AND name=$2", [data.categoryId, `Upload feedback ${data.menuId}`])).rowCount).toBe(0);
+  } finally { release(); }
+  await expect(page.locator(".inline-alert[role=alert]")).toContainText("The photo could not be uploaded.");
+  await expect(page.locator(".processing-spinner")).toHaveCount(0);
+  await expect(page.getByRole("img", { name: "Menu photo preview", exact: true })).toHaveAttribute("src", /^blob:/);
+  let finishSave!: () => void;
+  const saving = new Promise<void>((resolve) => { finishSave = resolve; });
+  await page.route("**/api/admin/menus", async (route) => { await saving; await route.continue(); }, { times: 1 });
+  await page.route("**/api/admin/menu-images", async (route) => {
+    const start = performance.now();
+    const response = await route.fetch();
+    testInfo.annotations.push({ type: "upload", description: `Local fixture upload HTTP request: ${(performance.now() - start).toFixed(1)} ms` });
+    await route.fulfill({ response });
+  }, { times: 1 });
+  try {
+    await page.getByRole("button", { name: "Save menu item", exact: true }).click();
+    await expect(page.getByRole("img", { name: "Menu photo preview", exact: true })).toHaveAttribute("src", /^\/api\/menu-images\//);
+    await expect(page.locator(".processing-spinner")).toHaveCount(0);
+    await expect(page.getByRole("button", { name: "Saving…", exact: true })).toBeDisabled();
+  } finally { finishSave(); }
+  await expect(page.locator(".inline-alert[role=status]")).toContainText("Menu item saved.");
+});
+
 test("only the owner can upload menu photos and invalid files never reach storage", async ({ page }) => {
   const post = (file = upload) => page.request.post("/api/admin/menu-images", { headers: origin, multipart: { file } });
   expect((await post()).status()).toBe(401);

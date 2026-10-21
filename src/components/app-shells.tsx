@@ -43,6 +43,6 @@ export function StaffShell({ role, title, navigation, children }: {
       <nav>{navigation}</nav>
     </aside>
     <main className="staff-content"><header className="workspace-heading"><h1>{t(title)}</h1><span className="workspace-role">{role === "Admin" ? t("Pemilik") : t("Kasir")}</span></header>{children}</main>
-    <aside ref={setTarget} className="workspace-detail" aria-label={role === "Admin" ? t("Detail pemilik") : t("Detail kasir")}><div className="detail-placeholder">{role === "Admin" ? <QrCodeIcon size={32} weight="light" /> : <ReceiptIcon size={32} weight="light" />}<h2>{t("Rincian pilihan")}</h2><p>{role === "Admin" ? t("Pilih item di area utama untuk melihat rinciannya.") : t("Pilih meja atau transaksi untuk melihat pesanan, tagihan, atau struk.")}</p></div></aside>
+    <aside ref={setTarget} className="workspace-detail" tabIndex={0} aria-label={role === "Admin" ? t("Detail pemilik") : t("Detail kasir")}><div className="detail-placeholder">{role === "Admin" ? <QrCodeIcon size={32} weight="light" /> : <ReceiptIcon size={32} weight="light" />}<h2>{t("Rincian pilihan")}</h2><p>{role === "Admin" ? t("Pilih item di area utama untuk melihat rinciannya.") : t("Pilih meja atau transaksi untuk melihat pesanan, tagihan, atau struk.")}</p></div></aside>
   </div></DetailTarget>;
 }

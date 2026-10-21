@@ -32,7 +32,7 @@ export async function readMenuImage(request: Request): Promise<Buffer | Response
     const image = sharp(await file.arrayBuffer(), { limitInputPixels: 25_000_000 });
     const metadata = await image.metadata();
     if (!["jpeg", "png", "webp"].includes(metadata.format) || (metadata.pages ?? 1) > 1) return apiError(422, "INVALID_IMAGE", "Choose a static JPG, PNG or WebP image");
-    return await image.rotate().resize(1600, 1600, { fit: "inside", withoutEnlargement: true }).webp({ quality: 85 }).toBuffer();
+    return await image.rotate().resize(1600, 1600, { fit: "inside", withoutEnlargement: true }).webp({ quality: 85, effort: 2 }).toBuffer();
   } catch {
     return apiError(422, "INVALID_IMAGE", "Image cannot be read; choose another file");
   } finally { reader.releaseLock(); }

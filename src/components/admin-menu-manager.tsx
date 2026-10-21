@@ -3,7 +3,7 @@
 import { useLocale } from "@/components/locale-provider";
 
 import { StatusBadge } from "@/components/ui/status-badge";
-import { UploadSimpleIcon } from "@phosphor-icons/react";
+import { CircleNotchIcon, UploadSimpleIcon } from "@phosphor-icons/react";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { adminApi, AdminApiError, jsonRequest } from "@/lib/admin/client";
@@ -41,6 +41,7 @@ export function MenuManager() {
   const [draft, setDraft] = useState<MenuDraft>(emptyMenu);
   const [photo, setPhoto] = useState<{ file: File; url: string } | null>(null);
   const [photoError, setPhotoError] = useState("");
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [draggingPhoto, setDraggingPhoto] = useState(false);
   const photoInput = useRef<HTMLInputElement>(null);
   const [categoryEditing, setCategoryEditing] = useState<string | "new" | null>(null);
@@ -98,7 +99,9 @@ export function MenuManager() {
   }
 
   async function saveMenu(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setError(""); setNotice(""); setFields({});
+    event.preventDefault();
+    if (busy) return;
+    setBusy(true); setUploadingPhoto(Boolean(photo)); setError(""); setNotice(""); setFields({});
     const body = {
       categoryId: draft.categoryId, name: draft.name.trim(), description: draft.description.trim() || null,
       imageUrl: draft.imageUrl.trim() || null, priceIdr: draft.priceIdr.trim(), isAvailable: draft.isAvailable,
@@ -107,6 +110,7 @@ export function MenuManager() {
       if (photo) {
         const form = new FormData(); form.set("file", photo.file);
         const uploaded = await adminApi<{ imageUrl: string }>("/api/admin/menu-images", { method: "POST", body: form });
+        setUploadingPhoto(false);
         body.imageUrl = uploaded.imageUrl;
         setDraft((current) => ({ ...current, imageUrl: uploaded.imageUrl }));
         setPhoto(null);
@@ -118,7 +122,7 @@ export function MenuManager() {
     } catch (cause) {
       setError((cause as Error).message);
       if (cause instanceof AdminApiError) setFields(cause.fields ?? {});
-    } finally { setBusy(false); }
+    } finally { setBusy(false); setUploadingPhoto(false); }
   }
 
   async function toggleMenu(item: Menu) {
@@ -214,6 +218,7 @@ export function MenuManager() {
               <Input ref={photoInput} id="menu-photo" type="file" accept={MENU_IMAGE_TYPES.join(",")} aria-labelledby="menu-photo-label" aria-describedby="menu-photo-hint menu-photo-error" aria-invalid={!!photoError} onChange={(event) => choosePhoto(event.target.files?.[0])} />
             </label>
             <small id="menu-photo-hint" className="muted">{t("JPG, PNG, atau WebP. Maksimal 3 MB. Foto diunggah saat menu disimpan.")}</small>
+            <div className={`photo-upload-status${uploadingPhoto ? "" : " loading-label"}`} role="status" aria-atomic="true">{uploadingPhoto && <><CircleNotchIcon className="processing-spinner" size={18} weight="bold" aria-hidden="true" /><span>{t("Mengunggah foto…")}</span></>}</div>
             {photo && <small className="menu-photo-filename">{photo.file.name}</small>}
             <small id="menu-photo-error" className="field-error" role={photoError ? "alert" : undefined}>{t(photoError)}</small>
             {fields.imageUrl && <small className="field-error">{fields.imageUrl.join(", ")}</small>}
@@ -223,7 +228,7 @@ export function MenuManager() {
           <label className="check-row admin-form-wide"><Input type="checkbox" checked={draft.isAvailable} onChange={(event) => setDraft({ ...draft, isAvailable: event.target.checked })} />{t("Tersedia untuk pelanggan")}</label>
         </fieldset>
         {(photo || draft.imageUrl) && <div className="menu-photo-preview"><Photo src={photo?.url ?? draft.imageUrl} alt={t("Pratinjau foto menu")} className="image-preview" /><Button type="button" className="text-button" disabled={busy} onClick={() => { setPhoto(null); setPhotoError(""); setDraft({ ...draft, imageUrl: "" }); if (photoInput.current) photoInput.current.value = ""; }}>{t("Hapus foto")}</Button></div>}
-        <div className="admin-actions"><Button className="primary-button" disabled={busy || !!photoError}>{busy ? t("Menyimpan…") : t("Simpan Menu")}</Button><Button className="secondary-button" type="button" disabled={busy} onClick={() => { setEditing(null); setPhoto(null); }}>{t("Batal")}</Button></div>
+        <div className="admin-actions"><Button className="primary-button" disabled={busy || !!photoError} aria-busy={busy}>{busy ? t("Menyimpan…") : t("Simpan Menu")}</Button><Button className="secondary-button" type="button" disabled={busy} onClick={() => { setEditing(null); setPhoto(null); }}>{t("Batal")}</Button></div>
       </form></DetailPane>}
       {loading ? <LoadingState variant="menu">{t("Memuat menu…")}</LoadingState> : !list?.items.length ? <EmptyState className="empty-state"><h2>{t("Menu tidak ditemukan")}</h2><p>{t("Ubah pencarian atau tambahkan menu baru.")}</p></EmptyState> : <>
         <div className="admin-menu-grid">{list.items.map((item) => <MenuCard menu={item} category={categoryName.get(item.categoryId) ?? t("Kategori dihapus")} className="admin-list-row admin-menu-card" key={item.id} badge={<StatusBadge status={categoryName.has(item.categoryId) && item.isAvailable ? "AVAILABLE" : "INACTIVE"}>{!categoryName.has(item.categoryId) ? t("Pilih kategori") : item.isAvailable ? t("Tersedia") : t("Tidak tersedia")}</StatusBadge>}>
