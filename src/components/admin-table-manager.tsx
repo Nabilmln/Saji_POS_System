@@ -4,7 +4,7 @@ import { useLocale } from "@/components/locale-provider";
 
 import { StatusBadge } from "@/components/ui/status-badge";
 
-import { Alert, Panel, Button, Input, EmptyState, Pagination } from "@/components/ui/controls";
+import { Alert, Panel, Button, Input, EmptyState, Pagination, LoadingState } from "@/components/ui/controls";
 import { DataTable } from "@/components/ui/data-table";
 import { ConfirmDelete } from "@/components/ui/confirm-delete";
 import { usePagination } from "@/lib/use-pagination";
@@ -108,7 +108,7 @@ export function TableManager() {
       </form>}
     </Panel>
     <Panel><h2>{t("Daftar meja")}</h2>
-      {loading ? <p className="loading-block" role="status">{t("Memuat meja…")}</p> : !tables.length ? <EmptyState className="empty-state"><h2>{t("Belum ada meja")}</h2><p>{t("Tambahkan meja untuk membuat kode QR.")}</p></EmptyState> : <DataTable caption={t("Daftar meja")} columns={[t("Nomor meja"), t("Status"), t("Pemesanan QR"), t("Tindakan")]}>{tables.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((table) => <tr key={table.id}>
+      {loading ? <LoadingState variant="table">{t("Memuat meja…")}</LoadingState> : !tables.length ? <EmptyState className="empty-state"><h2>{t("Belum ada meja")}</h2><p>{t("Tambahkan meja untuk membuat kode QR.")}</p></EmptyState> : <DataTable caption={t("Daftar meja")} columns={[t("Nomor meja"), t("Status"), t("Pemesanan QR"), t("Tindakan")]}>{tables.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((table) => <tr key={table.id}>
         <th scope="row">{table.tableNumber}</th><td><StatusBadge status={table.status} /></td><td><StatusBadge status={table.isActive ? "ACTIVE" : "INACTIVE"} /></td>
         <td><div className="admin-row-actions">
           <Button className="text-button" disabled={busy || table.status !== "AVAILABLE"} onClick={() => begin(table)}>{t("Ubah nomor")}</Button>

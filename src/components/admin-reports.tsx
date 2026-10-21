@@ -97,6 +97,6 @@ export function AdminReports() {
         </section>
         <p className="insight-scope">{t("Pesanan belum lunas dan uang kembalian tidak dihitung sebagai pendapatan.")}</p>
       </section>
-    </DetailPane></> : busy ? <LoadingState>{t("Memuat ringkasan penjualan...")}</LoadingState> : <EmptyState>{t("Pilih periode lalu tampilkan laporan untuk mencoba lagi.")}</EmptyState>}
+    </DetailPane></> : busy ? <LoadingState variant="report">{t("Memuat ringkasan penjualan...")}</LoadingState> : <EmptyState>{t("Pilih periode lalu tampilkan laporan untuk mencoba lagi.")}</EmptyState>}
   </div>;
 }

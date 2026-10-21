@@ -4,5 +4,5 @@ import { Suspense } from "react";
 import { PosFrame } from "@/components/pos-frame";
 
 export default function PosLayout({ children }: { children: React.ReactNode }) {
-  return <Suspense fallback={<LoadingState className="loading-block" role="status"><Text value="Menyiapkan area kasir…" /></LoadingState>}><PosFrame>{children}</PosFrame></Suspense>;
+  return <Suspense fallback={<LoadingState variant="page"><Text value="Menyiapkan area kasir…" /></LoadingState>}><PosFrame>{children}</PosFrame></Suspense>;
 }

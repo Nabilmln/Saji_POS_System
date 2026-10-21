@@ -13,7 +13,7 @@ import { usePagination } from "@/lib/use-pagination";
 import { Photo } from "@/components/ui/photo";
 import { MenuCard } from "@/components/menu-card";
 import { Section, SectionNav } from "@/components/ui/section";
-import { Selection, Pagination, Alert, Button, Input, Textarea, EmptyState } from "@/components/ui/controls";
+import { Selection, Pagination, Alert, Button, Input, Textarea, EmptyState, LoadingState } from "@/components/ui/controls";
 import { DetailPane } from "@/components/app-shells";
 import { MAX_MENU_IMAGE_BYTES, MENU_IMAGE_TYPES } from "@/lib/menu-images";
 
@@ -198,7 +198,7 @@ export function MenuManager() {
       </div>
     </Section>
     <Section id="menu-items" title={t("Daftar menu")} description={t("Kelola harga, foto, dan ketersediaan setiap menu.")} actions={<Button className="primary-button" disabled={busy || !categories.some((category) => category.isActive)} onClick={() => beginMenu()}>{t("Tambah Menu")}</Button>}>
-      {!categories.some((category) => category.isActive) && <p className="muted">{t("Buat kategori aktif sebelum menambah menu.")}</p>}
+      {!loading && !categories.some((category) => category.isActive) && <p className="muted">{t("Buat kategori aktif sebelum menambah menu.")}</p>}
       {editing && <DetailPane><form className="admin-form" onSubmit={saveMenu}>
         <div className="admin-section-head"><h3>{editing === "new" ? t("Menu baru") : t("Edit menu")}</h3><Button className="text-button" type="button" disabled={busy} onClick={() => { setEditing(null); setPhoto(null); }}>{t("Tutup")}</Button></div>
         {editing !== "new" && !draft.categoryId && <p className="muted">{t("Kategori sebelumnya telah dihapus. Pilih kategori aktif agar menu ini tampil lagi untuk pelanggan.")}</p>}
@@ -225,7 +225,7 @@ export function MenuManager() {
         {(photo || draft.imageUrl) && <div className="menu-photo-preview"><Photo src={photo?.url ?? draft.imageUrl} alt={t("Pratinjau foto menu")} className="image-preview" /><Button type="button" className="text-button" disabled={busy} onClick={() => { setPhoto(null); setPhotoError(""); setDraft({ ...draft, imageUrl: "" }); if (photoInput.current) photoInput.current.value = ""; }}>{t("Hapus foto")}</Button></div>}
         <div className="admin-actions"><Button className="primary-button" disabled={busy || !!photoError}>{busy ? t("Menyimpan…") : t("Simpan Menu")}</Button><Button className="secondary-button" type="button" disabled={busy} onClick={() => { setEditing(null); setPhoto(null); }}>{t("Batal")}</Button></div>
       </form></DetailPane>}
-      {loading ? <p className="loading-block" role="status">{t("Memuat menu…")}</p> : !list?.items.length ? <EmptyState className="empty-state"><h2>{t("Menu tidak ditemukan")}</h2><p>{t("Ubah pencarian atau tambahkan menu baru.")}</p></EmptyState> : <>
+      {loading ? <LoadingState variant="menu">{t("Memuat menu…")}</LoadingState> : !list?.items.length ? <EmptyState className="empty-state"><h2>{t("Menu tidak ditemukan")}</h2><p>{t("Ubah pencarian atau tambahkan menu baru.")}</p></EmptyState> : <>
         <div className="admin-menu-grid">{list.items.map((item) => <MenuCard menu={item} category={categoryName.get(item.categoryId) ?? t("Kategori dihapus")} className="admin-list-row admin-menu-card" key={item.id} badge={<StatusBadge status={categoryName.has(item.categoryId) && item.isAvailable ? "AVAILABLE" : "INACTIVE"}>{!categoryName.has(item.categoryId) ? t("Pilih kategori") : item.isAvailable ? t("Tersedia") : t("Tidak tersedia")}</StatusBadge>}>
           <div className="admin-row-actions"><Button className="text-button" disabled={busy} onClick={() => beginMenu(item)}>{t("Edit")}</Button><Button className="text-button" disabled={busy} onClick={() => void toggleMenu(item)}>{item.isAvailable ? t("Nonaktifkan") : t("Aktifkan")}</Button><Button className="text-button danger-text" disabled={busy} onClick={() => setDeleting({ kind: "menu", item })}>{t("Hapus")}</Button></div>
         </MenuCard>)}</div>
@@ -244,7 +244,7 @@ export function MenuManager() {
         </div>
         <div className="admin-actions"><Button className="primary-button" disabled={busy}>{busy ? t("Menyimpan…") : t("Simpan Kategori")}</Button><Button className="secondary-button" type="button" disabled={busy} onClick={() => setCategoryEditing(null)}>{t("Batal")}</Button></div>
       </form>}
-      {!visibleCategories.length && !loading ? <EmptyState className="empty-state"><h2>{categories.length ? t("Kategori tidak ditemukan") : t("Belum ada kategori")}</h2><p>{categories.length ? t("Coba nama kategori lain.") : t("Tambahkan kategori untuk menyusun menu.")}</p></EmptyState> : <DataTable caption={t("Kategori")} columns={[t("Nama kategori"), t("Urutan"), t("Jumlah menu"), t("Status"), t("Tindakan")]}>{visibleCategories.slice((currentCategoryPage - 1) * categoryPageSize, currentCategoryPage * categoryPageSize).map((category) => <tr key={category.id}>
+      {loading && !list ? <LoadingState variant="table">{t("Memuat menu…")}</LoadingState> : !visibleCategories.length ? <EmptyState className="empty-state"><h2>{categories.length ? t("Kategori tidak ditemukan") : t("Belum ada kategori")}</h2><p>{categories.length ? t("Coba nama kategori lain.") : t("Tambahkan kategori untuk menyusun menu.")}</p></EmptyState> : <DataTable caption={t("Kategori")} columns={[t("Nama kategori"), t("Urutan"), t("Jumlah menu"), t("Status"), t("Tindakan")]}>{visibleCategories.slice((currentCategoryPage - 1) * categoryPageSize, currentCategoryPage * categoryPageSize).map((category) => <tr key={category.id}>
         <th scope="row">{category.name}</th><td>{category.sortOrder}</td><td>{category.menuCount}</td><td><StatusBadge status={category.isActive ? "ACTIVE" : "INACTIVE"} /></td>
         <td><div className="admin-row-actions"><Button className="text-button" disabled={busy} onClick={() => beginCategory(category)}>{t("Edit")}</Button><Button className="text-button" disabled={busy} onClick={() => void changeCategory(category)}>{category.isActive ? t("Nonaktifkan") : t("Aktifkan")}</Button><Button className="text-button danger-text" disabled={busy} onClick={() => setDeleting({ kind: "category", item: category })}>{t("Hapus")}</Button></div></td>
       </tr>)}</DataTable>}

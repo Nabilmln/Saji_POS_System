@@ -27,6 +27,7 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
   const { t, money } = useLocale();
   const [table, setTable] = useState<StaffTable | null>(null);
   const [menu, setMenu] = useState<Menu | null>(null);
+  const [menuError, setMenuError] = useState("");
   const [draft, setDraft] = useState<Draft>({ customerName: "", note: "", cart: [], key: "" });
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
@@ -61,10 +62,16 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
     } catch { /* Invalid local draft is ignored. */ } }, 0);
     return () => window.clearTimeout(initial);
   }, [storageKey]);
+  const loadMenu = useCallback(async () => {
+    setMenuError("");
+    try { setMenu(await adminApi<Menu>("/api/staff/menus")); }
+    catch { setMenuError("Menu belum dapat dimuat. Coba lagi."); }
+  }, []);
   useEffect(() => {
     if (!showManual || menu) return;
-    adminApi<Menu>("/api/staff/menus").then(setMenu).catch(() => setError("Menu belum dapat dimuat. Coba lagi."));
-  }, [showManual, menu]);
+    const timer = window.setTimeout(() => void loadMenu(), 0);
+    return () => window.clearTimeout(timer);
+  }, [showManual, menu, loadMenu]);
 
   function editDraft(changes: Partial<Draft>) {
     if (manualInFlight.current || draft.uncertain) return;
@@ -129,7 +136,7 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
           <fieldset className="order-draft" disabled={busy === "manual" || draft.uncertain}>
           <div className="admin-form-grid"><label>{t("Nama pelanggan / label")}<Input className="text-field" required maxLength={120} value={draft.customerName} onChange={(event) => editDraft({ customerName: event.target.value })} /></label><label>{t("Catatan order (opsional)")}<Input className="text-field" maxLength={500} value={draft.note} onChange={(event) => editDraft({ note: event.target.value })} /></label></div>
           <label className="field-label">{t("Cari menu")}<Input className="text-field" value={search} onChange={(event) => { setSearch(event.target.value); setMenuPage(1); }} placeholder={t("Nama menu")} /></label>
-          {!menu ? <p className="muted">{t("Memuat menu…")}{" "}<Button type="button" className="text-button" onClick={() => { setMenu(null); adminApi<Menu>("/api/staff/menus").then(setMenu).catch(() => setError("Menu belum dapat dimuat.")); }}>{t("Coba lagi")}</Button></p> : menu.categories.map((category) => {
+          {!menu ? menuError ? <Alert>{t(menuError)} <Button type="button" className="text-button" onClick={() => void loadMenu()}>{t("Coba lagi")}</Button></Alert> : <LoadingState variant="menu">{t("Memuat menu…")}</LoadingState> : menu.categories.map((category) => {
             const listed = category.items.filter((item) => visibleMenuIds.has(item.id));
             return listed.length ? <div key={category.id} className="pos-menu-group"><h3>{category.name}</h3><div className="menu-grid">{listed.map((item) => {
               const selected = draft.cart.find((entry) => entry.id === item.id);

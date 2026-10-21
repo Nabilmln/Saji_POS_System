@@ -300,7 +300,7 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
       <div className="menu-tools"><label htmlFor="menu-search" className="field-label">{t("Cari menu")}</label><Input id="menu-search" className="text-field" type="search" placeholder={t("Cari nama hidangan…")} value={search} onChange={(event) => { setSearch(event.target.value); setMenuPage(1); }} />
         {menu && <Selection label={t("Kategori")} value={categoryId} onChange={(value) => { setCategoryId(value); setMenuPage(1); }} options={[{ value: "", label: t("Semua") }, ...menu.categories.map((category) => ({ value: category.id, label: category.name }))]} />}</div>
       {error && <Alert className="inline-alert" role="alert">{t(error)}<Button className="text-button" onClick={() => guest && void loadMenu(guest.guestToken)}>{t("Coba lagi")}</Button></Alert>}
-      {!menu && !error && <LoadingState className="loading-block" role="status">{t("Memuat menu…")}</LoadingState>}
+      {!menu && !error && <LoadingState variant="menu">{t("Memuat menu…")}</LoadingState>}
       {menu && menu.categories.filter((category) => !categoryId || category.id === categoryId).map((category) => {
         const items = category.items.filter((item) => visibleMenuIds.has(item.id));
         if (!items.length) return null;

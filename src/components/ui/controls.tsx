@@ -58,9 +58,7 @@ export function EmptyState({ className = "empty-state", ...props }: HTMLAttribut
   return <div className={className} {...props} />;
 }
 
-export function LoadingState({ className = "loading-block", ...props }: HTMLAttributes<HTMLDivElement>) {
-  return <div className={className} role="status" {...props} />;
-}
+export { LoadingState } from "./loading-state";
 
 export function Pagination({ page, pageSize, onPageSizeChange, hasNext, onChange, disabled, total, label = "Navigasi halaman" }: { page: number; pageSize: number; onPageSizeChange: (size: number) => void; hasNext: boolean; onChange: (page: number) => void; disabled?: boolean; total?: number; label?: string }) {
   const { t } = useLocale();

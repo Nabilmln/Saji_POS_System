@@ -77,7 +77,7 @@ export function BillingSettings() {
     <p className="section-intro">{t("Atur diskon nominal dan pajak. Nilai baru berlaku pada tagihan yang belum lunas saat dihitung ulang.")}</p>
     {notice && <Alert toast className="inline-alert info" role="status">{t(notice)}</Alert>}
     {error && <Alert className="inline-alert" role="alert">{t(error)} {conflict && <Button className="text-button" onClick={() => { setRevision((value) => value + 1); setConflict(false); }}>{t("Muat pengaturan terbaru")}</Button>}</Alert>}
-    {!draft || !applied ? <LoadingState className="loading-block" role="status">{t("Memuat pengaturan…")}</LoadingState> : <form onSubmit={save} className="admin-settings-grid">
+    {!draft || !applied ? error ? <Button className="secondary-button" onClick={() => { setError(""); setRevision((value) => value + 1); }}>{t("Coba lagi")}</Button> : <LoadingState variant="form">{t("Memuat pengaturan…")}</LoadingState> : <form onSubmit={save} className="admin-settings-grid">
       <div className="admin-stack"><Section id="discount-settings" title={t("Diskon nominal")}>
         <div className="settings-block"><label className="check-row"><Input type="checkbox" checked={draft.discountEnabled} onChange={(event) => setDraft({ ...draft, discountEnabled: event.target.checked })} />{t("Gunakan diskon")}</label>
           <p className="muted">{t("Diskon tetap dalam rupiah, maksimal sebesar subtotal.")}</p>

@@ -2,7 +2,7 @@
 
 import { useLocale } from "@/components/locale-provider";
 
-import { Panel, Button, Alert, EmptyState, Input } from "@/components/ui/controls";
+import { Panel, Button, Alert, EmptyState, Input, LoadingState } from "@/components/ui/controls";
 
 import { usePolling } from "@/lib/use-polling";
 
@@ -122,7 +122,7 @@ export function PosPayment({ sessionId, onClose, onViewReceipt }: { sessionId: s
     {onClose ? <Button className="text-button" disabled={busy} onClick={onClose}>{t("← Kembali ke meja")}</Button> : <Link className="text-button" href={quote ? `/pos/tables/${quote.tableId}` : "/pos"}>{t("← Kembali ke meja")}</Link>}
     <Panel className="admin-panel"><div className="admin-section-head"><div><h2>{quote ? t("Meja {0}", { "0": quote.tableNumber }) : t("Tagihan sesi")}</h2></div><Button className="secondary-button" disabled={busy} onClick={() => void refresh()}>{t("Segarkan")}</Button></div>
       {notice && <Alert toast className="inline-alert info" role="status">{t(notice)}</Alert>}{error && <Alert className="inline-alert" role="alert">{t(error)} {pending && <Link href="/pos/transactions">{t("Periksa riwayat")}</Link>}</Alert>}
-      {!loaded ? <p className="loading-block" role="status">{t("Memuat tagihan…")}</p> : !quote ? <EmptyState className="empty-state"><p>{t("Tagihan tidak tersedia.")}</p>{pending && <Button className="primary-button" disabled={busy} onClick={() => void sendPayment(pending)}>{busy ? t("Memeriksa pembayaran…") : t("Ulangi transaksi yang sama")}</Button>} <Link href="/pos/transactions">{t("Lihat riwayat transaksi")}</Link></EmptyState> : <>
+      {!loaded ? <LoadingState>{t("Memuat tagihan…")}</LoadingState> : !quote ? <EmptyState className="empty-state"><p>{t("Tagihan tidak tersedia.")}</p>{pending && <Button className="primary-button" disabled={busy} onClick={() => void sendPayment(pending)}>{busy ? t("Memeriksa pembayaran…") : t("Ulangi transaksi yang sama")}</Button>} <Link href="/pos/transactions">{t("Lihat riwayat transaksi")}</Link></EmptyState> : <>
         <p className="muted">{t("Sesi")}{" "}{sessionId.slice(0, 8)} {" "}{t("· Revisi")}{" "}{quote.sessionRevision} {" "}{t("· Pengaturan")}{" "}{quote.settingsVersion} {" "}{t("· Dihitung")}{" "}{new Date(quote.calculatedAt).toLocaleTimeString(locale === "en" ? "en-GB" : "id-ID", { timeZone: "Asia/Jakarta" })}</p>
 
         {receiptOpen ? <DetailPane><ReceiptPreview key={sessionId} sessionId={sessionId} onClose={() => setReceiptOpen(false)} /></DetailPane> : table ? <DetailPane footer={<Button type="button" className="secondary-button full-width" disabled={busy || Boolean(pending)} onClick={() => setReceiptOpen(true)}>{t("Lihat struk")}</Button>}><OrderDetails orders={table.orders} busy={busy || !!pending ? "payment" : ""} onConfirm={(id) => void updateOrder(`/api/staff/orders/${id}/confirm`, "POST", {})} onServe={(id) => void updateOrder(`/api/staff/order-items/${id}/served`, "PATCH", { served: true })} onVoid={setDeleting} /><section className="detail-bill"><h2>{t("Rincian tagihan")}</h2><BillBreakdown quote={quote} /></section></DetailPane> : <p className="muted">{t("Rincian pesanan sedang disinkronkan. Segarkan sebelum membayar.")}</p>}

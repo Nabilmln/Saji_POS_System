@@ -2,7 +2,7 @@
 
 import { useLocale } from "@/components/locale-provider";
 
-import { Panel, Button, Alert } from "@/components/ui/controls";
+import { Panel, Button, Alert, LoadingState } from "@/components/ui/controls";
 
 import { usePolling } from "@/lib/use-polling";
 
@@ -39,7 +39,7 @@ export function PosBillPreview({ sessionId }: { sessionId: string }) {
     <div className="admin-section-head"><div><h2>{t("Rincian tagihan")}</h2></div><Button className="secondary-button" onClick={() => void refresh()}>{t("Segarkan")}</Button></div>
     {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
     {changed && <Alert className="inline-alert info" role="status">{t("Tagihan diperbarui. Periksa total terbaru sebelum pembayaran.")}</Alert>}
-    {!quote ? <p className="muted">{t("Memuat tagihan…")}</p> : <><BillBreakdown quote={quote} /><p className="muted pos-bill-meta">{t("Revisi")}{" "}{quote.sessionRevision} {" "}{t("· Pengaturan")}{" "}{quote.settingsVersion} {" "}{t("· Dihitung")}{" "}{new Date(quote.calculatedAt).toLocaleTimeString(locale === "en" ? "en-GB" : "id-ID", { timeZone: "Asia/Jakarta" })}</p>
+    {!quote ? !error && <LoadingState>{t("Memuat tagihan…")}</LoadingState> : <><BillBreakdown quote={quote} /><p className="muted pos-bill-meta">{t("Revisi")}{" "}{quote.sessionRevision} {" "}{t("· Pengaturan")}{" "}{quote.settingsVersion} {" "}{t("· Dihitung")}{" "}{new Date(quote.calculatedAt).toLocaleTimeString(locale === "en" ? "en-GB" : "id-ID", { timeZone: "Asia/Jakarta" })}</p>
       {!quote.paymentEligible && <p className="muted">{quote.blockingOrders.length ? t("{0} pesanan belum selesai disajikan.", { "0": quote.blockingOrders.length }) : t("Belum ada item yang dapat dibayar.")}</p>}
       </>}
   </Panel>;

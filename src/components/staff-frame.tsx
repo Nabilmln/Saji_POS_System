@@ -8,7 +8,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ChartLineUpIcon, SquaresFourIcon, QrCodeIcon, SlidersHorizontalIcon, UsersIcon, CalendarBlankIcon, ReceiptIcon, SignOutIcon } from "@phosphor-icons/react";
 import { StaffShell } from "@/components/app-shells";
 import { EntryHeader } from "@/components/ui/entry-header";
-import { Button } from "@/components/ui/controls";
+import { Button, LoadingState } from "@/components/ui/controls";
 import { adminApi, AdminApiError } from "@/lib/admin/client";
 import { authClient } from "@/lib/auth/client";
 
@@ -42,7 +42,8 @@ export function StaffFrame({ role, children }: { role: "ADMIN" | "CASHIER"; chil
       .catch((cause: unknown) => { if (active) setState(cause instanceof AdminApiError && cause.status === 401 ? "login" : cause instanceof AdminApiError && cause.status === 403 ? "forbidden" : "error"); });
     return () => { active = false; };
   }, [role]);
-  if (state !== "ready") return <main className="entry-page"><EntryHeader /><h1>{state === "loading" ? t("Memeriksa akses…") : state === "login" ? t("Masuk diperlukan") : state === "forbidden" ? t("Akses ditolak") : t("Tidak dapat memuat halaman")}</h1><p className="muted">{state === "forbidden" ? t("Akun ini tidak memiliki izin untuk ruang kerja ini.") : state === "login" ? t("Masuk dengan akun {0}.", { "0": role === "ADMIN" ? t("pemilik") : t("kasir") }) : state === "error" ? t("Periksa koneksi lalu coba lagi.") : ""}</p>{state === "error" ? <Button onClick={() => window.location.reload()}>{t("Coba Lagi")}</Button> : state !== "loading" && <Link className="primary-button" href={loginPath}>{t("Masuk")}</Link>}</main>;
+  if (state === "loading") return <StaffShell role={role === "ADMIN" ? "Admin" : "Kasir"} title={t("Memeriksa akses…")} navigation={null}><LoadingState variant="page">{t("Memeriksa akses…")}</LoadingState></StaffShell>;
+  if (state !== "ready") return <main className="entry-page"><EntryHeader /><h1>{state === "login" ? t("Masuk diperlukan") : state === "forbidden" ? t("Akses ditolak") : t("Tidak dapat memuat halaman")}</h1><p className="muted">{state === "forbidden" ? t("Akun ini tidak memiliki izin untuk ruang kerja ini.") : state === "login" ? t("Masuk dengan akun {0}.", { "0": role === "ADMIN" ? t("pemilik") : t("kasir") }) : t("Periksa koneksi lalu coba lagi.")}</p>{state === "error" ? <Button onClick={() => window.location.reload()}>{t("Coba Lagi")}</Button> : <Link className="primary-button" href={loginPath}>{t("Masuk")}</Link>}</main>;
   const links = menus[role];
   const current = links.find((link) => link.href === "/pos" ? !pathname.startsWith("/pos/reservations") && !pathname.startsWith("/pos/transactions") : pathname.startsWith(link.href));
   const navigation = <>{links.map((link) => <Link className={`staff-nav-item ${current?.href === link.href ? "active" : ""}`} href={link.href} key={link.href} aria-current={current?.href === link.href ? "page" : undefined}>{link.icon}<span>{t(link.label)}</span></Link>)}<div className="staff-account-block"><span className="account-avatar" aria-hidden="true">{name.charAt(0).toUpperCase()}</span><div><strong>{name}</strong><small>{role === "ADMIN" ? t("Pemilik eksklusif") : t("Kasir")}</small></div><Button className="icon-button" aria-label={t("Keluar")} onClick={async () => { try { const result = await authClient.signOut(); if (result.error) throw result.error; router.replace(loginPath); router.refresh(); } catch { setLogoutError("Tidak dapat keluar. Coba lagi."); } }}><SignOutIcon size={19} /></Button></div>{logoutError && <p className="inline-alert" role="alert">{t(logoutError)}</p>}</>;
