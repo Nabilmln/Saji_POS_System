@@ -5,7 +5,6 @@ import { useLocale } from "@/components/locale-provider";
 import { StatusBadge } from "@/components/ui/status-badge";
 
 import { Alert, Panel, Button, Input, EmptyState, Pagination, LoadingState } from "@/components/ui/controls";
-import { DataTable } from "@/components/ui/data-table";
 import { ConfirmDelete } from "@/components/ui/confirm-delete";
 import { usePagination } from "@/lib/use-pagination";
 
@@ -107,17 +106,18 @@ export function TableManager() {
         <div className="admin-actions"><Button className="primary-button" disabled={busy}>{busy ? t("Menyimpan…") : t("Simpan Meja")}</Button><Button className="secondary-button" type="button" disabled={busy} onClick={() => setEditing(null)}>{t("Batal")}</Button></div>
       </form>}
     </Panel>
-    <Panel><h2>{t("Daftar meja")}</h2>
-      {loading ? <LoadingState variant="table">{t("Memuat meja…")}</LoadingState> : !tables.length ? <EmptyState className="empty-state"><h2>{t("Belum ada meja")}</h2><p>{t("Tambahkan meja untuk membuat kode QR.")}</p></EmptyState> : <DataTable caption={t("Daftar meja")} columns={[t("Nomor meja"), t("Status"), t("Pemesanan QR"), t("Tindakan")]}>{tables.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((table) => <tr key={table.id}>
-        <th scope="row">{table.tableNumber}</th><td><StatusBadge status={table.status} /></td><td><StatusBadge status={table.isActive ? "ACTIVE" : "INACTIVE"} /></td>
-        <td><div className="admin-row-actions">
+    <section className="admin-table-list" aria-label={t("Daftar meja")}>
+      {loading ? <LoadingState variant="cards">{t("Memuat meja…")}</LoadingState> : !tables.length ? <EmptyState className="empty-state"><h2>{t("Belum ada meja")}</h2><p>{t("Tambahkan meja untuk membuat kode QR.")}</p></EmptyState> : <div className="admin-table-grid">{tables.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((table) => <article className={`admin-table-card${preview?.id === table.id ? " selected" : ""}`} aria-labelledby={`admin-table-${table.id}`} key={table.id}>
+        <div className="admin-table-heading"><h3 id={`admin-table-${table.id}`}>{t("Meja {0}", { "0": table.tableNumber })}</h3><StatusBadge status={table.status} /></div>
+        <div className="admin-table-qr"><span>{t("Pemesanan QR")}</span><StatusBadge status={table.isActive ? "ACTIVE" : "INACTIVE"} /></div>
+        <div className="admin-table-actions">
+          <Button className="secondary-button" disabled={busy || !table.isActive} aria-pressed={preview?.id === table.id} onClick={() => openQr(table)}>{t("Lihat QR")}</Button>
           <Button className="text-button" disabled={busy || table.status !== "AVAILABLE"} onClick={() => begin(table)}>{t("Ubah nomor")}</Button>
           <Button className="text-button" disabled={busy || table.status !== "AVAILABLE"} onClick={() => void toggle(table)}>{table.isActive ? t("Nonaktifkan") : t("Aktifkan")}</Button>
-          {table.isActive && <Button className="text-button" onClick={() => openQr(table)}>{t("Lihat QR")}</Button>}
           <Button className="text-button danger-text" disabled={busy || table.status !== "AVAILABLE"} onClick={() => setDeleting(table)}>{t("Hapus")}</Button>
-        </div></td>
-      </tr>)}</DataTable>}
-    </Panel>
+        </div>
+      </article>)}</div>}
+    </section>
     <Pagination pageSize={pageSize} onPageSizeChange={setPageSize} page={currentPage} hasNext={currentPage * pageSize < tables.length} total={tables.length} onChange={setPage} disabled={busy || loading} />
     {deleting && <ConfirmDelete name={t("Meja {0}", { "0": deleting.tableNumber })} description={t("Meja ini dihapus dari daftar. Kode QR lama berhenti menerima pesanan; riwayat transaksi tetap tersimpan.")} onClose={() => setDeleting(null)} onConfirm={() => remove(deleting)} />}
     {preview && <DetailPane><Panel className="admin-panel qr-section" aria-labelledby="qr-title">

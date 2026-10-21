@@ -43,7 +43,7 @@ test("owner navigation uses shared localized skeletons without blocking the side
   await page.getByRole("button", { name: "Bahasa Indonesia", exact: true }).click();
   await page.setViewportSize({ width: 1440, height: 900 });
   for (const [name, pattern, shape] of [
-    ["Meja & QR", "**/api/admin/tables", ".skeleton-table"],
+    ["Meja & QR", "**/api/admin/tables", ".skeleton-grid"],
     ["Akun Staf", "**/api/admin/staff?*", ".skeleton-table"],
     ["Diskon & Pajak", "**/api/admin/settings/billing", ".skeleton-form"],
   ]) {

@@ -139,7 +139,7 @@ test("deleting a menu and a settled table preserves receipts and permits a new t
     await confirmDelete(page, data.menuName);
     await expect(menu).toHaveCount(0);
     await page.goto("/admin/tables");
-    const table = page.getByRole("row").filter({ hasText: data.tableNumber });
+    const table = page.getByRole("article", { name: `Meja ${data.tableNumber}`, exact: true });
     await table.getByRole("button", { name: "Hapus", exact: true }).click();
     await confirmDelete(page, `Meja ${data.tableNumber}`);
     await expect(table).toHaveCount(0);
@@ -208,15 +208,16 @@ test("table and customer lists use the shared page-size toggle without losing pa
     }
     await signIn(page, "admin"); await page.goto("/admin/tables");
     const pager = page.getByRole("navigation", { name: "Navigasi halaman" });
-    await expect(page.locator(".data-table tbody tr")).toHaveCount(20);
-    await pager.getByRole("radio", { name: "10", exact: true }).check();
-    await expect(page.locator(".data-table tbody tr")).toHaveCount(10);
+    await expect(page.locator(".admin-table-card")).toHaveCount(20);
+    await pager.getByText("10", { exact: true }).click();
+    await expect(pager.getByRole("radio", { name: "10", exact: true })).toBeChecked();
+    await expect(page.locator(".admin-table-card")).toHaveCount(10);
     await pager.getByRole("button", { name: "Berikutnya" }).click();
     await expect(pager).toContainText("Halaman 2");
-    await pager.getByRole("radio", { name: "15", exact: true }).check();
-    await expect(page.locator(".data-table tbody tr")).toHaveCount(15);
+    await pager.getByText("15", { exact: true }).click();
+    await expect(page.locator(".admin-table-card")).toHaveCount(15);
     await expect(pager).toContainText("Halaman 1");
-    const tableBox = await page.locator(".data-table-wrap").boundingBox();
+    const tableBox = await page.locator(".admin-table-grid").boundingBox();
     const pagerBox = await pager.boundingBox();
     expect(pagerBox!.y - (tableBox!.y + tableBox!.height)).toBeGreaterThanOrEqual(16);
     await page.setViewportSize({ width: 390, height: 844 });
@@ -231,11 +232,11 @@ test("table and customer lists use the shared page-size toggle without losing pa
     await page.getByLabel("Cari menu", { exact: true }).fill("Page menu");
     await expect(page.locator(".menu-card")).toHaveCount(20);
     const customerPager = page.getByRole("navigation", { name: "Navigasi halaman" });
-    await customerPager.getByRole("radio", { name: "10", exact: true }).check();
+    await customerPager.getByText("10", { exact: true }).click();
     await expect(page.locator(".menu-card")).toHaveCount(10);
     await customerPager.getByRole("button", { name: "Berikutnya" }).click();
     await expect(page.locator(".menu-card").first()).toContainText("Page menu 10");
-    await customerPager.getByRole("radio", { name: "15", exact: true }).check();
+    await customerPager.getByText("15", { exact: true }).click();
     await expect(page.locator(".menu-card")).toHaveCount(15);
     await expect(page.locator(".menu-card").first()).toContainText("Page menu 00");
     await page.getByRole("button", { name: "English", exact: true }).click();

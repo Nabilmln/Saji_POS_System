@@ -218,7 +218,7 @@ test("shared dropdown supports keyboards and desktop panes keep QR and orders at
   await availability.getByRole("radio", { name: "Tersedia", exact: true }).check();
   await expect(availability.getByRole("radio", { name: "Tersedia", exact: true })).toBeChecked();
   await page.goto("/admin/tables");
-  await page.getByRole("row").filter({ hasText: data.tableNumber }).getByRole("button", { name: "Lihat QR" }).click();
+  await page.getByRole("article", { name: `Meja ${data.tableNumber}`, exact: true }).getByRole("button", { name: "Lihat QR" }).click();
   await expect(page.locator(".workspace-detail").getByRole("img", { name: `Kode QR untuk pemesanan Meja ${data.tableNumber}` })).toBeVisible();
   const sidebar = await page.locator(".staff-sidebar").boundingBox();
   const content = await page.locator(".staff-content").boundingBox();

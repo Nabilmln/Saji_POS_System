@@ -28,7 +28,6 @@ test("admin and cashier tables share compact centered cells and stacked timestam
     { path: "/pos", role: "cashier", name: "inbox", timestamp: true },
     { path: "/pos/transactions", role: "cashier", name: "transactions", timestamp: true },
     { path: "/admin/menus", role: "admin", name: "categories", timestamp: false },
-    { path: "/admin/tables", role: "admin", name: "tables", timestamp: false },
     { path: "/admin/staff", role: "admin", name: "staff", timestamp: false },
     { path: "/admin/reports", role: "admin", name: "daily-sales", timestamp: false },
   ] as const) {
