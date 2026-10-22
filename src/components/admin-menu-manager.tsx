@@ -193,7 +193,6 @@ export function MenuManager() {
     {notice && <Alert toast className="inline-alert info" role="status">{t(notice)}</Alert>}
     {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
 
-    <SectionNav sections={[{ id: "menu-filters", label: t("Temukan menu") }, { id: "menu-items", label: t("Daftar menu") }, { id: "menu-categories", label: t("Kategori") }]} />
     <Section id="menu-filters" title={t("Temukan menu")} description={t("Filter menu berdasarkan nama, kategori, dan ketersediaan.")}>
       <div className="admin-filters menu-filters">
         <label>{t("Cari menu")}<Input className="text-field" type="search" maxLength={160} value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder={t("Nama menu")} /></label>
