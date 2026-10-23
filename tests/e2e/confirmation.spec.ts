@@ -45,6 +45,7 @@ test("shared table confirmation is safe to cancel, accessible and cancelled by n
     const translatedCard = page.getByRole("article", { name: `${language === "en" ? "Table" : "Meja"} ${number}`, exact: true });
     await translatedCard.getByRole("button", { name: language === "en" ? "Deactivate" : "Nonaktifkan", exact: true }).click();
     await expect(dialog).toHaveAccessibleName(language === "en" ? "Deactivate table?" : "Nonaktifkan meja?");
+    await expect(dialog).toHaveCSS("position", "fixed");
     expect(await dialog.evaluate((element) => {
       const rect = element.getBoundingClientRect();
       return rect.left >= 0 && rect.right <= innerWidth && rect.top >= 0 && rect.bottom <= innerHeight && element.scrollWidth <= element.clientWidth + 1 && Math.abs(rect.left + rect.width / 2 - innerWidth / 2) <= 1 && Math.abs(rect.top + rect.height / 2 - innerHeight / 2) <= 1;
@@ -100,4 +101,30 @@ test("menu, category and billing changes require the shared confirmation", async
   await confirmAction(page, "Simpan Perubahan");
   await expect(page.locator(".toast")).toContainText("Pengaturan berhasil diterapkan");
   expect((await data.pool.query("SELECT discount_amount_idr::text FROM store_settings WHERE id=1")).rows[0].discount_amount_idr).toBe("1000");
+});
+
+test("delete confirmation stays at the viewport center through page scrolling and open-dialog resizing", async ({ page, data }, testInfo) => {
+  await signIn(page, "admin");
+  await page.goto("/admin/menus");
+  await page.setViewportSize({ width: 390, height: 844 });
+  const menu = page.locator(".admin-menu-card").filter({ hasText: data.menuName });
+  await menu.getByRole("button", { name: "Hapus", exact: true }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toHaveAccessibleName("Tinjau penghapusan");
+  await dialog.getByRole("button", { name: "Lanjutkan", exact: true }).click();
+  await expect(dialog).toHaveAccessibleName("Konfirmasi penghapusan");
+  for (const [width, height] of [[390, 844], [1440, 900], [320, 568], [844, 390]] as const) {
+    await page.setViewportSize({ width, height });
+    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+    await expect(dialog).toHaveCSS("position", "fixed");
+    expect(await dialog.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return Math.abs(rect.left + rect.width / 2 - innerWidth / 2) <= 1 && Math.abs(rect.top + rect.height / 2 - innerHeight / 2) <= 1 && rect.top >= 0 && rect.bottom <= innerHeight;
+    })).toBe(true);
+    if (width < 640 || height < 600) expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0);
+    await page.screenshot({ path: testInfo.outputPath(`delete-centered-${width}x${height}.png`) });
+  }
+  await page.keyboard.press("Escape");
+  await expect(dialog).toHaveCount(0);
+  expect((await data.pool.query("SELECT count(*)::int AS count FROM menu_items WHERE id=$1", [data.menuId])).rows[0].count).toBe(1);
 });
