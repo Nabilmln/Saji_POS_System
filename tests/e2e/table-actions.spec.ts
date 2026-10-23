@@ -70,7 +70,7 @@ test("table quick actions add orders, preview receipts and pay without navigatin
   await signIn(page);
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.getByRole("button", { name: new RegExp(data.tableNumber) }).click();
-  const pane = page.locator(".workspace-detail");
+  const pane = page.locator(".workspace-detail:visible");
   await expect(pane.getByRole("button", { name: "Lihat struk", exact: true })).toBeDisabled();
   await expect(pane.getByRole("button", { name: "Pembayaran", exact: true })).toBeDisabled();
   await expect(pane.getByRole("link", { name: "Buka meja" })).toHaveCount(0);
@@ -125,7 +125,7 @@ test("bill follows the order list and table actions stay at the bottom while det
   for (const route of ["/pos", `/pos/tables/${data.tableId}`]) {
     await page.goto(route);
     if (route === "/pos") await page.getByRole("button", { name: new RegExp(data.tableNumber) }).click();
-    const pane = page.locator(".workspace-detail");
+    const pane = page.locator(".workspace-detail:visible");
     for (const width of [1440, 390]) {
       await page.setViewportSize({ width, height: 844 });
       await page.getByRole("button", { name: width === 390 ? "English" : "Bahasa Indonesia", exact: true }).click();

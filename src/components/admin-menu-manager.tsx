@@ -12,7 +12,7 @@ import { DataTable } from "@/components/ui/data-table";
 import { usePagination } from "@/lib/use-pagination";
 import { Photo } from "@/components/ui/photo";
 import { MenuCard } from "@/components/menu-card";
-import { Section, SectionNav } from "@/components/ui/section";
+import { Section } from "@/components/ui/section";
 import { Selection, Pagination, Alert, Button, Input, Textarea, EmptyState, LoadingState } from "@/components/ui/controls";
 import { DetailPane } from "@/components/app-shells";
 import { MAX_MENU_IMAGE_BYTES, MENU_IMAGE_TYPES } from "@/lib/menu-images";
