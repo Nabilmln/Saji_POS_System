@@ -1,6 +1,7 @@
 "use client";
 
-import { useLocale } from "@/components/locale-provider";
+import { Text, useLocale } from "@/components/locale-provider";
+import { useNotice } from "@/components/ui/notice";
 import { formatDateTime } from "@/lib/time";
 
 import { Alert, Button, LoadingState, Input } from "@/components/ui/controls";
@@ -30,7 +31,7 @@ export function BillingSettings() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const setNotice = useNotice();
   const [conflict, setConflict] = useState(false);
   const [revision, setRevision] = useState(0);
 
@@ -56,7 +57,7 @@ export function BillingSettings() {
         expectedVersion: applied.version, discountEnabled: draft.discountEnabled,
         discountAmountIdr: draft.discountAmountIdr, taxEnabled: draft.taxEnabled, taxRateBps: rate,
       }));
-      setApplied(value); setDraft(fromBilling(value)); setNotice("Pengaturan berhasil diterapkan pada tagihan yang belum lunas.");
+      setApplied(value); setDraft(fromBilling(value)); setNotice({ text: "Pengaturan berhasil diterapkan pada tagihan yang belum lunas.", subject: <Text value="Diskon & Pajak" /> });
     } catch (cause) {
       setError((cause as Error).message);
       if (cause instanceof AdminApiError && cause.code === "SETTINGS_CHANGED") setConflict(true);
@@ -75,7 +76,7 @@ export function BillingSettings() {
 
   return <div className="admin-stack">
     <p className="section-intro">{t("Atur diskon nominal dan pajak. Nilai baru berlaku pada tagihan yang belum lunas saat dihitung ulang.")}</p>
-    {notice && <Alert toast className="inline-alert info" role="status">{t(notice)}</Alert>}
+
     {error && <Alert className="inline-alert" role="alert">{t(error)} {conflict && <Button className="text-button" onClick={() => { setRevision((value) => value + 1); setConflict(false); }}>{t("Muat pengaturan terbaru")}</Button>}</Alert>}
     {!draft || !applied ? error ? <Button className="secondary-button" onClick={() => { setError(""); setRevision((value) => value + 1); }}>{t("Coba lagi")}</Button> : <LoadingState variant="form">{t("Memuat pengaturan…")}</LoadingState> : <form onSubmit={save} className="admin-settings-grid">
       <div className="admin-stack"><Section id="discount-settings" title={t("Diskon nominal")}>

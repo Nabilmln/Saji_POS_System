@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale } from "@/components/locale-provider";
+import { useNotice, statusNotice } from "@/components/ui/notice";
 
 import { StatusBadge } from "@/components/ui/status-badge";
 import { CircleNotchIcon, UploadSimpleIcon } from "@phosphor-icons/react";
@@ -49,7 +50,7 @@ export function MenuManager() {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const setNotice = useNotice();
   const [fields, setFields] = useState<Record<string, string[]>>({});
 
   const reload = () => setRevision((value) => value + 1);
@@ -118,7 +119,7 @@ export function MenuManager() {
       }
       await adminApi<Menu>(editing === "new" ? "/api/admin/menus" : `/api/admin/menus/${editing}`,
         jsonRequest(editing === "new" ? "POST" : "PATCH", body));
-      setEditing(null); setNotice("Menu berhasil disimpan."); reload();
+      setEditing(null); setNotice({ text: "Menu berhasil disimpan.", subject: body.name }); reload();
     } catch (cause) {
       setError((cause as Error).message);
       if (cause instanceof AdminApiError) setFields(cause.fields ?? {});
@@ -129,7 +130,7 @@ export function MenuManager() {
     setBusy(true); setError(""); setNotice("");
     try {
       await adminApi<Menu>(`/api/admin/menus/${item.id}/availability`, jsonRequest("PATCH", { isAvailable: !item.isAvailable }));
-      setNotice(item.isAvailable ? `Menu ${item.name} dinonaktifkan.` : `Menu ${item.name} diaktifkan.`); reload();
+      setNotice(statusNotice(item.name, item.isAvailable ? "Nonaktif" : "Aktif")); reload();
     } catch (cause) { setError((cause as Error).message); }
     finally { setBusy(false); }
   }
@@ -138,7 +139,7 @@ export function MenuManager() {
     setBusy(true); setError(""); setNotice("");
     try {
       await adminApi<unknown>(`/api/admin/menus/${item.id}`, { method: "DELETE" });
-      setNotice(`Menu ${item.name} dihapus.`); setEditing(null); if (list?.items.length === 1 && page > 1) setPage(page - 1); else reload();
+      setNotice({ text: "Menu {0} dihapus.", values: { 0: item.name } }); setEditing(null); if (list?.items.length === 1 && page > 1) setPage(page - 1); else reload();
     } catch (cause) { setError((cause as Error).message); throw cause; }
     finally { setBusy(false); }
   }
@@ -154,7 +155,7 @@ export function MenuManager() {
     try {
       await adminApi<Category>(categoryEditing === "new" ? "/api/admin/categories" : `/api/admin/categories/${categoryEditing}`,
         jsonRequest(categoryEditing === "new" ? "POST" : "PATCH", categoryDraft));
-      setCategoryEditing(null); setNotice("Kategori berhasil disimpan."); reload();
+      setCategoryEditing(null); setNotice({ text: "Kategori berhasil disimpan.", subject: categoryDraft.name }); reload();
     } catch (cause) {
       setError((cause as Error).message);
       if (cause instanceof AdminApiError) setFields(cause.fields ?? {});
@@ -167,7 +168,7 @@ export function MenuManager() {
     setBusy(true); setError(""); setNotice("");
     try {
       await adminApi<Category>(`/api/admin/categories/${category.id}`, jsonRequest("PATCH", { isActive: !category.isActive }));
-      setNotice(category.isActive ? `Kategori ${category.name} dinonaktifkan.` : `Kategori ${category.name} diaktifkan.`); reload();
+      setNotice(statusNotice(category.name, category.isActive ? "Nonaktif" : "Aktif")); reload();
     } catch (cause) { setError((cause as Error).message); }
     finally { setBusy(false); }
   }
@@ -180,7 +181,7 @@ export function MenuManager() {
       setCategoryFilter((current) => current === category.id ? "" : current);
       setDraft((current) => current.categoryId === category.id ? { ...current, categoryId: "" } : current);
       if (categoryEditing === category.id) setCategoryEditing(null);
-      setNotice("Kategori dihapus."); reload();
+      setNotice({ text: "Kategori dihapus.", subject: category.name }); reload();
     } catch (cause) { setError((cause as Error).message); throw cause; }
     finally { setBusy(false); }
   }
@@ -190,7 +191,7 @@ export function MenuManager() {
   const currentCategoryPage = Math.min(categoryPage, Math.max(1, Math.ceil(visibleCategories.length / categoryPageSize)));
   return <div className="admin-stack">
     <p className="section-intro">{t("Kelola menu yang tampil di QR meja dan susun kategori katalog.")}</p>
-    {notice && <Alert toast className="inline-alert info" role="status">{t(notice)}</Alert>}
+
     {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
 
     <Section id="menu-filters" title={t("Temukan menu")} description={t("Filter menu berdasarkan nama, kategori, dan ketersediaan.")}>

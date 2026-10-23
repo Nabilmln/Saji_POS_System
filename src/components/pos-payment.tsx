@@ -1,6 +1,7 @@
 "use client";
 
-import { useLocale } from "@/components/locale-provider";
+import { Text, useLocale } from "@/components/locale-provider";
+import { useNotice, statusNotice } from "@/components/ui/notice";
 
 import { Panel, Button, Alert, EmptyState, Input, LoadingState } from "@/components/ui/controls";
 
@@ -35,7 +36,7 @@ export function PosPayment({ sessionId, onClose, onViewReceipt }: { sessionId: s
   const [receiptOpen, setReceiptOpen] = useState(false);
   const [deleting, setDeleting] = useState<OrderItem | null>(null);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const setNotice = useNotice();
   const [loaded, setLoaded] = useState(false);
   const current = useRef<BillQuote | null>(null);
   const paymentInFlight = useRef(false);
@@ -48,7 +49,7 @@ export function PosPayment({ sessionId, onClose, onViewReceipt }: { sessionId: s
       const nextTable = await adminApi<TableDetail>(`/api/staff/tables/${nextQuote.tableId}`);
       if (current.current && quoteChanged(current.current, nextQuote)) {
         setReviewed(false); setConfirming(false);
-        setNotice("Tagihan diperbarui. Periksa total terbaru sebelum pembayaran.");
+        setNotice({ text: "Tagihan diperbarui. Periksa total terbaru sebelum pembayaran.", subject: <Text value={`Meja ${nextQuote.tableNumber}`} />, tone: "warning" });
       }
       current.current = nextQuote; setQuote(nextQuote);
       setTable(nextTable.session?.id === sessionId && nextTable.session.billRevision === nextQuote.sessionRevision ? nextTable : null);
@@ -57,7 +58,7 @@ export function PosPayment({ sessionId, onClose, onViewReceipt }: { sessionId: s
       setError(cause instanceof AdminApiError && cause.code === "SESSION_NOT_ACTIVE" ? "Sesi sudah ditutup. Periksa riwayat transaksi." : "Tagihan belum tersinkron. Segarkan sebelum membayar.");
       setReviewed(false); setConfirming(false);
     } finally { setLoaded(true); }
-  }, [sessionId, payment]);
+  }, [sessionId, payment, setNotice]);
   usePolling(refresh);
   useEffect(() => {
     const initial = window.setTimeout(() => {
@@ -66,13 +67,13 @@ export function PosPayment({ sessionId, onClose, onViewReceipt }: { sessionId: s
         if (saved) {
           const parsed = JSON.parse(saved) as Payload;
           if (parsed.idempotencyKey && parsed.expectedSessionRevision && parsed.expectedSettingsVersion && parsed.cashReceivedIdr) {
-            setPending(parsed); setNotice("Status pembayaran belum pasti. Ulangi dengan kunci transaksi yang sama atau periksa riwayat.");
+            setPending(parsed); setNotice({ text: "Status pembayaran belum pasti. Ulangi dengan kunci transaksi yang sama atau periksa riwayat.", tone: "warning" });
           }
         }
       } catch { sessionStorage.removeItem(pendingKey); }
     }, 0);
     return () => window.clearTimeout(initial);
-  }, [pendingKey]);
+  }, [pendingKey, setNotice]);
 
   async function sendPayment(payload: Payload) {
     if (paymentInFlight.current) return;
@@ -90,12 +91,12 @@ export function PosPayment({ sessionId, onClose, onViewReceipt }: { sessionId: s
         ...jsonRequest("POST", payload), headers: { "Content-Type": "application/json", "Idempotency-Key": payload.idempotencyKey },
       });
       try { sessionStorage.removeItem(pendingKey); } catch { /* Payment is already confirmed by the server. */ }
-      setPending(null); setPayment(result); setNotice("");
+      setPending(null); setPayment(result); setNotice(statusNotice(quote ? <Text value={`Meja ${quote.tableNumber}`} /> : <Text value="Pembayaran" />, "Lunas"));
     } catch (cause) {
       if (cause instanceof AdminApiError && cause.code === "BILL_CHANGED") {
         sessionStorage.removeItem(pendingKey); setPending(null); setReviewed(false);
         await refresh(true);
-        setNotice("Tagihan berubah. Periksa total terbaru dan konfirmasi ulang.");
+        setNotice({ text: "Tagihan berubah. Periksa total terbaru dan konfirmasi ulang.", tone: "warning" });
       } else if (cause instanceof AdminApiError && ["CASH_INSUFFICIENT", "ORDERS_NOT_SERVED", "VALIDATION_ERROR"].includes(cause.code)) {
         sessionStorage.removeItem(pendingKey); setPending(null); setReviewed(false);
         await refresh(true);
@@ -112,7 +113,13 @@ export function PosPayment({ sessionId, onClose, onViewReceipt }: { sessionId: s
   async function updateOrder(path: string, method: "POST" | "PATCH", body: object) {
     if (busy || pending || paymentInFlight.current) return;
     setBusy(true); setReviewed(false); setConfirming(false); setError("");
-    try { await adminApi(path, jsonRequest(method, body)); await refresh(true); }
+    try {
+      await adminApi(path, jsonRequest(method, body));
+      const id = path.split("/").at(-2)!;
+      const item = table?.orders.flatMap((order) => order.items).find((item) => item.id === id);
+      setNotice(statusNotice(method === "POST" ? <Text value={`Pesanan ${id.slice(0, 8)}`} /> : item?.menuName ?? <Text value="Item" />, method === "POST" ? "Sedang disiapkan" : "Sudah disajikan"));
+      await refresh(true);
+    }
     catch { await refresh(true); setError("Perubahan gagal. Segarkan data dan coba lagi."); }
     finally { setBusy(false); }
   }
@@ -121,7 +128,7 @@ export function PosPayment({ sessionId, onClose, onViewReceipt }: { sessionId: s
   return <div className="admin-stack">
     {onClose ? <Button className="text-button" disabled={busy} onClick={onClose}>{t("← Kembali ke meja")}</Button> : <Link className="text-button" href={quote ? `/pos/tables/${quote.tableId}` : "/pos"}>{t("← Kembali ke meja")}</Link>}
     <Panel className="admin-panel"><div className="admin-section-head"><div><h2>{quote ? t("Meja {0}", { "0": quote.tableNumber }) : t("Tagihan sesi")}</h2></div><Button className="secondary-button" disabled={busy} onClick={() => void refresh()}>{t("Segarkan")}</Button></div>
-      {notice && <Alert toast className="inline-alert info" role="status">{t(notice)}</Alert>}{error && <Alert className="inline-alert" role="alert">{t(error)} {pending && <Link href="/pos/transactions">{t("Periksa riwayat")}</Link>}</Alert>}
+      {error && <Alert className="inline-alert" role="alert">{t(error)} {pending && <Link href="/pos/transactions">{t("Periksa riwayat")}</Link>}</Alert>}
       {!loaded ? <LoadingState>{t("Memuat tagihan…")}</LoadingState> : !quote ? <EmptyState className="empty-state"><p>{t("Tagihan tidak tersedia.")}</p>{pending && <Button className="primary-button" disabled={busy} onClick={() => void sendPayment(pending)}>{busy ? t("Memeriksa pembayaran…") : t("Ulangi transaksi yang sama")}</Button>} <Link href="/pos/transactions">{t("Lihat riwayat transaksi")}</Link></EmptyState> : <>
         <p className="muted">{t("Sesi")}{" "}{sessionId.slice(0, 8)} {" "}{t("· Revisi")}{" "}{quote.sessionRevision} {" "}{t("· Pengaturan")}{" "}{quote.settingsVersion} {" "}{t("· Dihitung")}{" "}{new Date(quote.calculatedAt).toLocaleTimeString(locale === "en" ? "en-GB" : "id-ID", { timeZone: "Asia/Jakarta" })}</p>
 
@@ -134,7 +141,7 @@ export function PosPayment({ sessionId, onClose, onViewReceipt }: { sessionId: s
         </fieldset>
       </>}
     </Panel>
-    {deleting && <OrderItemDeletion key={deleting.id} item={deleting} onClose={() => setDeleting(null)} onDeleted={async () => { setReviewed(false); setConfirming(false); await refresh(true); }} />}
+    {deleting && <OrderItemDeletion key={deleting.id} item={deleting} onClose={() => setDeleting(null)} onDeleted={async () => { setReviewed(false); setConfirming(false); setNotice({ text: "{0} dihapus dari pesanan. Tagihan diperbarui.", values: { 0: deleting.menuName } }); await refresh(true); }} />}
     {confirming && quote && <ConfirmationDialog titleId="payment-confirm-title" onClose={() => setConfirming(false)}><h2 id="payment-confirm-title">{t("Konfirmasi pembayaran tunai")}</h2><p>{t("Meja")}{" "}{quote.tableNumber} {" "}{t("· Tagihan")}{" "}<strong>{money(quote.grandTotalIdr)}</strong></p><p>{t("Uang diterima")}{" "}{money(cash)} {" "}{t("· Kembalian")}{" "}{money(change ?? 0n)}</p><p className="muted">{t("Pembayaran akan menutup sesi dan mengembalikan meja ke status Tersedia.")}</p><div className="admin-actions"><Button className="secondary-button" onClick={() => setConfirming(false)}>{t("Periksa lagi")}</Button><Button className="primary-button" disabled={!ready} onClick={() => void sendPayment({ idempotencyKey: crypto.randomUUID(), expectedSessionRevision: quote.sessionRevision, expectedSettingsVersion: quote.settingsVersion, cashReceivedIdr: cash })}>{t("Bayar tunai")}</Button></div></ConfirmationDialog>}
   </div>;
 }

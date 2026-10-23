@@ -2,7 +2,8 @@
 
 import { DatePicker } from "@/components/ui/date-picker";
 
-import { useLocale } from "@/components/locale-provider";
+import { Text, useLocale } from "@/components/locale-provider";
+import { useNotice, statusNotice } from "@/components/ui/notice";
 
 import { StatusBadge, statusLabels, orderStatusOptions } from "@/components/ui/status-badge";
 
@@ -41,7 +42,7 @@ export function PosOverview() {
   const { page: tablePage, setPage: setTablePage, pageSize: tablePageSize, setPageSize: setTablePageSize } = usePagination();
   const { page: orderPage, setPage: setOrderPage, pageSize: orderPageSize, setPageSize: setOrderPageSize } = usePagination();
   const [hasNext, setHasNext] = useState(false);
-  const [notice, setNotice] = useState("");
+  const setNotice = useNotice();
   const [orders, setOrders] = useState<Order[]>([]);
   const [filter, setFilter] = useState("ALL");
   const [query, setQuery] = useState("");
@@ -86,7 +87,13 @@ export function PosOverview() {
   async function updateOrder(path: string, method: "POST" | "PATCH", body: object, action: string) {
     if (busy) return;
     setBusy(action); setError(""); setDetailError(""); setNotice("");
-    try { await adminApi(path, jsonRequest(method, body)); await Promise.all([refresh(), refreshDetail()]); }
+    try {
+      await adminApi(path, jsonRequest(method, body));
+      await Promise.all([refresh(), refreshDetail()]);
+      const id = action.split(":")[1];
+      const item = selected?.orders.flatMap((order) => order.items).find((item) => item.id === id);
+      setNotice(statusNotice(method === "POST" ? <Text value={`Pesanan ${id.slice(0, 8)}`} /> : item?.menuName ?? <Text value="Item" />, method === "POST" ? "Sedang disiapkan" : "Sudah disajikan"));
+    }
     catch { await Promise.all([refresh(), refreshDetail()]); setError("Perubahan gagal. Segarkan data dan coba lagi."); }
     finally { setBusy(""); }
   }
@@ -110,7 +117,7 @@ export function PosOverview() {
         <div className="pos-sync-status" title={t("Diperbarui otomatis setiap 5 detik saat tab aktif.")}><ArrowsClockwiseIcon size={15} aria-hidden="true" /><span title={syncFailed ? t("Belum tersinkron") : syncedAt ? t("Tersinkron") : t("Menunggu data…")}>{syncFailed ? t("Belum tersinkron") : syncedAt ? t("Tersinkron") : t("Menunggu data…")}</span>{syncedAt && <time dateTime={syncedAt.toISOString()}>{syncedAt.toLocaleTimeString("en-GB", { timeZone: "Asia/Jakarta", hour12: false })}</time>}</div>
         <Button className="secondary-button" onClick={() => void refresh()}>{t("Segarkan")}</Button>
       </div></div>
-      {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}{notice && <Alert toast className="inline-alert info">{t(notice)}</Alert>}
+      {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
       <div className="admin-filters">
         <label>{t("Cari meja")}<Input className="text-field" value={query} maxLength={30} onChange={(event) => { setQuery(event.target.value); setTablePage(1); }} placeholder={t("Nomor meja")} /></label>
         <Selection label={t("Status meja")} value={filter} onChange={(value) => { setFilter(value); setTablePage(1); }} options={[{ value: "ALL", label: t("Semua") }, ...Object.entries(tableLabels).map(([value, label]) => ({ value, label: t(label) }))]} />
@@ -133,6 +140,6 @@ export function PosOverview() {
     </Panel>
     <Pagination label="Navigasi pesanan" pageSize={orderPageSize} onPageSizeChange={setOrderPageSize} page={orderPage} hasNext={hasNext} onChange={setOrderPage} disabled={!!busy} />
     {selectedId && <DetailPane footer={!receipt && selected?.id === selectedId ? <PosTableActions sessionId={selected.session?.id} reserved={selected.status === "RESERVED"} busy={Boolean(busy)} onAddOrder={() => setWorkspace("ORDER")} onReceipt={() => selected.session && setReceipt({ sessionId: selected.session.id })} onPayment={openPayment} /> : undefined}>{receipt ? <ReceiptPreview key={receipt.paymentId ?? receipt.sessionId} {...receipt} onClose={() => setReceipt(null)} /> : <><div className="detail-heading"><h2>{t("Meja")} {selected?.tableNumber ?? tables.find((table) => table.id === selectedId)?.tableNumber}</h2><Button className="text-button" onClick={() => setSelectedId("")}>{t("Tutup")}</Button></div>{detailError && <Alert>{t(detailError)}</Alert>}{selected?.id === selectedId ? <><OrderDetails orders={selected.orders} busy={busy} onConfirm={(id) => void updateOrder(`/api/staff/orders/${id}/confirm`, "POST", {}, `confirm:${id}`)} onServe={(id) => void updateOrder(`/api/staff/order-items/${id}/served`, "PATCH", { served: true }, `served:${id}`)} onVoid={setDeleting} />{selected.session && <PosBillPreview key={selected.session.id} sessionId={selected.session.id} />}</> : !detailError && <LoadingState>{t("Memuat detail...")}</LoadingState>}</>}</DetailPane>}
-    {deleting && <OrderItemDeletion key={deleting.id} item={deleting} onClose={() => setDeleting(null)} onDeleted={async () => { await Promise.all([refresh(), refreshDetail()]); }} />}
+    {deleting && <OrderItemDeletion key={deleting.id} item={deleting} onClose={() => setDeleting(null)} onDeleted={async () => { await Promise.all([refresh(), refreshDetail()]); setNotice({ text: "{0} dihapus dari pesanan. Tagihan diperbarui.", values: { 0: deleting.menuName } }); }} />}
   </div>;
 }

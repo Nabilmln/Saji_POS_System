@@ -1,6 +1,7 @@
 "use client";
 
-import { useLocale } from "@/components/locale-provider";
+import { Text, useLocale } from "@/components/locale-provider";
+import { useNotice, statusNotice } from "@/components/ui/notice";
 
 import { StatusBadge } from "@/components/ui/status-badge";
 
@@ -25,7 +26,7 @@ export function TableManager() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const setNotice = useNotice();
   const [fields, setFields] = useState<Record<string, string[]>>({});
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [number, setNumber] = useState("");
@@ -61,7 +62,7 @@ export function TableManager() {
     try {
       await adminApi<Table>(editing === "new" ? "/api/admin/tables" : `/api/admin/tables/${editing}`,
         jsonRequest(editing === "new" ? "POST" : "PATCH", { tableNumber: number.trim() }));
-      setEditing(null); setNotice("Meja berhasil disimpan."); reload();
+      setEditing(null); setNotice({ text: "Meja berhasil disimpan.", subject: <Text value={`Meja ${number.trim()}`} /> }); reload();
     } catch (cause) {
       setError((cause as Error).message);
       if (cause instanceof AdminApiError) setFields(cause.fields ?? {});
@@ -73,9 +74,9 @@ export function TableManager() {
     setBusy(true); setError(""); setNotice("");
     try {
       await adminApi<Table>(`/api/admin/tables/${table.id}`, jsonRequest("PATCH", { isActive: !table.isActive }));
-      setNotice(table.isActive ? `Meja ${table.tableNumber} dinonaktifkan.` : `Meja ${table.tableNumber} diaktifkan.`); reload();
+      setNotice(statusNotice(<Text value={`Meja ${table.tableNumber}`} />, table.isActive ? "Nonaktif" : "Aktif")); reload();
       if (preview?.id === table.id) setPreview(null);
-    } catch (cause) { setError((cause as Error).message); }
+    } catch (cause) { setError((cause as Error).message); setNotice({ text: "Status {0} belum dapat diperbarui.", values: { 0: <Text value={`Meja ${table.tableNumber}`} /> }, tone: "error" }); }
     finally { setBusy(false); }
   }
 
@@ -87,7 +88,7 @@ export function TableManager() {
       await adminApi(`/api/admin/tables/${table.id}`, { method: "DELETE" });
       if (preview?.id === table.id) setPreview(null);
       if (editing === table.id) setEditing(null);
-      setNotice("Meja dihapus. Riwayat transaksi tetap tersimpan."); reload();
+      setNotice({ text: "Meja dihapus. Riwayat transaksi tetap tersimpan.", subject: <Text value={`Meja ${table.tableNumber}`} /> }); reload();
     } finally { setBusy(false); }
   }
 
@@ -96,7 +97,7 @@ export function TableManager() {
   const downloadHref = qrSvg ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qrSvg)}` : "";
   return <div className="admin-stack">
     <p className="section-intro">{t("Atur nomor meja dan unduh kode QR unik untuk meja yang aktif.")}</p>
-    {notice && <Alert toast className="inline-alert info" role="status">{t(notice)}</Alert>}
+
     {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
     <Panel className="admin-panel">
       <div className="admin-section-head"><div><h2>{t("Daftar meja")}</h2></div><Button className="primary-button" disabled={busy} onClick={() => begin()}>{t("Tambah Meja")}</Button></div>

@@ -2,7 +2,8 @@
 
 import { DatePicker } from "@/components/ui/date-picker";
 
-import { useLocale } from "@/components/locale-provider";
+import { Text, useLocale } from "@/components/locale-provider";
+import { useNotice } from "@/components/ui/notice";
 
 import { usePolling } from "@/lib/use-polling";
 
@@ -32,7 +33,7 @@ export function PosReservations() {
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const setNotice = useNotice();
   const [loaded, setLoaded] = useState(false);
   const load = useCallback(async () => {
     const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) }); if (status) query.set("status", status);
@@ -46,25 +47,26 @@ export function PosReservations() {
     setBusy(true); setError(""); setNotice("");
     try {
       await adminApi("/api/staff/reservations", jsonRequest("POST", { tableId: data.get("tableId"), customerName: String(data.get("name")).trim(), customerContact: String(data.get("contact")).trim(), guestCount: Number(data.get("guests")), reservedFor: `${data.get("time")}:00+07:00`, notes: String(data.get("notes")).trim() }));
-      await load(); setCreating(false); setNotice("Reservasi tersimpan. Meja diblokir sampai check-in atau pembatalan.");
+      await load(); setCreating(false); setNotice({ text: "Reservasi tersimpan. Meja diblokir sampai check-in atau pembatalan.", subject: String(data.get("name")).trim() });
     } catch { setError("Reservasi gagal disimpan. Meja mungkin sudah terisi; segarkan pilihan meja dan coba lagi."); }
     finally { setBusy(false); }
   }
   async function checkIn(item: Reservation) {
     if (!window.confirm(t("Check-in {0} ke Meja {1}?", { "0": item.customerName, "1": item.tableNumber }))) return;
-    setBusy(true); setError("");
-    try { await adminApi(`/api/staff/reservations/${item.id}/check-in`, jsonRequest("POST", {})); router.push(`/pos/tables/${item.tableId}`); }
+    setBusy(true); setError(""); setNotice("");
+    try { await adminApi(`/api/staff/reservations/${item.id}/check-in`, jsonRequest("POST", {})); setNotice({ text: "{0} sudah check-in di {1}.", values: { 0: item.customerName, 1: <Text value={`Meja ${item.tableNumber}`} /> } }); router.push(`/pos/tables/${item.tableId}`); }
     catch { setError("Check-in belum berhasil. Segarkan untuk melihat status terbaru."); }
     finally { setBusy(false); }
   }
   async function cancel(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setBusy(true); setError("");
-    try { await adminApi(`/api/staff/reservations/${cancelId}/cancel`, jsonRequest("POST", { reason: reason.trim() })); await load(); setCancelId(""); setReason(""); setNotice("Reservasi dibatalkan. Meja kembali tersedia."); }
+    event.preventDefault(); setBusy(true); setError(""); setNotice("");
+    const reservation = rows.find((row) => row.id === cancelId);
+    try { await adminApi(`/api/staff/reservations/${cancelId}/cancel`, jsonRequest("POST", { reason: reason.trim() })); await load(); setCancelId(""); setReason(""); setNotice({ text: "Reservasi dibatalkan. Meja kembali tersedia.", subject: reservation?.customerName }); }
     catch { setError("Reservasi belum dapat dibatalkan. Periksa status terbaru dan coba lagi."); }
     finally { setBusy(false); }
   }
   return <div className="admin-stack"><Panel className="admin-panel"><div className="admin-section-head"><h2>{t("Reservasi manual")}</h2><Button className="primary-button" disabled={busy} onClick={() => setCreating(!creating)}>{creating ? t("Tutup form") : t("Tambah reservasi")}</Button></div><p className="muted">{t("Catat pesanan meja dari telepon atau WhatsApp. Waktu menggunakan WIB; meja diblokir segera setelah reservasi dibuat.")}</p>
-    {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}{notice && <Alert toast className="inline-alert info" role="status">{t(notice)}</Alert>}
+    {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
     {creating && <form className="admin-form" onSubmit={create}><div className="admin-form-grid"><label>{t("Nama pelanggan")}<Input className="text-field" name="name" required maxLength={120} /></label><label>{t("Kontak pelanggan")}<Input className="text-field" name="contact" required maxLength={80} /></label><Selection label={t("Meja tersedia")} kind="dropdown" name="tableId" required options={[{ value: "", label: t("Pilih meja"), disabled: true }, ...tables.map((table) => ({ value: table.id, label: t("Meja {0}", { "0": table.tableNumber }) }))]} /><label>{t("Jumlah tamu")}<Input className="text-field" name="guests" type="number" required min={1} max={100} defaultValue={2} /></label><DatePicker label="Waktu reservasi (WIB)" name="time" type="datetime-local" required disabled={busy} /><label>{t("Catatan")}<Textarea className="text-field" name="notes" maxLength={2000} /></label></div><div className="admin-actions"><Button className="primary-button" disabled={busy || !tables.length}>{busy ? t("Menyimpan…") : t("Simpan reservasi")}</Button></div>{!tables.length && <p className="muted">{t("Tidak ada meja tersedia.")}</p>}</form>}
   </Panel><Panel className="admin-panel reservation-list"><div className="admin-section-head"><h2>{t("Daftar reservasi")}</h2></div>
     <div className="admin-section-head"><Selection label={t("Status reservasi")} value={status} onChange={(value) => { setStatus(value); setPage(1); }} options={[{ value: "", label: t("Semua") }, ...Object.entries(labels).map(([value, label]) => ({ value, label: t(label) }))]} /><Button className="secondary-button" onClick={() => void load()}>{t("Segarkan")}</Button></div>

@@ -1,6 +1,7 @@
 "use client";
 
-import { useLocale } from "@/components/locale-provider";
+import { Text, useLocale } from "@/components/locale-provider";
+import { useNotice, statusNotice } from "@/components/ui/notice";
 
 import { usePolling } from "@/lib/use-polling";
 
@@ -31,7 +32,7 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
   const [draft, setDraft] = useState<Draft>({ customerName: "", note: "", cart: [], key: "" });
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const setNotice = useNotice();
   const [busy, setBusy] = useState("");
   const [voidItem, setVoidItem] = useState<Item | null>(null);
   const [closeReason, setCloseReason] = useState("");
@@ -81,7 +82,15 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
   }
   async function mutate(path: string, init: RequestInit, action: string) {
     setBusy(action); setError(""); setNotice("");
-    try { await adminApi(path, init); await refresh(); return true; }
+    try {
+      await adminApi(path, init); await refresh();
+      if (action !== "close") {
+        const id = action.split(":")[1];
+        const item = table?.orders.flatMap((order) => order.items).find((item) => item.id === id);
+        setNotice(statusNotice(action.startsWith("confirm:") ? <Text value={`Pesanan ${id.slice(0, 8)}`} /> : item?.menuName ?? <Text value="Item" />, action.startsWith("confirm:") ? "Sedang disiapkan" : "Sudah disajikan"));
+      }
+      return true;
+    }
     catch (cause) {
       await refresh();
       setError(cause instanceof AdminApiError && cause.code === "BILL_CHANGED" ? "Tagihan berubah. Periksa data terbaru sebelum mencoba lagi." : "Perubahan gagal. Segarkan data dan coba lagi.");
@@ -101,7 +110,7 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
     try {
       await adminApi(`/api/staff/tables/${tableId}/orders`, { ...jsonRequest("POST", payload), headers: { "Content-Type": "application/json", "Idempotency-Key": key } });
       sessionStorage.removeItem(storageKey); setDraft({ customerName: "", note: "", cart: [], key: "" }); setShowManual(false);
-      setNotice("Pesanan tersimpan sebagai Menunggu. Konfirmasikan saat siap diproses."); await refresh();
+      setNotice({ text: "Pesanan tersimpan sebagai {0}. Konfirmasikan saat siap diproses.", values: { 0: <Text value="Menunggu" /> }, subject: table && <Text value={`Meja ${table.tableNumber}`} /> }); await refresh();
     } catch (cause) {
       await refresh();
       if (cause instanceof AdminApiError && ["MENU_UNAVAILABLE", "VALIDATION_ERROR", "TABLE_RESERVED", "TABLE_NOT_FOUND"].includes(cause.code)) {
@@ -116,6 +125,7 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
     const session = table.session;
     if (await mutate(`/api/staff/table-sessions/${session.id}/${closing === "EMPTY" ? "close-empty" : "close-all-void"}`, jsonRequest("POST", { expectedSessionRevision: session.billRevision, reason: closeReason.trim() }), "close")) {
       setClosing(null); setCloseReason("");
+      setNotice({ text: "Sesi {0} ditutup. Meja kembali tersedia.", values: { 0: <Text value={`Meja ${table.tableNumber}`} /> } });
     }
   }
   const items = table?.orders.flatMap((order) => order.items) ?? [];
@@ -123,7 +133,7 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
   return <div className="admin-stack">
     {onClose ? <Button className="text-button" disabled={!!busy} onClick={onClose}>{t("← Semua meja")}</Button> : <Link className="text-button" href="/pos">{t("← Semua meja")}</Link>}
     {error && <Alert className="inline-alert" role="alert">{t(error)} <Button className="text-button" onClick={() => void refresh()}>{t("Segarkan")}</Button></Alert>}
-    {notice && <Alert toast className="inline-alert info" role="status">{t(notice)}</Alert>}
+
     {!ready ? <LoadingState className="loading-block" role="status">{t("Memuat detail meja…")}</LoadingState> : !table ? <EmptyState className="empty-state">{t("Meja tidak ditemukan.")}{" "}<Button className="text-button" onClick={() => void refresh()}>{t("Coba lagi")}</Button></EmptyState> : <>
       <Panel className="admin-panel">
         <div className="admin-section-head"><div><h2>{t("Meja")}{" "}{table.tableNumber}</h2></div><Button className="secondary-button" onClick={() => void refresh()}>{t("Segarkan")}</Button></div>
@@ -155,7 +165,7 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
         onServe={(id) => void mutate(`/api/staff/order-items/${id}/served`, jsonRequest("PATCH", { served: true }), `served:${id}`)}
         onVoid={setVoidItem}
       />{table.session && <PosBillPreview key={table.session.id} sessionId={table.session.id} />}</>}</DetailPane>
-      {voidItem && <OrderItemDeletion key={voidItem.id} item={voidItem} onClose={() => setVoidItem(null)} onDeleted={refresh} />}
+      {voidItem && <OrderItemDeletion key={voidItem.id} item={voidItem} onClose={() => setVoidItem(null)} onDeleted={async () => { await refresh(); setNotice({ text: "{0} dihapus dari pesanan. Tagihan diperbarui.", values: { 0: voidItem.menuName } }); }} />}
       {closing && table.session && <ConfirmationDialog titleId="close-title" onClose={() => setClosing(null)}><h2 id="close-title">{t("Tutup sesi tanpa pembayaran?")}</h2><p>{closing === "EMPTY" ? t("Sesi belum berisi pesanan.") : t("Semua item dibatalkan.")} {" "}{t("Meja akan kembali tersedia tanpa membuat pembayaran.")}</p>{error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}<form onSubmit={(event) => void closeSession(event)}><label className="field-label">{t("Alasan penutupan")}<Textarea className="text-field" minLength={5} maxLength={500} required value={closeReason} onChange={(event) => setCloseReason(event.target.value)} /></label><div className="admin-actions"><Button type="button" className="secondary-button" onClick={() => setClosing(null)}>{t("Kembali")}</Button><Button className="primary-button" disabled={Boolean(busy)}>{t("Tutup sesi")}</Button></div></form></ConfirmationDialog>}
     </>}
   </div>;

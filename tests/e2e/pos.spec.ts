@@ -16,6 +16,7 @@ test("two guests share one bill, stale review stops payment, and a lost response
   await page.goto(`/pos/tables/${data.tableId}`);
   await expect(page.getByRole("button", { name: "Konfirmasi", exact: true })).toHaveCount(2);
   await page.getByRole("button", { name: "Konfirmasi", exact: true }).first().click();
+  await expect(page.locator(".toast strong").last()).toHaveText("Sedang disiapkan");
   await expect(page.getByRole("button", { name: /^Tersaji:/ })).toHaveCount(2);
   await page.getByRole("button", { name: /^Tersaji:/ }).first().click();
   await expect(page.getByRole("button", { name: /^Tersaji:/ }).first()).toHaveAttribute("aria-pressed", "true");
@@ -34,6 +35,7 @@ test("two guests share one bill, stale review stops payment, and a lost response
   await data.pool.query("UPDATE store_settings SET tax_enabled=true,tax_rate_bps=1000,version=version+1 WHERE id=1");
   await page.getByRole("button", { name: "Bayar tunai", exact: true }).click();
   await expect(page.getByText("Tagihan berubah. Periksa total terbaru dan konfirmasi ulang.", { exact: true })).toBeVisible();
+  await expect(page.locator(".toast")).toHaveAttribute("data-tone", "warning");
   await expect(page.getByRole("checkbox", { name: /Saya sudah memeriksa/ })).not.toBeChecked();
   await expect(page.getByRole("button", { name: "Konfirmasi pembayaran", exact: true })).toBeDisabled();
   await page.getByRole("checkbox", { name: /Saya sudah memeriksa/ }).check();
@@ -46,9 +48,10 @@ test("two guests share one bill, stale review stops payment, and a lost response
   await page.reload();
   await page.getByRole("button", { name: "Ulangi transaksi yang sama" }).click();
   await expect(page.getByRole("heading", { name: "Pembayaran berhasil" })).toBeVisible();
+  await expect(page.locator(".toast strong").last()).toHaveText("Lunas");
   expect((await data.pool.query("SELECT count(*)::int AS n FROM payments p JOIN table_sessions s ON s.id=p.session_id WHERE s.table_id=$1", [data.tableId])).rows[0].n).toBe(1);
   await page.getByRole("link", { name: "Lihat struk digital" }).click();
-  await expect(page.getByText("Lunas", { exact: true })).toBeVisible();
+  await expect(page.locator(".pos-receipt").getByText("Lunas", { exact: true })).toBeVisible();
   await page.setViewportSize({ width: 390, height: 844 });
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

@@ -16,7 +16,9 @@ test("cashiers confirm and serve directly in overview and payment details", asyn
   await expect(page.locator(".staff-content .inline-alert[role=alert]")).toContainText("Perubahan gagal");
   await expect(pane.getByRole("button", { name: /^Tersaji:/ })).toBeDisabled();
   await pane.getByRole("button", { name: "Konfirmasi", exact: true }).click();
+  await expect(page.locator(".toast strong")).toHaveText([`Pesanan ${first.orderId.slice(0, 8)}`, "Sedang disiapkan"]);
   await pane.getByRole("button", { name: /^Tersaji:/ }).click();
+  await expect(page.locator(".toast strong")).toHaveText([data.menuName, "Sudah disajikan"]);
   await expect(pane.getByRole("button", { name: /^Tersaji:/ })).toHaveAttribute("aria-pressed", "true");
   await expect(pane.getByRole("button", { name: /^Tersaji:/ })).toBeDisabled();
   expect((await (await call(page.request, `/staff/table-sessions/${first.sessionId}/bill`)).json()).data.paymentEligible).toBe(true);

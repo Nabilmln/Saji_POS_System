@@ -50,7 +50,7 @@ export function Panel({ className = "admin-panel", ...props }: HTMLAttributes<HT
 }
 
 export function Alert({ className = "inline-alert", role, toast = false, ...props }: HTMLAttributes<HTMLDivElement> & { toast?: boolean }) {
-  if (toast) return <Toast key={String(props.children)}>{props.children}</Toast>;
+  if (toast) return <Toast>{props.children}</Toast>;
   return <div className={className} role={role ?? (className.includes("info") ? "status" : "alert")} {...props} />;
 }
 

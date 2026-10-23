@@ -1,6 +1,7 @@
 "use client";
 
 import { useLocale } from "@/components/locale-provider";
+import { useNotice, statusNotice } from "@/components/ui/notice";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { adminApi, adminPage, AdminApiError, jsonRequest } from "@/lib/admin/client";
 import { usePagination } from "@/lib/use-pagination";
@@ -28,7 +29,7 @@ export function StaffManager() {
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
+  const setNotice = useNotice();
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -49,12 +50,12 @@ export function StaffManager() {
     try {
       if (passwordEditing && editing !== "new") {
         await adminApi(`/api/admin/staff/${editing.userId}/password`, jsonRequest("POST", { password }));
-        setCredentials({ email, password }); setNotice("Kata sandi kasir diperbarui. Kasir harus masuk kembali.");
+        setCredentials({ email, password }); setNotice({ text: "Kata sandi kasir diperbarui. Kasir harus masuk kembali.", subject: name });
       } else {
         await adminApi(editing === "new" ? "/api/admin/staff" : `/api/admin/staff/${editing.userId}`,
           jsonRequest(editing === "new" ? "POST" : "PATCH", editing === "new" ? { email: email.trim(), password, displayName: name.trim(), role: "CASHIER" } : { displayName: name.trim() }));
         if (editing === "new") setCredentials({ email: email.trim(), password });
-        setNotice(editing === "new" ? "Akun Kasir dibuat. Bagikan email dan kata sandi secara pribadi kepada kasir." : "Nama staf diperbarui.");
+        setNotice({ text: editing === "new" ? "Akun Kasir dibuat. Bagikan email dan kata sandi secara pribadi kepada kasir." : "Nama staf diperbarui.", subject: name.trim() });
       }
       setEditing(null); setPassword(""); await load();
     } catch (cause) { setError(cause instanceof AdminApiError && cause.code === "AUTH_CLEANUP_FAILED" ? "Pembuatan akun gagal dan perlu diperiksa oleh administrator Auth sebelum mencoba lagi." : cause instanceof AdminApiError ? cause.message : "Akun belum dapat disimpan. Periksa isian dan coba lagi."); }
@@ -63,7 +64,7 @@ export function StaffManager() {
   async function toggle(item: Staff) {
     if (!window.confirm(t("{0} akses {1}?", { "0": item.isActive ? t("Nonaktifkan") : t("Aktifkan"), "1": item.displayName }))) return;
     setBusy(true); setError(""); setNotice("");
-    try { await adminApi(`/api/admin/staff/${item.userId}`, jsonRequest("PATCH", { isActive: !item.isActive })); await load(); setNotice("Akses staf diperbarui."); }
+    try { await adminApi(`/api/admin/staff/${item.userId}`, jsonRequest("PATCH", { isActive: !item.isActive })); await load(); setNotice(statusNotice(item.displayName, item.isActive ? "Nonaktif" : "Aktif")); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Akses staf belum dapat diperbarui. Coba lagi."); }
     finally { setBusy(false); }
   }
@@ -71,14 +72,14 @@ export function StaffManager() {
     setBusy(true); setNotice(""); setError("");
     try {
       await adminApi(`/api/admin/staff/${item.userId}`, { method: "DELETE" });
-      setCredentials(null); setEditing(null); setPassword(""); setNotice("Akun kasir dihapus. Riwayat transaksi tetap tersimpan.");
+      setCredentials(null); setEditing(null); setPassword(""); setNotice({ text: "Akun kasir dihapus. Riwayat transaksi tetap tersimpan.", subject: item.displayName });
       if (page > 1 && staff.length === 1) setPage(page - 1); else await load();
     } finally { setBusy(false); }
   }
   return <div className="admin-stack">
     <Panel><div className="admin-section-head"><h2>{t("Akun staf")}</h2><Button disabled={busy} onClick={() => begin("new")}>{t("Tambah Kasir")}</Button></div>
       <p className="muted">{t("Pemilik membuat akun kasir. Nonaktifkan untuk jeda akses, atau hapus untuk mengeluarkan akun dari daftar.")}</p>
-      {error && <Alert>{t(error)}</Alert>}{notice && <Alert toast className="inline-alert info">{t(notice)}</Alert>}
+      {error && <Alert>{t(error)}</Alert>}
       {editing && <form className="admin-form" onSubmit={save}><h3>{t(passwordEditing ? "Atur kata sandi kasir" : editing === "new" ? "Kasir baru" : "Ubah nama staf")}</h3>
         <div className="admin-form-grid credential-grid">
           {!passwordEditing && <label>{t("Nama staf")}<Input required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} /></label>}

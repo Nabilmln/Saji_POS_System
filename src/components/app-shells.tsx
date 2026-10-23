@@ -8,6 +8,7 @@ import { createPortal } from "react-dom";
 import { QrCodeIcon, ReceiptIcon } from "@phosphor-icons/react";
 import { Brand } from "@/components/ui/brand";
 import { LanguageSwitch } from "@/components/ui/language-switch";
+import { NoticeProvider } from "@/components/ui/notice";
 
 const DetailTarget = createContext<HTMLElement | null>(null);
 
@@ -36,7 +37,7 @@ export function StaffShell({ role, title, navigation, children }: {
 }) {
   const { t } = useLocale();
   const [target, setTarget] = useState<HTMLElement | null>(null);
-  return <DetailTarget value={target}><div className="staff-shell">
+  return <NoticeProvider><DetailTarget value={target}><div className="staff-shell">
     <aside className="staff-sidebar" aria-label={t("Navigasi {0}", { "0": t(role) })}>
       <div className="workspace-brand"><Brand /><LanguageSwitch /></div>
       <p className="staff-nav-label">{role === "Admin" ? t("Ruang pemilik") : t("Ruang kasir")}</p>
@@ -44,5 +45,5 @@ export function StaffShell({ role, title, navigation, children }: {
     </aside>
     <main className="staff-content"><header className="workspace-heading"><h1>{t(title)}</h1><span className="workspace-role">{role === "Admin" ? t("Pemilik") : t("Kasir")}</span></header>{children}</main>
     <aside ref={setTarget} className="workspace-detail" tabIndex={0} aria-label={role === "Admin" ? t("Detail pemilik") : t("Detail kasir")}><div className="detail-placeholder">{role === "Admin" ? <QrCodeIcon size={32} weight="light" /> : <ReceiptIcon size={32} weight="light" />}<h2>{t("Rincian pilihan")}</h2><p>{role === "Admin" ? t("Pilih item di area utama untuk melihat rinciannya.") : t("Pilih meja atau transaksi untuk melihat pesanan, tagihan, atau struk.")}</p></div></aside>
-  </div></DetailTarget>;
+  </div></DetailTarget></NoticeProvider>;
 }
