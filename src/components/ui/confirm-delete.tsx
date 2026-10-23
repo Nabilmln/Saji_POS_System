@@ -17,7 +17,7 @@ export function ConfirmDelete({ name, description, onConfirm, onClose }: {
   return <ConfirmationDialog className="confirmation-dialog" titleId={`${id}-title`} descriptionId={`${id}-description`} onClose={onClose} busy={busy}>
     <h2 id={`${id}-title`}>{t(step === 1 ? "Tinjau penghapusan" : "Konfirmasi penghapusan")}</h2>
     <p id={`${id}-description`}>{description}</p>
-    <strong className="delete-target">{name}</strong>
+    <strong className="confirmation-target">{name}</strong>
     {error && <Alert>{t(error)}</Alert>}
     <form onSubmit={async (event) => {
       event.preventDefault();

@@ -2,6 +2,7 @@
 
 import { useLocale } from "@/components/locale-provider";
 import { useNotice, statusNotice } from "@/components/ui/notice";
+import { useConfirmation } from "@/components/ui/confirmation";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { adminApi, adminPage, AdminApiError, jsonRequest } from "@/lib/admin/client";
 import { usePagination } from "@/lib/use-pagination";
@@ -30,6 +31,7 @@ export function StaffManager() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const setNotice = useNotice();
+  const confirm = useConfirmation();
   const load = useCallback(async () => {
     setLoading(true);
     try {
@@ -62,7 +64,7 @@ export function StaffManager() {
     finally { setBusy(false); }
   }
   async function toggle(item: Staff) {
-    if (!window.confirm(t("{0} akses {1}?", { "0": item.isActive ? t("Nonaktifkan") : t("Aktifkan"), "1": item.displayName }))) return;
+    if (!await confirm({ title: item.isActive ? "Nonaktifkan akses kasir?" : "Aktifkan akses kasir?", subject: item.displayName, description: item.isActive ? "Kasir tidak dapat mengakses ruang kasir selama akun ini nonaktif." : "Kasir dapat masuk kembali menggunakan akun ini.", confirmLabel: item.isActive ? "Nonaktifkan" : "Aktifkan" })) return;
     setBusy(true); setError(""); setNotice("");
     try { await adminApi(`/api/admin/staff/${item.userId}`, jsonRequest("PATCH", { isActive: !item.isActive })); await load(); setNotice(statusNotice(item.displayName, item.isActive ? "Nonaktif" : "Aktif")); }
     catch (cause) { setError(cause instanceof Error ? cause.message : "Akses staf belum dapat diperbarui. Coba lagi."); }

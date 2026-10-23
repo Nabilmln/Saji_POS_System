@@ -2,6 +2,7 @@
 
 import { Text, useLocale } from "@/components/locale-provider";
 import { useNotice, statusNotice } from "@/components/ui/notice";
+import { useConfirmation } from "@/components/ui/confirmation";
 
 import { StatusBadge } from "@/components/ui/status-badge";
 
@@ -27,6 +28,7 @@ export function TableManager() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const setNotice = useNotice();
+  const confirm = useConfirmation();
   const [fields, setFields] = useState<Record<string, string[]>>({});
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [number, setNumber] = useState("");
@@ -70,7 +72,7 @@ export function TableManager() {
   }
 
   async function toggle(table: Table) {
-    if (!window.confirm(t("{0} Meja {1}? {2}", { "0": table.isActive ? t("Nonaktifkan") : t("Aktifkan"), "1": table.tableNumber, "2": table.isActive ? t("Kode QR meja tidak akan menerima pesanan baru.") : "" }))) return;
+    if (!await confirm({ title: table.isActive ? "Nonaktifkan meja?" : "Aktifkan meja?", subject: <Text value={`Meja ${table.tableNumber}`} />, description: table.isActive ? "Kode QR meja tidak akan menerima pesanan baru." : "Pelanggan dapat memesan melalui kode QR meja ini.", confirmLabel: table.isActive ? "Nonaktifkan" : "Aktifkan" })) return;
     setBusy(true); setError(""); setNotice("");
     try {
       await adminApi<Table>(`/api/admin/tables/${table.id}`, jsonRequest("PATCH", { isActive: !table.isActive }));

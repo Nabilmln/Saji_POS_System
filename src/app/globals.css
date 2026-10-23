@@ -115,9 +115,10 @@ h1,h2,h3,p{overflow-wrap:break-word}h1,h2,h3{letter-spacing:-.025em;line-height:
 .credential-preview{display:grid;gap:16px}.credential-preview label{display:grid;gap:6px;font-size:12px;font-weight:650}
 .menu-filters{align-items:end;gap:12px}.menu-filters>*{min-width:0}.menu-filters .segment-option span{padding:8px 5px;font-size:11px}
 .admin-menu-card .menu-card-copy{padding:12px 10px 0}.admin-menu-card .menu-card-footer{padding:12px 10px}.admin-menu-card .menu-photo-frame{height:138px}.admin-menu-card .status-chip{font-size:9px}.admin-menu-card .admin-row-actions{gap:6px}
+.app-dialog{margin:auto;max-height:calc(100dvh - 32px);overflow:auto}
 .confirmation-dialog{width:min(440px,calc(100% - 32px));padding:24px;border:0;border-radius:12px;background:var(--surface);color:var(--foreground);box-shadow:0 18px 60px #0003}
 .confirmation-dialog::backdrop{background:#0007}.confirmation-dialog h2{margin:0 0 10px;font-size:18px}.confirmation-dialog>p{color:var(--text-muted);font-size:13px}
-.delete-target{display:block;padding:12px;margin:16px 0;background:var(--surface-muted);border-radius:6px;overflow-wrap:anywhere}
+.confirmation-target{display:block;padding:12px;margin:16px 0;background:var(--surface-muted);border-radius:6px;overflow-wrap:anywhere}
 .dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}
 .danger-button{display:inline-flex;justify-content:center;align-items:center;min-height:40px;border:1px solid transparent;border-radius:var(--control-radius);padding:9px 14px;font-size:13px;font-weight:650;background:var(--danger-fill);color:var(--danger-ink)}.danger-button:hover:not(:disabled){filter:brightness(.9)}
 .toast.inline-alert{position:fixed;right:20px;top:20px;z-index:100;display:flex;align-items:center;gap:12px;width:min(420px,calc(100% - 32px));margin:0;border:0;background:var(--surface);color:var(--foreground);box-shadow:0 8px 32px #0003;padding:14px 16px}

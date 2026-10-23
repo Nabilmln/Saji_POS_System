@@ -10,5 +10,5 @@ export function ConfirmationDialog({ titleId, descriptionId, onClose, children, 
     element?.showModal();
     return () => { element?.close(); trigger?.focus(); };
   }, []);
-  return <dialog ref={dialog} className={className} aria-labelledby={titleId} aria-describedby={descriptionId} onCancel={(event) => { event.preventDefault(); if (!busy) onClose(); }}>{children}</dialog>;
+  return <dialog ref={dialog} className={`app-dialog ${className}`} aria-labelledby={titleId} aria-describedby={descriptionId} onCancel={(event) => { event.preventDefault(); if (!busy) onClose(); }}>{children}</dialog>;
 }

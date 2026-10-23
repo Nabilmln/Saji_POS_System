@@ -1,5 +1,5 @@
 import AxeBuilder from "@axe-core/playwright";
-import { test, expect, signIn } from "./fixtures";
+import { test, expect, signIn, confirmAction } from "./fixtures";
 
 test("table notices emphasize safe text, translate, fit and reappear after dismissal or timeout", async ({ page, data }, testInfo) => {
   const number = "01 <b>**{0}**</b>";
@@ -10,8 +10,8 @@ test("table notices emphasize safe text, translate, fit and reappear after dismi
   await expect(card).toBeVisible();
   const toast = page.locator(".toast");
   async function toggle(name: string) {
-    page.once("dialog", (dialog) => dialog.accept());
     await card.getByRole("button", { name, exact: true }).click();
+    await confirmAction(page, name);
     await expect(toast).toBeVisible();
     await expect(toast).toHaveCount(1);
   }

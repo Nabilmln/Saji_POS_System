@@ -37,6 +37,13 @@ export const test = base.extend<{ data: Data }>({
 });
 export { expect };
 
+export async function confirmAction(page: Page, label: string) {
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("button", { name: label, exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+}
+
 export async function signIn(page: Page, role: "admin" | "cashier" = "cashier") {
   await page.goto("/login");
   await page.getByLabel("Email", { exact: true }).fill(`${role}@example.test`);

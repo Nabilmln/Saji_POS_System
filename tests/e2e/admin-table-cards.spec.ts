@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import AxeBuilder from "@axe-core/playwright";
-import { test, expect, signIn } from "./fixtures";
+import { test, expect, signIn, confirmAction } from "./fixtures";
 
 test("compact owner table cards keep QR, editing and status restrictions", async ({ page, data }, testInfo) => {
   const ids = [randomUUID(), randomUUID(), randomUUID()];
@@ -52,8 +52,8 @@ test("compact owner table cards keep QR, editing and status restrictions", async
     await expect(page.getByRole("dialog")).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(renamed).toBeVisible();
-    page.once("dialog", (dialog) => dialog.accept());
     await renamed.getByRole("button", { name: "Nonaktifkan", exact: true }).click();
+    await confirmAction(page, "Nonaktifkan");
     await expect(renamed.getByRole("button", { name: "Lihat QR", exact: true })).toBeDisabled();
   } finally { await data.pool.query("DELETE FROM dining_tables WHERE id=ANY($1::uuid[])", [ids]); }
 });

@@ -4,6 +4,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 
 import { Text, useLocale } from "@/components/locale-provider";
 import { useNotice } from "@/components/ui/notice";
+import { useConfirmation } from "@/components/ui/confirmation";
 
 import { usePolling } from "@/lib/use-polling";
 
@@ -34,6 +35,7 @@ export function PosReservations() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const setNotice = useNotice();
+  const confirm = useConfirmation();
   const [loaded, setLoaded] = useState(false);
   const load = useCallback(async () => {
     const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) }); if (status) query.set("status", status);
@@ -52,7 +54,7 @@ export function PosReservations() {
     finally { setBusy(false); }
   }
   async function checkIn(item: Reservation) {
-    if (!window.confirm(t("Check-in {0} ke Meja {1}?", { "0": item.customerName, "1": item.tableNumber }))) return;
+    if (!await confirm({ title: "Check-in reservasi?", subject: <>{item.customerName} · <Text value={`Meja ${item.tableNumber}`} /></>, description: "Meja akan dibuka untuk pesanan tamu reservasi.", confirmLabel: "Check-in" })) return;
     setBusy(true); setError(""); setNotice("");
     try { await adminApi(`/api/staff/reservations/${item.id}/check-in`, jsonRequest("POST", {})); setNotice({ text: "{0} sudah check-in di {1}.", values: { 0: item.customerName, 1: <Text value={`Meja ${item.tableNumber}`} /> } }); router.push(`/pos/tables/${item.tableId}`); }
     catch { setError("Check-in belum berhasil. Segarkan untuk melihat status terbaru."); }

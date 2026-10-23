@@ -2,6 +2,7 @@
 
 import { Text, useLocale } from "@/components/locale-provider";
 import { useNotice } from "@/components/ui/notice";
+import { useConfirmation } from "@/components/ui/confirmation";
 import { formatDateTime } from "@/lib/time";
 
 import { Alert, Button, LoadingState, Input } from "@/components/ui/controls";
@@ -32,6 +33,7 @@ export function BillingSettings() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const setNotice = useNotice();
+  const confirm = useConfirmation();
   const [conflict, setConflict] = useState(false);
   const [revision, setRevision] = useState(0);
 
@@ -50,7 +52,7 @@ export function BillingSettings() {
     if (!/^(0|[1-9]\d*)$/.test(draft.discountAmountIdr) || rate === null) {
       setError("Isi diskon dengan rupiah bulat dan pajak dengan persentase 0–100 (maksimal dua desimal)."); return;
     }
-    if (!window.confirm(t("Simpan pengaturan? Perubahan akan memengaruhi tagihan meja yang belum lunas."))) return;
+    if (!await confirm({ title: "Simpan pengaturan?", subject: <Text value="Diskon & Pajak" />, description: "Perubahan akan memengaruhi tagihan meja yang belum lunas.", confirmLabel: "Simpan Perubahan" })) return;
     setBusy(true); setError(""); setNotice("");
     try {
       const value = await adminApi<Billing>("/api/admin/settings/billing", jsonRequest("PUT", {

@@ -2,6 +2,7 @@
 
 import { useLocale } from "@/components/locale-provider";
 import { useNotice, statusNotice } from "@/components/ui/notice";
+import { useConfirmation } from "@/components/ui/confirmation";
 
 import { StatusBadge } from "@/components/ui/status-badge";
 import { CircleNotchIcon, UploadSimpleIcon } from "@phosphor-icons/react";
@@ -51,6 +52,7 @@ export function MenuManager() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const setNotice = useNotice();
+  const confirm = useConfirmation();
   const [fields, setFields] = useState<Record<string, string[]>>({});
 
   const reload = () => setRevision((value) => value + 1);
@@ -127,6 +129,7 @@ export function MenuManager() {
   }
 
   async function toggleMenu(item: Menu) {
+    if (!await confirm({ title: item.isAvailable ? "Nonaktifkan menu?" : "Aktifkan menu?", subject: item.name, description: item.isAvailable ? "Menu ini tidak dapat dipesan sampai diaktifkan kembali." : "Menu dapat dipesan jika kategorinya aktif.", confirmLabel: item.isAvailable ? "Nonaktifkan" : "Aktifkan" })) return;
     setBusy(true); setError(""); setNotice("");
     try {
       await adminApi<Menu>(`/api/admin/menus/${item.id}/availability`, jsonRequest("PATCH", { isAvailable: !item.isAvailable }));
@@ -164,7 +167,7 @@ export function MenuManager() {
 
   async function changeCategory(category: Category) {
     const action = category.isActive ? "Nonaktifkan" : "Aktifkan";
-    if (!window.confirm(t("{0} kategori \"{1}\"? {2}", { "0": t(action), "1": category.name, "2": category.isActive ? t("Menu di kategori ini tidak akan tampil untuk pelanggan.") : "" }))) return;
+    if (!await confirm({ title: category.isActive ? "Nonaktifkan kategori?" : "Aktifkan kategori?", subject: category.name, description: category.isActive ? "Menu di kategori ini tidak akan tampil untuk pelanggan." : "Menu yang tersedia di kategori ini akan tampil untuk pelanggan.", confirmLabel: action })) return;
     setBusy(true); setError(""); setNotice("");
     try {
       await adminApi<Category>(`/api/admin/categories/${category.id}`, jsonRequest("PATCH", { isActive: !category.isActive }));

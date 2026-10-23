@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import AxeBuilder from "@axe-core/playwright";
-import { test, expect, signIn, call } from "./fixtures";
+import { test, expect, signIn, call, confirmAction } from "./fixtures";
 
 test("reservation creation, cancellation, check-in and empty-session closure work", async ({ page, data }, testInfo) => {
   await signIn(page); await page.goto("/pos/reservations");
@@ -59,8 +59,8 @@ test("reservation creation, cancellation, check-in and empty-session closure wor
   await expect(page.locator(".toast")).toContainText("Reservasi dibatalkan.");
   await reserve();
   await expect(row.locator(".reservation-description")).toHaveText("Tanpa catatan");
-  page.once("dialog", (dialog) => dialog.accept());
   await page.getByRole("button", { name: "Check-in", exact: true }).click();
+  await confirmAction(page, "Check-in");
   await expect(page).toHaveURL(new RegExp(`/pos/tables/${data.tableId}$`));
   await expect(page.locator(".toast strong")).toHaveText(["Nadia Reservasi", `Meja ${data.tableNumber}`]);
   await page.getByRole("button", { name: "Tutup sesi kosong" }).click();
@@ -106,7 +106,8 @@ test("owner creates cashier credentials, protects own account and sees Paid-only
   expect((await call(cashier.request, "/admin/me")).status()).toBe(403);
   await expect(cashier.locator(".staff-sidebar a[href^='/admin']")).toHaveCount(0);
   const row = page.getByRole("row").filter({ hasText: "Kasir Baru Demo" });
-  page.once("dialog", (dialog) => dialog.accept()); await row.getByRole("button", { name: "Nonaktifkan" }).click();
+  await row.getByRole("button", { name: "Nonaktifkan" }).click();
+  await confirmAction(page, "Nonaktifkan");
   await expect(row.getByRole("button", { name: "Aktifkan", exact: true })).toBeVisible();
   await expect(page.locator(".toast strong")).toHaveText(["Kasir Baru Demo", "Nonaktif"]);
   expect((await data.pool.query("SELECT is_active FROM staff_profiles WHERE user_id=$1", [created.userId])).rows[0].is_active).toBe(false);
