@@ -44,23 +44,34 @@ export function StaffShell({ role, title, navigation, children }: {
   const content = useRef<HTMLElement>(null);
   const [target, setTarget] = useState<HTMLElement | null>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [hoverNavigation, setHoverNavigation] = useState(false);
+  const [sidebarHovered, setSidebarHovered] = useState(false);
+  const [sidebarFocused, setSidebarFocused] = useState(false);
+  const navigationCollapsed = hoverNavigation ? !sidebarHovered && !sidebarFocused : collapsed;
   const navigationId = useId();
   useEffect(() => {
+    const media = window.matchMedia("(min-width: 640px) and (hover: hover) and (pointer: fine)");
+    const updateMode = () => setHoverNavigation(media.matches);
     const timer = window.setTimeout(() => {
+      updateMode();
       try { setCollapsed(localStorage.getItem("saji:sidebar-collapsed") === "true"); } catch { /* Navigation still works without saved preferences. */ }
     }, 0);
-    return () => window.clearTimeout(timer);
+    media.addEventListener("change", updateMode);
+    return () => { window.clearTimeout(timer); media.removeEventListener("change", updateMode); };
   }, []);
   function toggleNavigation() {
     const next = !collapsed;
     setCollapsed(next);
     try { localStorage.setItem("saji:sidebar-collapsed", String(next)); } catch { /* Keep the preference for this workspace. */ }
   }
-  return <NoticeProvider><ConfirmationProvider><DetailTarget value={target}><div className={`staff-shell${collapsed ? " sidebar-collapsed" : ""}`}>
-    <header className="workspace-heading workspace-toolbar"><div className="workspace-title"><Button type="button" className="icon-button navigation-toggle" aria-label={t(collapsed ? "Perluas navigasi" : "Ciutkan navigasi")} title={t(collapsed ? "Perluas navigasi" : "Ciutkan navigasi")} aria-expanded={!collapsed} aria-controls={navigationId} onClick={toggleNavigation}><SidebarSimpleIcon size={20} aria-hidden="true" /></Button><h1>{t(title)}</h1></div><div className="workspace-header-actions"><span className="workspace-role">{role === "Admin" ? t("Pemilik") : t("Kasir")}</span><LanguageSwitch /></div></header>
-    <aside className="staff-sidebar" aria-label={t("Navigasi {0}", { "0": t(role) })}>
+  return <NoticeProvider><ConfirmationProvider><DetailTarget value={target}><div className={`staff-shell${navigationCollapsed ? " sidebar-collapsed" : ""}${hoverNavigation ? " hover-navigation" : ""}`}>
+    <header className="workspace-heading workspace-toolbar"><div className="workspace-title"><Button type="button" className="icon-button navigation-toggle" aria-label={t(navigationCollapsed ? "Perluas navigasi" : "Ciutkan navigasi")} title={t(navigationCollapsed ? "Perluas navigasi" : "Ciutkan navigasi")} aria-expanded={!navigationCollapsed} aria-controls={navigationId} onClick={toggleNavigation}><SidebarSimpleIcon size={20} aria-hidden="true" /></Button><h1>{t(title)}</h1></div><div className="workspace-header-actions"><span className="workspace-role">{role === "Admin" ? t("Pemilik") : t("Kasir")}</span><LanguageSwitch /></div></header>
+    <aside className="staff-sidebar" aria-label={t("Navigasi {0}", { "0": t(role) })}
+      onPointerEnter={(event) => { if (event.pointerType !== "touch") setSidebarHovered(true); }}
+      onPointerLeave={() => setSidebarHovered(false)}
+      onFocusCapture={(event) => setSidebarFocused(event.target.matches(":focus-visible"))}
+      onBlurCapture={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setSidebarFocused(false); }}>
       <div className="workspace-brand"><Brand /></div>
-      <p className="staff-nav-label">{role === "Admin" ? t("Ruang pemilik") : t("Ruang kasir")}</p>
       <nav id={navigationId}>{navigation}</nav>
     </aside>
     <main ref={content} className="staff-content">{children}</main>
