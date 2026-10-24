@@ -4,8 +4,9 @@ import { DatePicker } from "@/components/ui/date-picker";
 
 import { useLocale } from "@/components/locale-provider";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { ReceiptIcon, TrendUpIcon, ChartLineUpIcon } from "@phosphor-icons/react";
+import { Suspense, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
+import { ReceiptIcon, TrendUpIcon, ChartLineUpIcon, CalendarDotsIcon } from "@phosphor-icons/react";
+import { EntranceMotion } from "@/components/ui/entrance-motion";
 import { adminApi } from "@/lib/admin/client";
 import { reportRangeSchema } from "@/lib/admin/report-range";
 import { revenueDays, revenueInsights, type RevenuePoint } from "@/lib/admin/report-chart";
@@ -36,7 +37,7 @@ export function AdminReports() {
     setBusy(true); setError(""); setPage(1);
     try {
       const query = new URLSearchParams({ from: start, to: end });
-      const [revenue, top] = await Promise.all([adminApi<Report>(`/api/admin/reports/revenue?${query}&groupBy=day`), adminApi<TopMenu[]>(`/api/admin/reports/top-menus?${query}&limit=10`)]);
+      const [revenue, top] = await Promise.all([adminApi<Report>(`/api/admin/reports/revenue?${query}&groupBy=day`), adminApi<TopMenu[]>(`/api/admin/reports/top-menus?${query}&limit=5`)]);
       setReport(revenue); setMenus(top); setPeriod({ from: start, to: end });
     } catch { setError("Laporan belum dapat dimuat. Periksa koneksi lalu coba lagi."); }
     finally { setBusy(false); }
@@ -53,17 +54,23 @@ export function AdminReports() {
   function submit(event: FormEvent<HTMLFormElement>) { event.preventDefault(); void load(from, to); }
   const days = period && report ? revenueDays(period.from, period.to, report.points) : [];
   const insights = revenueInsights(days);
+  const count = new Intl.NumberFormat(locale === "en" ? "en-GB" : "id-ID");
+  const metrics = report ? [
+    { label: "Pendapatan lunas", value: money(report.summary.revenueIdr), note: "Total tagihan, setelah diskon dan pajak", Icon: ChartLineUpIcon, className: "bento-revenue" },
+    { label: "Transaksi lunas", value: count.format(report.summary.paidTransactionCount), note: "Pembayaran tunai penuh", Icon: ReceiptIcon, className: "bento-count" },
+    { label: "Rata-rata transaksi", value: money(report.summary.paidTransactionCount ? BigInt(report.summary.revenueIdr) / BigInt(report.summary.paidTransactionCount) : 0n), note: "Pendapatan dibagi transaksi", Icon: TrendUpIcon, className: "bento-average" },
+    { label: "Rata-rata per hari", value: money(insights.averageDailyIdr), note: "Termasuk hari tanpa pembayaran", Icon: CalendarDotsIcon, className: "bento-daily-average" },
+  ] : [];
   const peakShare = insights.bestSharePercent === null ? null : new Intl.NumberFormat(locale === "en" ? "en-GB" : "id-ID", { style: "percent", maximumFractionDigits: 1 }).format(insights.bestSharePercent / 100);
   return <div className="admin-stack">
     <form className="report-filters" onSubmit={submit}><Selection label={t("Periode penjualan")} value={preset} onChange={choosePeriod} disabled={busy} options={[{ value: "today", label: t("Hari ini") }, { value: "week", label: t("7 hari") }, { value: "month", label: t("30 hari") }, { value: "custom", label: t("Kustom") }]} />{preset === "custom" && <><DatePicker label="Dari tanggal" required disabled={busy} value={from} onChange={setFrom} /><DatePicker label="Sampai tanggal" required disabled={busy} value={to} onChange={setTo} /></>}<Button type="submit" disabled={busy}>{busy ? t("Memuat...") : t("Tampilkan laporan")}</Button></form>
     {error && <Alert>{t(error)}</Alert>}
-    {report && period ? <><p className="report-period">{formatDate(period.from, locale, "long")} {" "}{t("hingga")}{" "}{formatDate(period.to, locale, "long")} {" "}{t("· WIB · Hanya transaksi lunas")}</p><div className="sales-bento report-summary">
-      <section className="bento-cell bento-revenue"><ChartLineUpIcon size={20} className="metric-icon" /><p className="metric-label">{t("Pendapatan lunas")}</p><p className="metric-value">{money(report.summary.revenueIdr)}</p><p className="metric-foot">{t("Total tagihan, setelah diskon dan pajak")}</p></section>
-      <section className="bento-cell bento-count"><ReceiptIcon size={20} className="metric-icon" /><p className="metric-label">{t("Transaksi lunas")}</p><p className="metric-value">{report.summary.paidTransactionCount}</p><p className="metric-foot">{t("Pembayaran tunai penuh")}</p></section>
-      <section className="bento-cell bento-average"><TrendUpIcon size={20} className="metric-icon" /><p className="metric-label">{t("Rata-rata transaksi")}</p><p className="metric-value">{money(report.summary.paidTransactionCount ? BigInt(report.summary.revenueIdr) / BigInt(report.summary.paidTransactionCount) : 0n)}</p><p className="metric-foot">{t("Pendapatan dibagi transaksi")}</p></section>
-      <section className="bento-cell bento-chart"><div className="chart-heading"><h2>{t("Tren penjualan")}</h2><span className="chart-unit">{t("IDR / hari")}</span></div>{report.summary.paidTransactionCount ? <RevenueChart from={period.from} to={period.to} points={report.points} /> : <EmptyState>{t("Belum ada pembayaran lunas pada periode ini.")}</EmptyState>}</section>
-      <section className="bento-cell bento-menus"><h2>{t("Menu terlaris")}</h2>{menus.length ? menus.map((menu, index) => <div className="top-menu-row" key={menu.menuName}><span className="rank">{index + 1}</span><div><strong>{menu.menuName}</strong><small>{money(menu.grossSalesIdr)} {" "}{t("sebelum diskon/pajak")}</small></div><span className="quantity">{menu.quantitySold}<small>{t("terjual")}</small></span></div>) : <EmptyState>{t("Belum ada menu terjual.")}</EmptyState>}</section>
-      <section className="bento-cell bento-data"><details className="report-data"><summary>{t("Lihat angka harian")}</summary><DataTable caption={t("Pendapatan harian (WIB)")} columns={[t("Tanggal"), t("Transaksi"), t("Pendapatan lunas")]}>{days.slice((page - 1) * pageSize, page * pageSize).map((day) => <tr key={day.date}><th scope="row" className="date-cell">{formatDate(day.date, locale)}</th><td>{day.transactionCount}</td><td className="money-cell">{money(day.revenueIdr)}</td></tr>)}</DataTable><Pagination pageSize={pageSize} onPageSizeChange={setPageSize} page={page} hasNext={page * pageSize < days.length} total={days.length} onChange={setPage} /></details></section>
+    {report && period ? <><p className="report-period"><span>{formatDate(period.from, locale, "long")} {t("hingga")} {formatDate(period.to, locale, "long")}</span><span>{t("Hanya transaksi lunas")} · WIB</span></p><div className="sales-bento report-summary" aria-busy={busy}>
+      {metrics.map(({ label, value, note, Icon, className }) => <section className={`bento-cell bento-stat ${className}`} key={label}><div className="metric-heading"><Icon size={17} className="metric-icon" aria-hidden="true" /><h2 className="metric-label">{t(label)}</h2></div><p className="metric-value">{value}</p><p className="metric-foot">{t(note)}</p></section>)}
+      <section className="bento-cell bento-chart"><div className="chart-heading"><h2>{t("Tren penjualan")}</h2><span className="chart-unit"><i aria-hidden="true" />{t("IDR / hari")}</span></div>{report.summary.paidTransactionCount ? <RevenueChart from={period.from} to={period.to} points={report.points} /> : <EmptyState>{t("Belum ada pembayaran lunas pada periode ini.")}</EmptyState>}<p className="chart-caption">{t("Pendapatan berdasarkan tanggal pembayaran, dalam WIB.")}</p></section>
+      <section className="bento-cell bento-activity"><div className="chart-heading"><h2>{t("Aktivitas penjualan")}</h2><span className="chart-unit">{t("{0} hari", { 0: days.length })}</span></div><SalesActivity paidDays={insights.paidDays} totalDays={days.length} revision={report.points} /><dl className="activity-legend"><div><dt><i aria-hidden="true" />{t("Dengan pembayaran")}</dt><dd>{count.format(insights.paidDays)}</dd></div><div><dt><i aria-hidden="true" />{t("Tanpa pembayaran")}</dt><dd>{count.format(days.length - insights.paidDays)}</dd></div></dl><p className="chart-caption">{t("Hari dengan setidaknya satu transaksi lunas.")}</p></section>
+      <section className="bento-cell bento-menus"><div className="chart-heading"><h2>{t("Menu terlaris")}</h2><span className="chart-unit">{t("5 menu teratas")}</span></div><p className="section-caption">{t("Penjualan kotor sebelum diskon dan pajak")}</p>{menus.length ? menus.map((menu, index) => <div className="top-menu-row" key={menu.menuName}><span className="rank">{count.format(index + 1)}</span><div className="top-menu-copy"><strong>{menu.menuName}</strong><small>{money(menu.grossSalesIdr)}</small><div className="top-menu-track" aria-hidden="true"><span style={{ width: `${menus[0].quantitySold ? menu.quantitySold / menus[0].quantitySold * 100 : 0}%` }} /></div></div><span className="quantity">{count.format(menu.quantitySold)}<small>{t("terjual")}</small></span></div>) : <EmptyState>{t("Belum ada menu terjual.")}</EmptyState>}</section>
+      <div className="bento-daily"><section className="bento-cell report-data"><div className="chart-heading"><h2>{t("Angka harian")}</h2><span className="chart-unit">WIB</span></div><p className="section-caption">{t("Rincian transaksi dan pendapatan per hari")}</p><DataTable caption={t("Pendapatan harian (WIB)")} columns={[t("Tanggal"), t("Transaksi"), t("Pendapatan lunas")]}>{days.slice((page - 1) * pageSize, page * pageSize).map((day) => <tr key={day.date}><th scope="row" className="date-cell"><time dateTime={day.date}>{formatDate(day.date, locale)}</time></th><td>{count.format(day.transactionCount)}</td><td className="money-cell">{money(day.revenueIdr)}</td></tr>)}</DataTable></section><Pagination pageSize={pageSize} onPageSizeChange={setPageSize} page={page} hasNext={page * pageSize < days.length} total={days.length} onChange={setPage} /></div>
     </div><DetailPane>
       <section className="report-insights" aria-label={t("Rincian periode")} aria-busy={busy}>
         <div className="detail-heading"><h2>{t("Rincian periode")}</h2></div>
@@ -99,4 +106,11 @@ export function AdminReports() {
       </section>
     </DetailPane></> : busy ? <LoadingState variant="report">{t("Memuat ringkasan penjualan...")}</LoadingState> : <EmptyState>{t("Pilih periode lalu tampilkan laporan untuk mencoba lagi.")}</EmptyState>}
   </div>;
+}
+
+function SalesActivity({ paidDays, totalDays, revision }: { paidDays: number; totalDays: number; revision: RevenuePoint[] }) {
+  const { t } = useLocale();
+  const plot = useRef<SVGGElement>(null);
+  const share = totalDays ? paidDays / totalDays * 100 : 0;
+  return <div className="sales-activity-chart"><svg viewBox="0 0 180 180" role="img" aria-label={t("{0} dari {1} hari memiliki pembayaran lunas", { 0: paidDays, 1: totalDays })}><circle cx="90" cy="90" r="68" fill="none" stroke="var(--border)" strokeWidth="18" /><g ref={plot}><circle cx="90" cy="90" r="68" fill="none" stroke="var(--primary)" strokeWidth="18" pathLength="100" strokeDasharray={`${share} 100`} transform="rotate(-90 90 90)" /></g></svg><div className="activity-chart-label" aria-hidden="true"><strong>{paidDays}<span> / {totalDays}</span></strong><span>{t("Hari penjualan")}</span></div><Suspense fallback={null}><EntranceMotion target={plot} variant="chart" revision={revision} /></Suspense></div>;
 }

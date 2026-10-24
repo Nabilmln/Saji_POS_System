@@ -129,7 +129,7 @@ test("owner creates cashier credentials, protects own account and sees Paid-only
   await page.goto("/admin/reports");
   await expect(page.locator(".report-summary")).toContainText(/Rp\s*50\.000/);
   await expect(page.getByRole("img", { name: "Pendapatan lunas harian" })).toBeVisible();
-  await page.getByText("Lihat angka harian", { exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Angka harian", exact: true })).toBeVisible();
   await expect(page.getByRole("table").first()).toContainText(/Rp\s*50\.000/);
   await expect(page.locator(".top-menu-row")).toContainText(data.menuName);
   expect((await new AxeBuilder({ page }).analyze()).violations).toEqual([]);
@@ -219,6 +219,8 @@ test("shared dropdown supports keyboards and desktop panes keep QR and orders at
   await signIn(page, "admin"); await page.goto("/admin/menus");
   const filter = page.getByRole("combobox", { name: "Kategori", exact: true });
   await filter.focus(); await page.keyboard.press("ArrowDown");
+  await expect(page.getByRole("listbox")).toBeVisible();
+  await expect(page.getByRole("option", { name: `Demo ${data.categoryId}`, exact: true })).toBeVisible();
   await page.keyboard.type(`Demo ${data.categoryId}`); await page.keyboard.press("Enter");
   await expect(filter).toContainText(`Demo ${data.categoryId}`);
   await expect(page.locator(".admin-list-row").filter({ hasText: data.menuName })).toBeVisible();

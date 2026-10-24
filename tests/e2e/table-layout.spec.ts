@@ -34,7 +34,7 @@ test("admin and cashier tables share compact centered cells and stacked timestam
     if (role !== target.role) { await signIn(page, target.role); role = target.role; }
     await page.setViewportSize({ width: 1280, height: 900 });
     await page.goto(target.path);
-    if (target.name === "daily-sales") await page.getByText("Lihat angka harian", { exact: true }).click();
+    if (target.name === "daily-sales") await expect(page.getByRole("heading", { name: "Angka harian", exact: true })).toBeVisible();
     const table = page.locator(".data-table");
     await expect(table.locator("tbody tr").first()).toBeVisible();
     await expect(table.locator("caption")).toHaveCount(0);

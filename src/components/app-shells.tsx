@@ -3,13 +3,14 @@
 import { useLocale } from "@/components/locale-provider";
 
 import Link from "next/link";
-import { createContext, useContext, useState, type ReactNode } from "react";
+import { createContext, Suspense, useContext, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { QrCodeIcon, ReceiptIcon } from "@phosphor-icons/react";
 import { Brand } from "@/components/ui/brand";
 import { LanguageSwitch } from "@/components/ui/language-switch";
 import { NoticeProvider } from "@/components/ui/notice";
 import { ConfirmationProvider } from "@/components/ui/confirmation";
+import { EntranceMotion } from "@/components/ui/entrance-motion";
 
 const DetailTarget = createContext<HTMLElement | null>(null);
 
@@ -23,12 +24,14 @@ export function CustomerShell({ tableNumber, children, footer }: {
   tableNumber?: string; children: ReactNode; footer?: ReactNode;
 }) {
   const { t } = useLocale();
+  const content = useRef<HTMLElement>(null);
   return <div className="customer-page">
     <header className="customer-header">
       <Link className="brand-link" href="/" aria-label={t("Saji beranda")}><Brand /></Link>
       <div className="customer-header-actions">{tableNumber && <span className="table-badge">{t("Meja")}{" "}{tableNumber}</span>}<LanguageSwitch /></div>
     </header>
-    <main className="customer-main">{children}</main>
+    <main ref={content} className="customer-main">{children}</main>
+    <Suspense fallback={null}><EntranceMotion target={content} /></Suspense>
     {footer}
   </div>;
 }
@@ -37,6 +40,7 @@ export function StaffShell({ role, title, navigation, children }: {
   role: "Kasir" | "Admin"; title: string; navigation: ReactNode; children: ReactNode;
 }) {
   const { t } = useLocale();
+  const content = useRef<HTMLElement>(null);
   const [target, setTarget] = useState<HTMLElement | null>(null);
   return <NoticeProvider><ConfirmationProvider><DetailTarget value={target}><div className="staff-shell">
     <aside className="staff-sidebar" aria-label={t("Navigasi {0}", { "0": t(role) })}>
@@ -44,7 +48,8 @@ export function StaffShell({ role, title, navigation, children }: {
       <p className="staff-nav-label">{role === "Admin" ? t("Ruang pemilik") : t("Ruang kasir")}</p>
       <nav>{navigation}</nav>
     </aside>
-    <main className="staff-content"><header className="workspace-heading"><h1>{t(title)}</h1><span className="workspace-role">{role === "Admin" ? t("Pemilik") : t("Kasir")}</span></header>{children}</main>
+    <main ref={content} className="staff-content"><header className="workspace-heading"><h1>{t(title)}</h1><span className="workspace-role">{role === "Admin" ? t("Pemilik") : t("Kasir")}</span></header>{children}</main>
     <aside ref={setTarget} className="workspace-detail" tabIndex={0} aria-label={role === "Admin" ? t("Detail pemilik") : t("Detail kasir")}><div className="detail-placeholder">{role === "Admin" ? <QrCodeIcon size={32} weight="light" /> : <ReceiptIcon size={32} weight="light" />}<h2>{t("Rincian pilihan")}</h2><p>{role === "Admin" ? t("Pilih item di area utama untuk melihat rinciannya.") : t("Pilih meja atau transaksi untuk melihat pesanan, tagihan, atau struk.")}</p></div></aside>
+    <Suspense fallback={null}><EntranceMotion target={content} /></Suspense>
   </div></DetailTarget></ConfirmationProvider></NoticeProvider>;
 }
