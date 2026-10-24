@@ -11,6 +11,9 @@ test("compact owner table cards keep QR, editing and status restrictions", async
     await page.goto("/admin/tables");
     const card = page.getByRole("article", { name: `Meja ${data.tableNumber}`, exact: true });
     await expect(card).toBeVisible();
+    await expect(card.locator("header .status-chip")).toHaveText("Tersedia");
+    await expect(card).toContainText("Pemesanan QR");
+    await expect(card.locator(".active")).toHaveText("Aktif");
     await expect(page.getByRole("table")).toHaveCount(0);
     const inactive = page.getByRole("article", { name: `Meja ${longNumber}`, exact: true });
     await expect(inactive.getByRole("button", { name: "Lihat QR", exact: true })).toBeDisabled();
@@ -24,6 +27,7 @@ test("compact owner table cards keep QR, editing and status restrictions", async
     await expect(page.locator(".workspace-detail").getByRole("img", { name: `Kode QR untuk pemesanan Meja ${data.tableNumber}`, exact: true })).toBeVisible();
     await expect(card.getByRole("button", { name: "Lihat QR", exact: true })).toHaveAttribute("aria-pressed", "true");
     await expect(page.getByRole("link", { name: "Unduh QR (SVG)", exact: true })).toHaveAttribute("download", /-qr\.svg$/);
+    await expect(page.locator(".workspace-detail").getByLabel("Tautan tujuan", { exact: true })).toHaveValue(`http://localhost:3100/order/${data.token}`);
     for (const [width, language, theme] of [[1440, "id", "light"], [1024, "id", "dark"], [390, "en", "light"], [320, "en", "dark"]] as const) {
       await page.setViewportSize({ width, height: 900 });
       await page.emulateMedia({ colorScheme: theme });
@@ -33,8 +37,9 @@ test("compact owner table cards keep QR, editing and status restrictions", async
         height: card.getBoundingClientRect().height,
         fits: card.scrollWidth <= card.clientWidth + 1,
         controlsFit: [...card.querySelectorAll("button")].every((button) => button.scrollWidth <= button.clientWidth + 1 && button.getBoundingClientRect().height >= 32),
+        primaryFills: Math.abs(card.querySelector("footer button")!.getBoundingClientRect().width - (card.clientWidth - parseFloat(getComputedStyle(card).paddingLeft) - parseFloat(getComputedStyle(card).paddingRight))) < 1,
       })));
-      for (const size of sizes) { expect(size.fits).toBe(true); expect(size.controlsFit).toBe(true); expect(size.height).toBeLessThanOrEqual(220); }
+      for (const size of sizes) { expect(size.fits).toBe(true); expect(size.controlsFit).toBe(true); expect(size.primaryFills).toBe(true); expect(size.height).toBeLessThanOrEqual(220); }
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       const cardsBox = await page.locator(".admin-table-grid").boundingBox();
       const pagerBox = await page.locator(".pagination-panel").boundingBox();

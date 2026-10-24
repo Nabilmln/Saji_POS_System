@@ -23,6 +23,7 @@ import { ReceiptPreview } from "@/components/pos-receipt";
 import { OrderItemDeletion } from "@/components/order-item-deletion";
 import { PosBillPreview } from "@/components/pos-bill";
 import { PosTableActions } from "@/components/pos-table-actions";
+import { TableCard } from "@/components/ui/table-card";
 
 
 type Table = { id: string; tableNumber: string; status: "AVAILABLE" | "OCCUPIED" | "RESERVED"; activeOrderCount: number; pendingOrderCount: number; grandTotalIdr: string };
@@ -122,12 +123,10 @@ export function PosOverview() {
         <label>{t("Cari meja")}<Input className="text-field" value={query} maxLength={30} onChange={(event) => { setQuery(event.target.value); setTablePage(1); }} placeholder={t("Nomor meja")} /></label>
         <Selection label={t("Status meja")} value={filter} onChange={(value) => { setFilter(value); setTablePage(1); }} options={[{ value: "ALL", label: t("Semua") }, ...Object.entries(tableLabels).map(([value, label]) => ({ value, label: t(label) }))]} />
       </div>
-      {!loaded ? <LoadingState variant="cards">{t("Memuat meja…")}</LoadingState> : visible.length ? <div className="pos-table-grid">{visible.slice((currentTablePage - 1) * tablePageSize, currentTablePage * tablePageSize).map((table) => <article className={`pos-table-card ${selectedId === table.id ? "selected" : ""}`} aria-labelledby={`table-${table.id}`} key={table.id}>
-        <StatusBadge status={table.status} /><h3 id={`table-${table.id}`}>{t("Meja")}{" "}{table.tableNumber}</h3>
-        <div className="pos-order-counts"><StatusBadge status="PENDING">{table.pendingOrderCount} {t("Menunggu")}</StatusBadge><StatusBadge status="ACTIVE">{table.activeOrderCount} {t("Aktif")}</StatusBadge></div>
-        <strong>{money(table.grandTotalIdr)}</strong>
-        <Button className="secondary-button pos-card-button" aria-label={t("Lihat meja {0}", { "0": table.tableNumber })} aria-pressed={selectedId === table.id} onClick={() => selectTable(table.id)}>{t("Lihat meja")}</Button>
-      </article>)}</div> : <p className="empty-state">{t("Tidak ada meja yang cocok.")}</p>}
+      {!loaded ? <LoadingState variant="cards">{t("Memuat meja…")}</LoadingState> : visible.length ? <div className="pos-table-grid">{visible.slice((currentTablePage - 1) * tablePageSize, currentTablePage * tablePageSize).map((table) => <TableCard className="pos-table-card" titleId={`table-${table.id}`} title={t("Meja {0}", { "0": table.tableNumber })} status={table.status} selected={selectedId === table.id} key={table.id}
+        metadata={{ label: t("Tagihan sesi"), value: <strong>{money(table.grandTotalIdr)}</strong> }}
+        primaryAction={<Button className={selectedId === table.id ? "primary-button" : "secondary-button"} aria-label={t("Lihat meja {0}", { "0": table.tableNumber })} aria-pressed={selectedId === table.id} onClick={() => selectTable(table.id)}>{t("Lihat meja")}</Button>}
+      ><StatusBadge status="PENDING">{table.pendingOrderCount} {t("Menunggu")}</StatusBadge><StatusBadge status="ACTIVE">{table.activeOrderCount} {t("Aktif")}</StatusBadge></TableCard>)}</div> : <p className="empty-state">{t("Tidak ada meja yang cocok.")}</p>}
     </Panel>
     <Pagination label="Navigasi meja" pageSize={tablePageSize} onPageSizeChange={setTablePageSize} page={currentTablePage} hasNext={currentTablePage * tablePageSize < visible.length} total={visible.length} onChange={setTablePage} />
     <Panel className="admin-panel">

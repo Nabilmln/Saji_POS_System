@@ -3,14 +3,15 @@
 import { useLocale } from "@/components/locale-provider";
 
 import Link from "next/link";
-import { createContext, Suspense, useContext, useRef, useState, type ReactNode } from "react";
+import { createContext, Suspense, useContext, useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
-import { QrCodeIcon, ReceiptIcon } from "@phosphor-icons/react";
+import { QrCodeIcon, ReceiptIcon, SidebarSimpleIcon } from "@phosphor-icons/react";
 import { Brand } from "@/components/ui/brand";
 import { LanguageSwitch } from "@/components/ui/language-switch";
 import { NoticeProvider } from "@/components/ui/notice";
 import { ConfirmationProvider } from "@/components/ui/confirmation";
 import { EntranceMotion } from "@/components/ui/entrance-motion";
+import { Button } from "@/components/ui/controls";
 
 const DetailTarget = createContext<HTMLElement | null>(null);
 
@@ -42,13 +43,27 @@ export function StaffShell({ role, title, navigation, children }: {
   const { t } = useLocale();
   const content = useRef<HTMLElement>(null);
   const [target, setTarget] = useState<HTMLElement | null>(null);
-  return <NoticeProvider><ConfirmationProvider><DetailTarget value={target}><div className="staff-shell">
+  const [collapsed, setCollapsed] = useState(false);
+  const navigationId = useId();
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      try { setCollapsed(localStorage.getItem("saji:sidebar-collapsed") === "true"); } catch { /* Navigation still works without saved preferences. */ }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+  function toggleNavigation() {
+    const next = !collapsed;
+    setCollapsed(next);
+    try { localStorage.setItem("saji:sidebar-collapsed", String(next)); } catch { /* Keep the preference for this workspace. */ }
+  }
+  return <NoticeProvider><ConfirmationProvider><DetailTarget value={target}><div className={`staff-shell${collapsed ? " sidebar-collapsed" : ""}`}>
+    <header className="workspace-heading workspace-toolbar"><div className="workspace-title"><Button type="button" className="icon-button navigation-toggle" aria-label={t(collapsed ? "Perluas navigasi" : "Ciutkan navigasi")} title={t(collapsed ? "Perluas navigasi" : "Ciutkan navigasi")} aria-expanded={!collapsed} aria-controls={navigationId} onClick={toggleNavigation}><SidebarSimpleIcon size={20} aria-hidden="true" /></Button><h1>{t(title)}</h1></div><div className="workspace-header-actions"><span className="workspace-role">{role === "Admin" ? t("Pemilik") : t("Kasir")}</span><LanguageSwitch /></div></header>
     <aside className="staff-sidebar" aria-label={t("Navigasi {0}", { "0": t(role) })}>
-      <div className="workspace-brand"><Brand /><LanguageSwitch /></div>
+      <div className="workspace-brand"><Brand /></div>
       <p className="staff-nav-label">{role === "Admin" ? t("Ruang pemilik") : t("Ruang kasir")}</p>
-      <nav>{navigation}</nav>
+      <nav id={navigationId}>{navigation}</nav>
     </aside>
-    <main ref={content} className="staff-content"><header className="workspace-heading"><h1>{t(title)}</h1><span className="workspace-role">{role === "Admin" ? t("Pemilik") : t("Kasir")}</span></header>{children}</main>
+    <main ref={content} className="staff-content">{children}</main>
     <aside ref={setTarget} className="workspace-detail" tabIndex={0} aria-label={role === "Admin" ? t("Detail pemilik") : t("Detail kasir")}><div className="detail-placeholder">{role === "Admin" ? <QrCodeIcon size={32} weight="light" /> : <ReceiptIcon size={32} weight="light" />}<h2>{t("Rincian pilihan")}</h2><p>{role === "Admin" ? t("Pilih item di area utama untuk melihat rinciannya.") : t("Pilih meja atau transaksi untuk melihat pesanan, tagihan, atau struk.")}</p></div></aside>
     <Suspense fallback={null}><EntranceMotion target={content} /></Suspense>
   </div></DetailTarget></ConfirmationProvider></NoticeProvider>;

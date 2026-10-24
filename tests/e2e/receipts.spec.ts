@@ -41,6 +41,7 @@ test("cashier previews and prints a fresh unpaid receipt without collecting paym
   expect((await data.pool.query("SELECT count(*)::int AS total FROM payments WHERE session_id=$1", [order.sessionId])).rows[0].total).toBe(0);
   expect((await data.pool.query("SELECT closed_at FROM table_sessions WHERE id=$1", [order.sessionId])).rows[0].closed_at).toBeNull();
   await page.emulateMedia({ media: "print" });
+  await expect(page.locator(".workspace-toolbar")).toBeHidden();
   await expect(page.locator(".staff-sidebar")).toBeHidden();
   await expect(page.locator(".staff-content")).toBeHidden();
   await expect(preview.locator(".receipt-toolbar")).toBeHidden();
