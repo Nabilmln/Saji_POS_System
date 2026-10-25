@@ -15,14 +15,15 @@ import { Button } from "@/components/ui/controls";
 
 const DetailTarget = createContext<HTMLElement | null>(null);
 
-export function DetailPane({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
+export function DetailPane({ children, footer, revision }: { children: ReactNode; footer?: ReactNode; revision?: string }) {
   const target = useContext(DetailTarget);
+  const content = useRef<HTMLDivElement>(null);
   const { t } = useLocale();
-  return target ? createPortal(<div className={`detail-pane${footer ? " detail-pane-with-footer" : ""}`}>{footer ? <><div className="detail-pane-content" tabIndex={0} role="region" aria-label={t("Rincian pilihan")}>{children}</div><div className="detail-pane-footer">{footer}</div></> : children}</div>, target) : null;
+  return target ? createPortal(<div ref={content} className={`detail-pane${footer ? " detail-pane-with-footer" : ""}`}>{footer ? <><div className="detail-pane-content" tabIndex={0} role="region" aria-label={t("Rincian pilihan")}>{children}</div><div className="detail-pane-footer">{footer}</div></> : children}<Suspense fallback={null}><EntranceMotion target={content} variant="content" revision={revision} /></Suspense></div>, target) : null;
 }
 
-export function CustomerShell({ tableNumber, children, footer }: {
-  tableNumber?: string; children: ReactNode; footer?: ReactNode;
+export function CustomerShell({ tableNumber, children, footer, revision }: {
+  tableNumber?: string; children: ReactNode; footer?: ReactNode; revision?: string;
 }) {
   const { t } = useLocale();
   const content = useRef<HTMLElement>(null);
@@ -32,7 +33,7 @@ export function CustomerShell({ tableNumber, children, footer }: {
       <div className="customer-header-actions">{tableNumber && <span className="table-badge">{t("Meja")}{" "}{tableNumber}</span>}<LanguageSwitch /></div>
     </header>
     <main ref={content} className="customer-main">{children}</main>
-    <Suspense fallback={null}><EntranceMotion target={content} /></Suspense>
+    <Suspense fallback={null}><EntranceMotion target={content} revision={revision} /></Suspense>
     {footer}
   </div>;
 }

@@ -39,7 +39,7 @@ test("language persists across customer pages and generated dish photos stay foc
 test("English owner sections and cashier order-to-receipt workflow preserve permissions and amounts", async ({ browser, page, data }, testInfo) => {
   await signIn(page, "admin");
   await page.getByRole("button", { name: "English", exact: true }).click();
-  await expect(page.getByRole("heading", { name: "Sales report", exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Dashboard", exact: true })).toBeVisible();
   expect((await call(page.request, "/staff/me")).status()).toBe(403);
   await page.goto("/admin/menus");
   await expect(page.getByRole("navigation", { name: "Page sections" })).toHaveCount(0);

@@ -6,18 +6,21 @@ import { Panel, Button, Alert, LoadingState } from "@/components/ui/controls";
 
 import { usePolling } from "@/lib/use-polling";
 
-import { useCallback, useRef, useState } from "react";
+import { Suspense, useCallback, useRef, useState } from "react";
+import { EntranceMotion } from "@/components/ui/entrance-motion";
 import { adminApi } from "@/lib/admin/client";
 
 import { quoteChanged, type BillQuote } from "@/lib/staff/payment-ui";
 
 export function BillBreakdown({ quote }: { quote: BillQuote }) {
   const { t, money } = useLocale();
-  return <div className="pos-bill-lines">
+  const content = useRef<HTMLDivElement>(null);
+  return <div ref={content} className="pos-bill-lines">
     <div className="money-row"><span>{t("Subtotal")}</span><strong>{money(quote.subtotalIdr)}</strong></div>
     {quote.discount.enabled && <div className="money-row"><span>{t("Diskon")}</span><strong>−{money(quote.discount.appliedAmountIdr)}</strong></div>}
     {quote.tax.enabled && <div className="money-row"><span>{t("Pajak (")}{quote.tax.rateBps / 100}{t("% dari subtotal)")}</span><strong>{money(quote.tax.amountIdr)}</strong></div>}
     <div className="money-row pos-bill-total"><span>{t("Total tagihan")}</span><strong>{money(quote.grandTotalIdr)}</strong></div>
+    <Suspense fallback={null}><EntranceMotion target={content} variant="content" revision={`${quote.sessionRevision}:${quote.settingsVersion}`} /></Suspense>
   </div>;
 }
 

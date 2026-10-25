@@ -101,7 +101,7 @@ export function TableManager() {
   const qrUrl = preview ? new URL(preview.orderUrl, typeof window === "undefined" ? "http://localhost" : window.location.origin).href : "";
   const downloadHref = qrSvg ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qrSvg)}` : "";
   return <div className="admin-stack">
-    <p className="section-intro">{t("Atur nomor meja dan unduh kode QR unik untuk meja yang aktif.")}</p>
+    {/* <p className="section-intro">{t("Atur nomor meja dan unduh kode QR unik untuk meja yang aktif.")}</p> */}
 
     {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
     <Panel className="admin-panel">
@@ -113,7 +113,7 @@ export function TableManager() {
       </form>}
     </Panel>
     <section className="admin-table-list" aria-label={t("Daftar meja")}>
-      {loading ? <LoadingState variant="cards">{t("Memuat meja…")}</LoadingState> : !tables.length ? <EmptyState className="empty-state"><h2>{t("Belum ada meja")}</h2><p>{t("Tambahkan meja untuk membuat kode QR.")}</p></EmptyState> : <div className="admin-table-grid">{tables.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((table) => <TableCard className="admin-table-card" titleId={`admin-table-${table.id}`} title={t("Meja {0}", { "0": table.tableNumber })} status={table.status} selected={preview?.id === table.id} key={table.id}
+      {loading ? <LoadingState variant="cards">{t("Memuat meja…")}</LoadingState> : !tables.length ? <EmptyState className="empty-state"><h2>{t("Belum ada meja")}</h2><p>{t("Tambahkan meja untuk membuat kode QR.")}</p></EmptyState> : <div className="admin-table-grid">{tables.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((table) => <TableCard revision={JSON.stringify(table)} className="admin-table-card" titleId={`admin-table-${table.id}`} title={t("Meja {0}", { "0": table.tableNumber })} status={table.status} selected={preview?.id === table.id} key={table.id}
         metadata={{ label: t("Pemesanan QR"), value: <StatusBadge status={table.isActive ? "ACTIVE" : "INACTIVE"} /> }}
         primaryAction={<Button disabled={busy || !table.isActive} aria-pressed={preview?.id === table.id} onClick={() => openQr(table)}><QrCodeIcon size={16} aria-hidden="true" />{t("Lihat QR")}</Button>}
         actions={<>
@@ -125,7 +125,7 @@ export function TableManager() {
     </section>
     <Pagination pageSize={pageSize} onPageSizeChange={setPageSize} page={currentPage} hasNext={currentPage * pageSize < tables.length} total={tables.length} onChange={setPage} disabled={busy || loading} />
     {deleting && <ConfirmDelete name={t("Meja {0}", { "0": deleting.tableNumber })} description={t("Meja ini dihapus dari daftar. Kode QR lama berhenti menerima pesanan; riwayat transaksi tetap tersimpan.")} onClose={() => setDeleting(null)} onConfirm={() => remove(deleting)} />}
-    {preview && <DetailPane><section className="table-card-qr-section" aria-labelledby="qr-title">
+    {preview && <DetailPane revision={JSON.stringify(preview)}><section className="table-card-qr-section" aria-labelledby="qr-title">
       <div className="table-card-qr-heading"><h2 id="qr-title">{t("Meja")}{" "}{preview.tableNumber}</h2><Button className="text-button" onClick={() => setPreview(null)}>{t("Tutup")}</Button></div>
       <div className="table-card-qr-identity"><Brand /><StatusBadge status={preview.isActive ? "ACTIVE" : "INACTIVE"} /></div>
       <div className="table-card-qr-code">

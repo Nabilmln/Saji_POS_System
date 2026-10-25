@@ -10,7 +10,7 @@ test("owner navigation expands on hover and keyboard focus without replacing the
   const sidebar = shell.locator(".staff-sidebar");
   const toolbar = shell.locator(".workspace-toolbar");
   await expect(shell).toHaveClass(/sidebar-collapsed/);
-  expect((await sidebar.boundingBox())!.width).toBe(72);
+  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBe(72);
   await expect(toolbar.locator(".navigation-toggle")).toBeHidden();
   await expect(sidebar.locator(".language-switch")).toHaveCount(0);
   await expect(toolbar.getByRole("group", { name: "Language / Bahasa", exact: true })).toHaveCount(1);
@@ -24,7 +24,7 @@ test("owner navigation expands on hover and keyboard focus without replacing the
   const compactLinkYs = await sidebar.locator(".staff-nav-item").evaluateAll((links) => links.map((link) => link.getBoundingClientRect().y));
   await sidebar.hover();
   await expect(shell).not.toHaveClass(/sidebar-collapsed/);
-  expect((await sidebar.boundingBox())!.width).toBe(196);
+  await expect.poll(async () => (await sidebar.boundingBox())!.width).toBe(196);
   expect(compactWidth - (await shell.locator(".staff-content").boundingBox())!.width).toBe(124);
   const expandedLinkYs = await sidebar.locator(".staff-nav-item").evaluateAll((links) => links.map((link) => link.getBoundingClientRect().y));
   expandedLinkYs.forEach((y, index) => expect(Math.abs(y - compactLinkYs[index])).toBeLessThanOrEqual(1));
@@ -40,7 +40,7 @@ test("owner navigation expands on hover and keyboard focus without replacing the
   await expect(shell).toHaveClass(/sidebar-collapsed/);
   await toolbar.getByRole("button", { name: "Bahasa Indonesia", exact: true }).focus();
   await page.keyboard.press("Tab");
-  await expect(sidebar.getByRole("link", { name: "Laporan Penjualan", exact: true })).toBeFocused();
+  await expect(sidebar.getByRole("link", { name: "Dashboard", exact: true })).toBeFocused();
   await expect(shell).not.toHaveClass(/sidebar-collapsed/);
   await page.mouse.move(700, 100);
   await expect(shell).not.toHaveClass(/sidebar-collapsed/);

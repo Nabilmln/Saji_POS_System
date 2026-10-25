@@ -193,7 +193,7 @@ export function MenuManager() {
   const visibleCategories = categories.filter((category) => category.name.toLocaleLowerCase("id-ID").includes(categorySearch.toLocaleLowerCase("id-ID")));
   const currentCategoryPage = Math.min(categoryPage, Math.max(1, Math.ceil(visibleCategories.length / categoryPageSize)));
   return <div className="admin-stack menu-manager">
-    <p className="section-intro">{t("Kelola menu yang tampil di QR meja dan susun kategori katalog.")}</p>
+    {/* <p className="section-intro">{t("Kelola menu yang tampil di QR meja dan susun kategori katalog.")}</p> */}
 
     {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
 
@@ -204,7 +204,7 @@ export function MenuManager() {
     </div>
     <Section id="menu-items" title={t("Daftar menu")} description={t("Kelola harga, foto, dan ketersediaan setiap menu.")} actions={<Button className="primary-button" disabled={busy || !categories.some((category) => category.isActive)} onClick={() => beginMenu()}>{t("Tambah Menu")}</Button>}>
       {!loading && !categories.some((category) => category.isActive) && <p className="muted">{t("Buat kategori aktif sebelum menambah menu.")}</p>}
-      {editing && <DetailPane><form className="admin-form" onSubmit={saveMenu}>
+      {editing && <DetailPane revision={editing}><form className="admin-form" onSubmit={saveMenu}>
         <div className="admin-section-head"><h3>{editing === "new" ? t("Menu baru") : t("Edit menu")}</h3><Button className="text-button" type="button" disabled={busy} onClick={() => { setEditing(null); setPhoto(null); }}>{t("Tutup")}</Button></div>
         {editing !== "new" && !draft.categoryId && <p className="muted">{t("Kategori sebelumnya telah dihapus. Pilih kategori aktif agar menu ini tampil lagi untuk pelanggan.")}</p>}
         <fieldset className="admin-form-grid menu-form-fields" disabled={busy} aria-label={t("Detail menu")}>
@@ -250,7 +250,7 @@ export function MenuManager() {
         </div>
         <div className="admin-actions"><Button className="primary-button" disabled={busy}>{busy ? t("Menyimpan…") : t("Simpan Kategori")}</Button><Button className="secondary-button" type="button" disabled={busy} onClick={() => setCategoryEditing(null)}>{t("Batal")}</Button></div>
       </form>}
-      {loading && !list ? <LoadingState variant="table">{t("Memuat menu…")}</LoadingState> : !visibleCategories.length ? <EmptyState className="empty-state"><h2>{categories.length ? t("Kategori tidak ditemukan") : t("Belum ada kategori")}</h2><p>{categories.length ? t("Coba nama kategori lain.") : t("Tambahkan kategori untuk menyusun menu.")}</p></EmptyState> : <DataTable caption={t("Kategori")} columns={[t("Nama kategori"), t("Urutan"), t("Jumlah menu"), t("Status"), t("Tindakan")]}>{visibleCategories.slice((currentCategoryPage - 1) * categoryPageSize, currentCategoryPage * categoryPageSize).map((category) => <tr key={category.id}>
+      {loading && !list ? <LoadingState variant="table">{t("Memuat menu…")}</LoadingState> : !visibleCategories.length ? <EmptyState className="empty-state"><h2>{categories.length ? t("Kategori tidak ditemukan") : t("Belum ada kategori")}</h2><p>{categories.length ? t("Coba nama kategori lain.") : t("Tambahkan kategori untuk menyusun menu.")}</p></EmptyState> : <DataTable revision={JSON.stringify([currentCategoryPage, categoryPageSize, visibleCategories])} caption={t("Kategori")} columns={[t("Nama kategori"), t("Urutan"), t("Jumlah menu"), t("Status"), t("Tindakan")]}>{visibleCategories.slice((currentCategoryPage - 1) * categoryPageSize, currentCategoryPage * categoryPageSize).map((category) => <tr key={category.id}>
         <th scope="row">{category.name}</th><td>{category.sortOrder}</td><td>{category.menuCount}</td><td><StatusBadge status={category.isActive ? "ACTIVE" : "INACTIVE"} /></td>
         <td><TableActions><TableAction action="edit" disabled={busy} onClick={() => beginCategory(category)} /><TableAction action={category.isActive ? "deactivate" : "activate"} disabled={busy} onClick={() => void changeCategory(category)} /><TableAction action="delete" disabled={busy} onClick={() => setDeleting({ kind: "category", item: category })} /></TableActions></td>
       </tr>)}</DataTable>}

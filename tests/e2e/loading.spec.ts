@@ -54,7 +54,7 @@ test("owner navigation uses shared localized skeletons without blocking the side
       await expect(page.locator(".staff-shell:visible")).not.toHaveClass(/sidebar-collapsed/);
       await page.locator(".staff-sidebar").getByRole("link", { name, exact: true }).click();
       await expect(page.locator(`.loading-skeleton ${shape}`)).toBeVisible();
-      await expect(page.locator(".staff-sidebar").getByRole("link", { name: "Laporan Penjualan", exact: true })).toBeEnabled();
+      await expect(page.locator(".staff-sidebar").getByRole("link", { name: "Dashboard", exact: true })).toBeEnabled();
     } finally { await done(); }
     await expect(page.locator(".loading-skeleton")).toHaveCount(0);
   }

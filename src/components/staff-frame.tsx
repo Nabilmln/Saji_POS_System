@@ -15,7 +15,7 @@ import { authClient } from "@/lib/auth/client";
 const menus = {
   ADMIN: [
     { label: "Penjualan", links: [
-      { href: "/admin/reports", label: "Laporan Penjualan", icon: <ChartLineUpIcon size={19} /> },
+      { href: "/admin/reports", label: "Dashboard", icon: <ChartLineUpIcon size={19} /> },
       { href: "/admin/settings", label: "Diskon & Pajak", icon: <SlidersHorizontalIcon size={19} /> },
     ] },
     { label: "Restoran", links: [

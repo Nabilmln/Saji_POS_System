@@ -29,6 +29,10 @@ test("sales insights use the loaded period and fit both languages and themes", a
   await expect(panel.locator(".insight-share strong")).toHaveText("75%");
   await expect(panel.locator(".insight-daily-average dd")).toHaveText(/Rp\s*100\.000/);
   await expect(panel.locator(".insight-activity dd")).toHaveText([/Rp\s*100\.000/, "2 / 4", "2"]);
+  expect(await panel.locator(".insight-activity").evaluate((element) => {
+    const style = getComputedStyle(element);
+    return parseFloat(style.paddingInlineStart) >= 12 && parseFloat(style.borderTopWidth) === 1;
+  })).toBe(true);
 
   // Draft dates and failed loads must not relabel the last successful report.
   await page.getByRole("combobox", { name: "Dari tanggal", exact: true }).fill("2026-10-11");

@@ -1,6 +1,7 @@
 ﻿"use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { EntranceMotion } from "@/components/ui/entrance-motion";
 import { flushSync } from "react-dom";
 import { PrinterIcon } from "@phosphor-icons/react";
 import { useLocale } from "@/components/locale-provider";
@@ -26,6 +27,7 @@ export function ReceiptPreview({ paymentId, sessionId, onClose }: {
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(true);
+  const content = useRef<HTMLElement>(null);
   const controller = useRef<AbortController | null>(null);
   const endpoint = paymentId ? `/api/staff/payments/${paymentId}/receipt` : `/api/staff/table-sessions/${sessionId}/receipt`;
   const refresh = useCallback(async (print = false) => {
@@ -48,7 +50,7 @@ export function ReceiptPreview({ paymentId, sessionId, onClose }: {
     const timer = window.setTimeout(() => void refresh(), 0);
     return () => { window.clearTimeout(timer); abort.abort(); };
   }, [refresh]);
-  return <section className="receipt-preview" aria-label={t("Pratinjau struk")}>
+  return <section ref={content} className="receipt-preview" aria-label={t("Pratinjau struk")}>
     <div className="detail-heading"><h2>{t("Pratinjau struk")}</h2><Button type="button" className="text-button" onClick={onClose}>{t("Tutup")}</Button></div>
     <div className="receipt-toolbar"><Button type="button" className="secondary-button" disabled={busy} onClick={() => void refresh()}>{t("Segarkan")}</Button><Button type="button" disabled={busy || !receipt || !!error} onClick={() => void refresh(true)}><PrinterIcon size={17} aria-hidden="true" />{t("Cetak struk")}</Button></div>
     {error && <Alert>{t(error)}</Alert>}
@@ -61,5 +63,6 @@ export function ReceiptPreview({ paymentId, sessionId, onClose }: {
         {receipt.paymentId !== null && <><div className="money-row"><span>{t("Tunai diterima")}</span><strong>{money(receipt.cashReceivedIdr)}</strong></div><div className="money-row"><span>{t("Kembalian")}</span><strong>{money(receipt.changeIdr)}</strong></div></>}
       </div><p className="muted pos-receipt-foot">{t(receipt.paymentId === null ? "Cetakan ini menunjukkan tagihan belum lunas." : "Terima kasih. Pembayaran telah dikonfirmasi.")}</p>
     </Panel>}
+    <Suspense fallback={null}><EntranceMotion target={content} variant="content" revision={JSON.stringify(receipt && { ...receipt, calculatedAt: undefined })} /></Suspense>
   </section>;
 }

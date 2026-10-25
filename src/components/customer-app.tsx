@@ -245,7 +245,7 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
     ? <div className="sticky-action"><Button className="primary-button full-width" onClick={() => router.push(`${base}/cart`)}><span>{t("Lihat Keranjang ·")}{" "}{cart.reduce((n, item) => n + item.quantity, 0)} {" "}{t("item")}</span><span>{money(cartSubtotal(cart))}</span></Button></div>
     : null;
 
-  return <CustomerShell tableNumber={table?.tableNumber} footer={footer}>
+  return <CustomerShell tableNumber={table?.tableNumber} footer={footer} revision={JSON.stringify([cart, statuses])}>
     {view === "status" ? <>
       {placed && <div className="success-panel" role="status"><h1>{t("Terima kasih!")}</h1><p>{t("Pesanan Anda telah dikirim ke kasir dan menunggu konfirmasi.")}</p></div>}
       <h1>{t("Status pesanan")}</h1>
