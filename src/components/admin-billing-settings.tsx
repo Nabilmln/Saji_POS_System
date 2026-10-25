@@ -76,25 +76,24 @@ export function BillingSettings() {
     draft.discountAmountIdr !== applied.discountAmountIdr || draft.taxEnabled !== applied.taxEnabled ||
     rate !== applied.taxRateBps));
 
-  return <div className="admin-stack">
+  return <div className="admin-stack billing-settings">
     <p className="section-intro">{t("Atur diskon nominal dan pajak. Nilai baru berlaku pada tagihan yang belum lunas saat dihitung ulang.")}</p>
 
     {error && <Alert className="inline-alert" role="alert">{t(error)} {conflict && <Button className="text-button" onClick={() => { setRevision((value) => value + 1); setConflict(false); }}>{t("Muat pengaturan terbaru")}</Button>}</Alert>}
     {!draft || !applied ? error ? <Button className="secondary-button" onClick={() => { setError(""); setRevision((value) => value + 1); }}>{t("Coba lagi")}</Button> : <LoadingState variant="form">{t("Memuat pengaturan…")}</LoadingState> : <form onSubmit={save} className="admin-settings-grid">
-      <div className="admin-stack"><Section id="discount-settings" title={t("Diskon nominal")}>
-        <div className="settings-block"><label className="check-row"><Input type="checkbox" checked={draft.discountEnabled} onChange={(event) => setDraft({ ...draft, discountEnabled: event.target.checked })} />{t("Gunakan diskon")}</label>
-          <p className="muted">{t("Diskon tetap dalam rupiah, maksimal sebesar subtotal.")}</p>
+      <div className="billing-sections"><Section id="discount-settings" title={t("Diskon nominal")} actions={<label className="check-row"><Input type="checkbox" checked={draft.discountEnabled} onChange={(event) => setDraft({ ...draft, discountEnabled: event.target.checked })} />{t("Gunakan diskon")}</label>}>
+        <div className="settings-block">
           <label className="field-label" htmlFor="discount-amount">{t("Jumlah diskon (Rp)")}</label>
-          <Input className="text-field" id="discount-amount" inputMode="numeric" pattern="(0|[1-9][0-9]*)" maxLength={16} required value={draft.discountAmountIdr} onChange={(event) => setDraft({ ...draft, discountAmountIdr: event.target.value })} />
+          <Input className="text-field" id="discount-amount" aria-describedby="discount-help" inputMode="numeric" pattern="(0|[1-9][0-9]*)" maxLength={16} required value={draft.discountAmountIdr} onChange={(event) => setDraft({ ...draft, discountAmountIdr: event.target.value })} />
+          <p className="muted" id="discount-help">{t("Diskon tetap dalam rupiah, maksimal sebesar subtotal.")}</p>
         </div>
-        </Section><Section id="tax-settings" title={t("Pajak penjualan")}><div className="settings-block"><label className="check-row"><Input type="checkbox" checked={draft.taxEnabled} onChange={(event) => setDraft({ ...draft, taxEnabled: event.target.checked })} />{t("Gunakan pajak")}</label>
-          <p className="muted">{t("Pajak dihitung dari subtotal sebelum diskon.")}</p>
+        </Section><Section id="tax-settings" title={t("Pajak penjualan")} actions={<label className="check-row"><Input type="checkbox" checked={draft.taxEnabled} onChange={(event) => setDraft({ ...draft, taxEnabled: event.target.checked })} />{t("Gunakan pajak")}</label>}><div className="settings-block">
           <label className="field-label" htmlFor="tax-percent">{t("Tarif pajak (%)")}</label>
-          <Input className="text-field" id="tax-percent" inputMode="decimal" pattern="(100(\.0{1,2})?|[0-9]{1,2}(\.[0-9]{1,2})?)" required value={draft.taxPercent} onChange={(event) => setDraft({ ...draft, taxPercent: event.target.value })} />
+          <Input className="text-field" id="tax-percent" aria-describedby="tax-help" inputMode="decimal" pattern="(100(\.0{1,2})?|[0-9]{1,2}(\.[0-9]{1,2})?)" required value={draft.taxPercent} onChange={(event) => setDraft({ ...draft, taxPercent: event.target.value })} />
+          <p className="muted" id="tax-help">{t("Pajak dihitung dari subtotal sebelum diskon.")}</p>
         </div>
-        </Section><Section id="save-settings" title={t("Tinjau dan simpan")}><p className="muted">{t("Versi aktif:")}{" "}{applied.version} {" "}{t("· Terakhir diperbarui")}{" "}{formatDateTime(applied.updatedAt, locale)} {" "}{t("WIB")}</p>
+        </Section><Section id="save-settings" title={t("Tinjau dan simpan")} actions={<Button className="primary-button" disabled={busy || conflict || !changed}>{busy ? t("Menyimpan…") : t("Simpan Perubahan")}</Button>}><p className="muted">{t("Versi aktif:")}{" "}{applied.version} {" "}{t("· Terakhir diperbarui")}{" "}<time dateTime={applied.updatedAt}>{formatDateTime(applied.updatedAt, locale)}</time></p>
         <p className="muted">{t("Perubahan akan memengaruhi tagihan meja yang belum lunas.")}</p>
-        <Button className="primary-button" disabled={busy || conflict || !changed}>{busy ? t("Menyimpan…") : t("Simpan Perubahan")}</Button>
       </Section></div>
       <DetailPane><aside className="admin-panel">
         <h2>{t("Contoh tagihan")}</h2><p className="muted">{t("Simulasi dari subtotal")}{" "}{money("100000")}{t(". Nilai ini belum diterapkan sampai disimpan.")}</p>

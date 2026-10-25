@@ -18,6 +18,20 @@
 .login-panel .login-footnote{font-size:12px;line-height:1.6;margin:24px 0 0;padding-top:16px;border-top:1px solid var(--border);color:var(--text-muted)}
 @media(max-width:639px){.login-page{padding:24px 16px}.login-panel{padding:24px 20px}.login-header{margin-bottom:28px}.login-panel h1{font-size:22px}}
 
+.billing-settings{width:100%;max-width:800px;container-type:inline-size}
+.billing-settings>.section-intro{margin:0}
+.billing-sections{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+.billing-sections>.action-section{padding:16px}
+.billing-settings .section-heading{align-items:center;gap:8px;margin-bottom:12px}
+.billing-settings .section-heading h2{font-size:14px;margin:0}
+.billing-settings .check-row{font-size:12px;margin:0}
+.billing-settings .settings-block{padding:0}
+.billing-settings .settings-block .field-label{font-size:12px;margin:0 0 6px}
+.billing-settings .settings-block .text-field{max-width:280px}
+.billing-settings .settings-block>p{margin:8px 0 0}
+.billing-settings #save-settings>p{font-size:12px;margin:6px 0 0}
+@container(min-width:600px){.billing-sections{grid-template-columns:repeat(2,minmax(0,1fr))}.billing-sections>#save-settings{grid-column:1/-1}}
+
 .report-insights{display:grid;gap:20px;min-width:0;font-variant-numeric:tabular-nums}
 .report-insights .detail-heading h2{margin:0}
 .report-insights .detail-heading{margin-bottom:0}
