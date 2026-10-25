@@ -5,7 +5,7 @@ import { useNotice } from "@/components/ui/notice";
 import { useConfirmation } from "@/components/ui/confirmation";
 import { formatDateTime } from "@/lib/time";
 
-import { Alert, Button, LoadingState, Input } from "@/components/ui/controls";
+import { Alert, Button, LoadingState, Input, Switch } from "@/components/ui/controls";
 
 import { Section } from "@/components/ui/section";
 import { DetailPane } from "@/components/app-shells";
@@ -81,13 +81,13 @@ export function BillingSettings() {
 
     {error && <Alert className="inline-alert" role="alert">{t(error)} {conflict && <Button className="text-button" onClick={() => { setRevision((value) => value + 1); setConflict(false); }}>{t("Muat pengaturan terbaru")}</Button>}</Alert>}
     {!draft || !applied ? error ? <Button className="secondary-button" onClick={() => { setError(""); setRevision((value) => value + 1); }}>{t("Coba lagi")}</Button> : <LoadingState variant="form">{t("Memuat pengaturan…")}</LoadingState> : <form onSubmit={save} className="admin-settings-grid">
-      <div className="billing-sections"><Section id="discount-settings" title={t("Diskon nominal")} actions={<label className="check-row"><Input type="checkbox" checked={draft.discountEnabled} onChange={(event) => setDraft({ ...draft, discountEnabled: event.target.checked })} />{t("Gunakan diskon")}</label>}>
+      <div className="billing-sections"><Section id="discount-settings" title={t("Diskon nominal")} actions={<Switch label="Gunakan diskon" checked={draft.discountEnabled} onChange={(checked) => setDraft({ ...draft, discountEnabled: checked })} />}>
         <div className="settings-block">
           <label className="field-label" htmlFor="discount-amount">{t("Jumlah diskon (Rp)")}</label>
           <Input className="text-field" id="discount-amount" aria-describedby="discount-help" inputMode="numeric" pattern="(0|[1-9][0-9]*)" maxLength={16} required value={draft.discountAmountIdr} onChange={(event) => setDraft({ ...draft, discountAmountIdr: event.target.value })} />
           <p className="muted" id="discount-help">{t("Diskon tetap dalam rupiah, maksimal sebesar subtotal.")}</p>
         </div>
-        </Section><Section id="tax-settings" title={t("Pajak penjualan")} actions={<label className="check-row"><Input type="checkbox" checked={draft.taxEnabled} onChange={(event) => setDraft({ ...draft, taxEnabled: event.target.checked })} />{t("Gunakan pajak")}</label>}><div className="settings-block">
+        </Section><Section id="tax-settings" title={t("Pajak penjualan")} actions={<Switch label="Gunakan pajak" checked={draft.taxEnabled} onChange={(checked) => setDraft({ ...draft, taxEnabled: checked })} />}><div className="settings-block">
           <label className="field-label" htmlFor="tax-percent">{t("Tarif pajak (%)")}</label>
           <Input className="text-field" id="tax-percent" aria-describedby="tax-help" inputMode="decimal" pattern="(100(\.0{1,2})?|[0-9]{1,2}(\.[0-9]{1,2})?)" required value={draft.taxPercent} onChange={(event) => setDraft({ ...draft, taxPercent: event.target.value })} />
           <p className="muted" id="tax-help">{t("Pajak dihitung dari subtotal sebelum diskon.")}</p>

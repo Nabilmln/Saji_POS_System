@@ -90,7 +90,11 @@ test("menu, category and billing changes require the shared confirmation", async
   await confirmAction(page, "Aktifkan");
   await expect(category.getByRole("button", { name: "Nonaktifkan", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Diskon & Pajak", exact: true }).click();
-  await page.getByLabel("Gunakan diskon", { exact: true }).check();
+  const discountSwitch = page.getByRole("switch", { name: "Gunakan diskon", exact: true });
+  await expect(discountSwitch).not.toBeChecked();
+  await discountSwitch.focus();
+  await page.keyboard.press("Space");
+  await expect(discountSwitch).toBeChecked();
   await page.getByLabel("Jumlah diskon (Rp)", { exact: true }).fill("1000");
   await page.getByRole("button", { name: "Simpan Perubahan", exact: true }).click();
   await expect(dialog).toHaveAccessibleName("Simpan pengaturan?");

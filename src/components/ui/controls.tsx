@@ -16,6 +16,17 @@ export function Input({ className, type, ...props }: ComponentProps<"input">) {
   return <input type={type} className={className ?? (type === "checkbox" || type === "radio" ? undefined : "text-field")} {...props} />;
 }
 
+export function Switch({ label, checked, onChange, disabled }: {
+  label: string; checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean;
+}) {
+  const { t } = useLocale();
+  return <label className="toggle-switch">
+    <Input type="checkbox" role="switch" aria-label={t(label)} checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} />
+    <span className="toggle-switch-track" aria-hidden="true" />
+    <span className="toggle-switch-state" aria-hidden="true">{t(checked ? "Aktif" : "Nonaktif")}</span>
+  </label>;
+}
+
 export function Textarea({ className = "text-field", ...props }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
   return <textarea className={className} {...props} />;
 }
