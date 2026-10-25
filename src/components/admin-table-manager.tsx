@@ -5,8 +5,9 @@ import { useNotice, statusNotice } from "@/components/ui/notice";
 import { useConfirmation } from "@/components/ui/confirmation";
 
 import { StatusBadge } from "@/components/ui/status-badge";
-import { DownloadSimpleIcon, PencilSimpleIcon, PowerIcon, QrCodeIcon, TrashSimpleIcon } from "@phosphor-icons/react";
+import { DownloadSimpleIcon, QrCodeIcon } from "@phosphor-icons/react";
 import { TableCard } from "@/components/ui/table-card";
+import { TableAction } from "@/components/ui/table-actions";
 
 import { Alert, Panel, Button, Input, EmptyState, Pagination, LoadingState } from "@/components/ui/controls";
 import { ConfirmDelete } from "@/components/ui/confirm-delete";
@@ -116,9 +117,9 @@ export function TableManager() {
         metadata={{ label: t("Pemesanan QR"), value: <StatusBadge status={table.isActive ? "ACTIVE" : "INACTIVE"} /> }}
         primaryAction={<Button disabled={busy || !table.isActive} aria-pressed={preview?.id === table.id} onClick={() => openQr(table)}><QrCodeIcon size={16} aria-hidden="true" />{t("Lihat QR")}</Button>}
         actions={<>
-          <Button className="icon-button" aria-label={t("Ubah nomor")} title={t("Ubah nomor")} disabled={busy || table.status !== "AVAILABLE"} onClick={() => begin(table)}><PencilSimpleIcon size={17} aria-hidden="true" /></Button>
-          <Button className="icon-button" aria-label={table.isActive ? t("Nonaktifkan") : t("Aktifkan")} title={table.isActive ? t("Nonaktifkan") : t("Aktifkan")} disabled={busy || table.status !== "AVAILABLE"} onClick={() => void toggle(table)}><PowerIcon size={17} aria-hidden="true" /></Button>
-          <Button className="icon-button danger-text" aria-label={t("Hapus")} title={t("Hapus")} disabled={busy || table.status !== "AVAILABLE"} onClick={() => setDeleting(table)}><TrashSimpleIcon size={17} aria-hidden="true" /></Button>
+          <TableAction action="renumber" disabled={busy || table.status !== "AVAILABLE"} onClick={() => begin(table)} />
+          <TableAction action={table.isActive ? "deactivate" : "activate"} disabled={busy || table.status !== "AVAILABLE"} onClick={() => void toggle(table)} />
+          <TableAction action="delete" disabled={busy || table.status !== "AVAILABLE"} onClick={() => setDeleting(table)} />
         </>}
       />)}</div>}
     </section>

@@ -9,6 +9,7 @@ import { Button } from "./controls";
 const actions = {
   edit: { icon: PencilSimpleIcon, label: "Edit" },
   rename: { icon: PencilSimpleIcon, label: "Ubah nama" },
+  renumber: { icon: PencilSimpleIcon, label: "Ubah nomor" },
   password: { icon: KeyIcon, label: "Atur kata sandi" },
   activate: { icon: PowerIcon, label: "Aktifkan" },
   deactivate: { icon: PowerIcon, label: "Nonaktifkan" },

@@ -5,7 +5,7 @@ import { useNotice, statusNotice } from "@/components/ui/notice";
 import { useConfirmation } from "@/components/ui/confirmation";
 
 import { StatusBadge } from "@/components/ui/status-badge";
-import { CircleNotchIcon, UploadSimpleIcon } from "@phosphor-icons/react";
+import { CircleNotchIcon, MagnifyingGlassIcon, UploadSimpleIcon } from "@phosphor-icons/react";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { adminApi, AdminApiError, jsonRequest } from "@/lib/admin/client";
@@ -192,18 +192,16 @@ export function MenuManager() {
   const categoryName = new Map(categories.map((category) => [category.id, category.name]));
   const visibleCategories = categories.filter((category) => category.name.toLocaleLowerCase("id-ID").includes(categorySearch.toLocaleLowerCase("id-ID")));
   const currentCategoryPage = Math.min(categoryPage, Math.max(1, Math.ceil(visibleCategories.length / categoryPageSize)));
-  return <div className="admin-stack">
+  return <div className="admin-stack menu-manager">
     <p className="section-intro">{t("Kelola menu yang tampil di QR meja dan susun kategori katalog.")}</p>
 
     {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
 
-    <Section id="menu-filters" title={t("Temukan menu")} description={t("Filter menu berdasarkan nama, kategori, dan ketersediaan.")}>
-      <div className="admin-filters menu-filters">
-        <label>{t("Cari menu")}<Input className="text-field" type="search" maxLength={160} value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder={t("Nama menu")} /></label>
+    <div id="menu-filters" className="menu-filters" role="search">
+        <label className="menu-search">{t("Cari menu")}<MagnifyingGlassIcon size={18} aria-hidden="true" /><Input className="text-field" type="search" maxLength={160} value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder={t("Nama menu")} /></label>
         <Selection label={t("Kategori")} kind="dropdown" value={categoryFilter} onChange={(value) => { setCategoryFilter(value); setPage(1); }} options={[{ value: "", label: t("Semua kategori") }, ...categories.map((category) => ({ value: category.id, label: category.name }))]} />
         <Selection label={t("Ketersediaan")} value={availability} onChange={(value) => { setAvailability(value); setPage(1); }} options={[{ value: "", label: t("Semua") }, { value: "true", label: t("Tersedia") }, { value: "false", label: t("Tidak tersedia") }]} />
-      </div>
-    </Section>
+    </div>
     <Section id="menu-items" title={t("Daftar menu")} description={t("Kelola harga, foto, dan ketersediaan setiap menu.")} actions={<Button className="primary-button" disabled={busy || !categories.some((category) => category.isActive)} onClick={() => beginMenu()}>{t("Tambah Menu")}</Button>}>
       {!loading && !categories.some((category) => category.isActive) && <p className="muted">{t("Buat kategori aktif sebelum menambah menu.")}</p>}
       {editing && <DetailPane><form className="admin-form" onSubmit={saveMenu}>
@@ -235,7 +233,7 @@ export function MenuManager() {
       </form></DetailPane>}
       {loading ? <LoadingState variant="menu">{t("Memuat menu…")}</LoadingState> : !list?.items.length ? <EmptyState className="empty-state"><h2>{t("Menu tidak ditemukan")}</h2><p>{t("Ubah pencarian atau tambahkan menu baru.")}</p></EmptyState> : <>
         <div className="admin-menu-grid">{list.items.map((item) => <MenuCard menu={item} category={categoryName.get(item.categoryId) ?? t("Kategori dihapus")} className="admin-list-row admin-menu-card" key={item.id} badge={<StatusBadge status={categoryName.has(item.categoryId) && item.isAvailable ? "AVAILABLE" : "INACTIVE"}>{!categoryName.has(item.categoryId) ? t("Pilih kategori") : item.isAvailable ? t("Tersedia") : t("Tidak tersedia")}</StatusBadge>}>
-          <div className="admin-row-actions"><Button className="text-button" disabled={busy} onClick={() => beginMenu(item)}>{t("Edit")}</Button><Button className="text-button" disabled={busy} onClick={() => void toggleMenu(item)}>{item.isAvailable ? t("Nonaktifkan") : t("Aktifkan")}</Button><Button className="text-button danger-text" disabled={busy} onClick={() => setDeleting({ kind: "menu", item })}>{t("Hapus")}</Button></div>
+          <TableActions><TableAction action="edit" disabled={busy} onClick={() => beginMenu(item)} /><TableAction action={item.isAvailable ? "deactivate" : "activate"} disabled={busy} onClick={() => void toggleMenu(item)} /><TableAction action="delete" disabled={busy} onClick={() => setDeleting({ kind: "menu", item })} /></TableActions>
         </MenuCard>)}</div>
         <Pagination label="Navigasi menu" pageSize={pageSize} onPageSizeChange={setPageSize} page={page} hasNext={page * list.pageSize < list.total} total={list.total} onChange={setPage} disabled={busy || loading} />
       </>}

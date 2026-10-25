@@ -42,6 +42,7 @@ test("owner navigation uses shared localized skeletons without blocking the side
   await expect(page.locator(".menu-card").filter({ hasText: data.menuName })).toBeVisible();
   await page.getByRole("button", { name: "Bahasa Indonesia", exact: true }).click();
   await page.setViewportSize({ width: 1440, height: 900 });
+  await expect(page.locator(".staff-shell:visible")).toHaveClass(/hover-navigation/);
   for (const [name, pattern, shape] of [
     ["Meja & QR", "**/api/admin/tables", ".skeleton-grid"],
     ["Akun Staf", "**/api/admin/staff?*", ".skeleton-table"],
@@ -49,6 +50,8 @@ test("owner navigation uses shared localized skeletons without blocking the side
   ]) {
     const done = await hold(page, pattern);
     try {
+      await page.locator(".staff-sidebar:visible").hover();
+      await expect(page.locator(".staff-shell:visible")).not.toHaveClass(/sidebar-collapsed/);
       await page.locator(".staff-sidebar").getByRole("link", { name, exact: true }).click();
       await expect(page.locator(`.loading-skeleton ${shape}`)).toBeVisible();
       await expect(page.locator(".staff-sidebar").getByRole("link", { name: "Laporan Penjualan", exact: true })).toBeEnabled();

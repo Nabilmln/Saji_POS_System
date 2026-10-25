@@ -43,7 +43,8 @@ test("English owner sections and cashier order-to-receipt workflow preserve perm
   expect((await call(page.request, "/staff/me")).status()).toBe(403);
   await page.goto("/admin/menus");
   await expect(page.getByRole("navigation", { name: "Page sections" })).toHaveCount(0);
-  await expect(page.locator("#menu-filters")).toContainText("Find a menu item");
+  await expect(page.getByRole("search")).toBeVisible();
+  await expect(page.locator("#menu-filters").getByRole("heading")).toHaveCount(0);
   await expect(page.locator("#menu-categories")).toContainText("Categories");
   await page.getByRole("button", { name: "Add menu item", exact: true }).click();
   await page.getByRole("combobox", { name: "Category *", exact: true }).click();

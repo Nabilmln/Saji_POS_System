@@ -162,7 +162,7 @@ test("menu page-size toggles reset paging, preserve row boundaries and stay sepa
   await page.setViewportSize({ width: 1440, height: 1000 }); await signIn(page, "admin"); await page.goto("/admin/menus");
   await page.getByLabel("Cari menu", { exact: true }).fill("Revision batch");
   await expect(page.locator(".admin-menu-grid .menu-card")).toHaveCount(10);
-  expect(await page.locator(".admin-menu-grid").evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" ").length)).toBe(4);
+  expect(await page.locator(".admin-menu-grid").evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" ").length)).toBe(5);
   const filters = await page.locator(".menu-filters > *").evaluateAll((elements) => elements.map((element) => element.getBoundingClientRect().bottom));
   expect(Math.max(...filters) - Math.min(...filters)).toBeLessThanOrEqual(2);
   const pagination = page.locator("#menu-items .pagination-panel");
