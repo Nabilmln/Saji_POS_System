@@ -11,7 +11,7 @@ import { usePolling } from "@/lib/use-polling";
 
 import { useCallback, useEffect, useState } from "react";
 import { ArrowsClockwiseIcon } from "@phosphor-icons/react";
-import { DataTable, TableDateTime } from "@/components/ui/data-table";
+import { DataTable, TableDateTime, TableAction, TableActions } from "@/components/ui/data-table";
 import { usePagination } from "@/lib/use-pagination";
 import { adminPage, adminApi, jsonRequest } from "@/lib/admin/client";
 import { Selection, Panel, Button, Alert, Input, LoadingState, Pagination } from "@/components/ui/controls";
@@ -134,7 +134,7 @@ export function PosOverview() {
       <div className="admin-filters"><Selection label={t("Status pesanan")} value={orderStatus} onChange={(value) => { setOrderStatus(value as Order["status"] | "ALL"); setOrderPage(1); }} options={[{ value: "ALL", label: t("Semua") }, ...orderStatusOptions.map((option) => ({ ...option, label: t(option.label) }))]} /><Selection label={t("Meja")} kind="dropdown" value={orderTable} onChange={(value) => { setOrderTable(value); setOrderPage(1); }} options={[{ value: "", label: t("Semua meja") }, ...tables.map((table) => ({ value: table.id, label: t("Meja {0}", { "0": table.tableNumber }) }))]} /><DatePicker label="Tanggal" value={orderDate} onChange={(value) => { setOrderDate(value); setOrderPage(1); }} /></div>
       {!loaded ? <LoadingState variant="table">{t("Memuat pesanan\u2026")}</LoadingState> : orders.length ? <DataTable caption={t("Inbox pesanan")} columns={[t("Order"), t("Pelanggan"), t("Meja"), t("Waktu"), t("Status"), t("Tindakan")]}>{orders.map((order) => <tr key={order.id}>
         <th scope="row">{order.id.slice(0, 8)}<small className="table-secondary">{order.source === "QR" ? "QR" : t("Kasir")} {"\u00b7"} {order.itemCount} {t("item")}</small></th><td>{order.customerName}</td><td>{order.tableNumber}</td><td className="date-cell"><TableDateTime value={order.createdAt} locale={locale} /></td><td><StatusBadge status={order.status} /></td>
-        <td><div className="admin-row-actions">{order.status === "PENDING" && <Button disabled={busy === `confirm:${order.id}`} onClick={() => void updateOrder(`/api/staff/orders/${order.id}/confirm`, "POST", {}, `confirm:${order.id}`)}>{busy === `confirm:${order.id}` ? t("Memproses\u2026") : t("Konfirmasi")}</Button>}<Button className="secondary-button" onClick={() => selectTable(order.tableId)}>{t("Detail")}</Button></div></td>
+        <td><TableActions>{order.status === "PENDING" && <TableAction action="confirm" disabled={busy === `confirm:${order.id}`} aria-busy={busy === `confirm:${order.id}`} onClick={() => void updateOrder(`/api/staff/orders/${order.id}/confirm`, "POST", {}, `confirm:${order.id}`)} />}<TableAction action="detail" onClick={() => selectTable(order.tableId)} /></TableActions></td>
       </tr>)}</DataTable> : <p className="empty-state">{t("Belum ada pesanan pada status ini.")}</p>}
     </Panel>
     <Pagination label="Navigasi pesanan" pageSize={orderPageSize} onPageSizeChange={setOrderPageSize} page={orderPage} hasNext={hasNext} onChange={setOrderPage} disabled={!!busy} />

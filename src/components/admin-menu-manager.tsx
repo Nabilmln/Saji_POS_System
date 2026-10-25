@@ -10,7 +10,7 @@ import { CircleNotchIcon, UploadSimpleIcon } from "@phosphor-icons/react";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { adminApi, AdminApiError, jsonRequest } from "@/lib/admin/client";
 import { ConfirmDelete } from "@/components/ui/confirm-delete";
-import { DataTable } from "@/components/ui/data-table";
+import { DataTable, TableAction, TableActions } from "@/components/ui/data-table";
 import { usePagination } from "@/lib/use-pagination";
 import { Photo } from "@/components/ui/photo";
 import { MenuCard } from "@/components/menu-card";
@@ -254,7 +254,7 @@ export function MenuManager() {
       </form>}
       {loading && !list ? <LoadingState variant="table">{t("Memuat menu…")}</LoadingState> : !visibleCategories.length ? <EmptyState className="empty-state"><h2>{categories.length ? t("Kategori tidak ditemukan") : t("Belum ada kategori")}</h2><p>{categories.length ? t("Coba nama kategori lain.") : t("Tambahkan kategori untuk menyusun menu.")}</p></EmptyState> : <DataTable caption={t("Kategori")} columns={[t("Nama kategori"), t("Urutan"), t("Jumlah menu"), t("Status"), t("Tindakan")]}>{visibleCategories.slice((currentCategoryPage - 1) * categoryPageSize, currentCategoryPage * categoryPageSize).map((category) => <tr key={category.id}>
         <th scope="row">{category.name}</th><td>{category.sortOrder}</td><td>{category.menuCount}</td><td><StatusBadge status={category.isActive ? "ACTIVE" : "INACTIVE"} /></td>
-        <td><div className="admin-row-actions"><Button className="text-button" disabled={busy} onClick={() => beginCategory(category)}>{t("Edit")}</Button><Button className="text-button" disabled={busy} onClick={() => void changeCategory(category)}>{category.isActive ? t("Nonaktifkan") : t("Aktifkan")}</Button><Button className="text-button danger-text" disabled={busy} onClick={() => setDeleting({ kind: "category", item: category })}>{t("Hapus")}</Button></div></td>
+        <td><TableActions><TableAction action="edit" disabled={busy} onClick={() => beginCategory(category)} /><TableAction action={category.isActive ? "deactivate" : "activate"} disabled={busy} onClick={() => void changeCategory(category)} /><TableAction action="delete" disabled={busy} onClick={() => setDeleting({ kind: "category", item: category })} /></TableActions></td>
       </tr>)}</DataTable>}
       <Pagination label="Navigasi kategori" pageSize={categoryPageSize} onPageSizeChange={setCategoryPageSize} page={currentCategoryPage} hasNext={currentCategoryPage * categoryPageSize < visibleCategories.length} total={visibleCategories.length} onChange={setCategoryPage} disabled={busy || loading} />
     </Section>

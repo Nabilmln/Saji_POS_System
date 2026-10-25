@@ -34,7 +34,7 @@ test("reservation creation, cancellation, check-in and empty-session closure wor
   await expect(tableWrap.locator("caption")).toHaveCount(0);
   await expect(tableWrap.getByRole("table", { name: "Daftar reservasi", exact: true })).toBeVisible();
   const checkInWidth = await row.getByRole("button", { name: "Check-in", exact: true }).boundingBox();
-  const actionWidth = await row.locator(".admin-row-actions").boundingBox();
+  const actionWidth = await row.locator(".table-actions").boundingBox();
   expect(checkInWidth!.width).toBeLessThan(actionWidth!.width - 8);
   expect(await tableWrap.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath("reservation-columns-id-desktop.png"), fullPage: true });

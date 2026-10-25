@@ -8,7 +8,7 @@ import { adminApi, adminPage, AdminApiError, jsonRequest } from "@/lib/admin/cli
 import { usePagination } from "@/lib/use-pagination";
 import { formatDate } from "@/lib/time";
 import { PasswordInput, Pagination, Panel, Button, Alert, Input, LoadingState } from "@/components/ui/controls";
-import { DataTable } from "@/components/ui/data-table";
+import { DataTable, TableAction, TableActions } from "@/components/ui/data-table";
 import { ConfirmDelete } from "@/components/ui/confirm-delete";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { DetailPane } from "@/components/app-shells";
@@ -94,7 +94,7 @@ export function StaffManager() {
     <Panel><h2>{t("Daftar akun")}</h2>
       {loading ? <LoadingState variant="table">{t("Memuat staf\u2026")}</LoadingState> : staff.length ? <DataTable caption={t("Daftar akun")} columns={[t("Nama staf"), t("Email"), t("Peran"), t("Status"), t("Dibuat"), t("Tindakan")]}>{staff.map((item) => <tr key={item.userId}>
         <th scope="row">{item.displayName}</th><td>{item.email ?? t("Email tidak tersedia")}</td><td>{t(item.role === "ADMIN" ? "Admin" : "Kasir")}</td><td><StatusBadge status={item.isActive ? "ACTIVE" : "INACTIVE"} /></td><td className="date-cell">{formatDate(item.createdAt, locale)}</td>
-        <td><div className="admin-row-actions"><Button className="text-button" disabled={busy} onClick={() => begin(item)}>{t("Ubah nama")}</Button>{item.role === "CASHIER" ? <><Button className="text-button" disabled={busy} onClick={() => begin(item, true)}>{t("Atur kata sandi")}</Button><Button className={`text-button ${item.isActive ? "danger-text" : ""}`} disabled={busy} onClick={() => void toggle(item)}>{t(item.isActive ? "Nonaktifkan" : "Aktifkan")}</Button><Button className="text-button danger-text" disabled={busy} onClick={() => setDeleting(item)}>{t("Hapus")}</Button></> : <span className="protected-label">{t("Pemilik eksklusif")}</span>}</div></td>
+        <td><TableActions><TableAction action="rename" disabled={busy} onClick={() => begin(item)} />{item.role === "CASHIER" && <><TableAction action="password" disabled={busy} onClick={() => begin(item, true)} /><TableAction action={item.isActive ? "deactivate" : "activate"} disabled={busy} onClick={() => void toggle(item)} /><TableAction action="delete" disabled={busy} onClick={() => setDeleting(item)} /></>}</TableActions>{item.role === "ADMIN" && <span className="protected-label">{t("Pemilik eksklusif")}</span>}</td>
       </tr>)}</DataTable> : <p className="empty-state">{t("Tidak ada staf pada halaman ini.")}</p>}
     </Panel>
     <Pagination pageSize={pageSize} onPageSizeChange={setPageSize} page={page} hasNext={hasNext} onChange={setPage} disabled={busy || loading} />
