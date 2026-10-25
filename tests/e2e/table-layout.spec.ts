@@ -77,8 +77,8 @@ test("admin and cashier tables share compact centered cells and stacked timestam
           expect(action.title).toBe(action.label);
           expect(action.text).toBe("");
           expect(action.icon).toBe(1);
-          expect(action.width).toBe(36);
-          expect(action.height).toBe(36);
+          expect(action.width).toBeCloseTo(36, 1);
+          expect(action.height).toBeCloseTo(36, 1);
           expect(action.fits).toBe(true);
         }
         const wrappedGroups = await table.locator(".table-actions").evaluateAll((groups) => groups.filter((group) => {

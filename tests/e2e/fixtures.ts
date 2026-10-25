@@ -31,7 +31,7 @@ export const test = base.extend<{ data: Data }>({
       for (const id of staffIds) { await pool.query("DELETE FROM staff_profiles WHERE user_id=$1", [id]); await pool.query('DELETE FROM neon_auth."user" WHERE id=$1', [id]); }
       await pool.query("UPDATE staff_profiles SET is_active=true WHERE user_id='00000000-0000-4000-8000-000000000002'");
       await pool.query("UPDATE store_settings SET store_name=$1,discount_enabled=$2,discount_amount_idr=$3,tax_enabled=$4,tax_rate_bps=$5,version=version+1 WHERE id=1", [settings.store_name, settings.discount_enabled, settings.discount_amount_idr, settings.tax_enabled, settings.tax_rate_bps]);
-      await pool.end();
+      if (!pool.ended) await pool.end();
     }
   },
 });

@@ -123,6 +123,12 @@ const app = spawn(process.execPath, ["node_modules/next/dist/bin/next", "start",
   stdio: "inherit", windowsHide: true,
   env: { ...process.env, DATABASE_URL: databaseUrl, DATABASE_URL_UNPOOLED: databaseUrl, NEON_AUTH_BASE_URL: "http://127.0.0.1:3101", NEON_AUTH_COOKIE_SECRET: "local-browser-test-cookie-secret-at-least-32-chars", CUSTOMER_TOKEN_SECRET: "local-browser-test-customer-secret-at-least-32-chars", AWS_ACCESS_KEY_ID: "e2e-storage-key", AWS_SECRET_ACCESS_KEY: "e2e-storage-secret", AWS_ENDPOINT_URL_S3: "http://127.0.0.1:3102", AWS_REGION: "ap-southeast-1" },
 });
-const stop = () => { app.kill(); authServer.close(); storageServer.close(); void pool.end(); };
+let closed = false;
+const cleanup = () => {
+  if (closed) return;
+  closed = true;
+  authServer.close(); storageServer.close(); if (!pool.ended) void pool.end();
+};
+const stop = () => { app.kill(); cleanup(); };
 process.on("SIGTERM", stop); process.on("SIGINT", stop);
-app.on("exit", (code) => { authServer.close(); storageServer.close(); void pool.end(); process.exitCode = code ?? 0; });
+app.on("exit", (code) => { cleanup(); process.exitCode = code ?? 0; });

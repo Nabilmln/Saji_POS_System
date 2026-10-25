@@ -11,6 +11,8 @@ test("shared table confirmation is safe to cancel, accessible and cancelled by n
   const dialog = page.getByRole("dialog");
   let mutations = 0;
   page.on("request", (request) => { if (request.method() === "PATCH" && request.url().endsWith(`/api/admin/tables/${data.tableId}`)) mutations++; });
+  // Leaving hover navigation changes the card's position before a pointer click.
+  await card.hover();
   await trigger.click();
   await expect(dialog).toHaveAccessibleName("Nonaktifkan meja?");
   await expect(dialog).toHaveAccessibleDescription(new RegExp("Kode QR meja tidak akan menerima pesanan baru"));

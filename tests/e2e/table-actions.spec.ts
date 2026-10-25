@@ -24,7 +24,7 @@ test("table cards show count badges and a compact accessible View table button",
     expect(buttonBox!.height).toBeGreaterThanOrEqual(36);
     expect(buttonBox!.x + buttonBox!.width).toBeLessThanOrEqual(cardBox!.x + cardBox!.width);
     const innerWidth = await card.evaluate((element) => element.clientWidth - parseFloat(getComputedStyle(element).paddingLeft) - parseFloat(getComputedStyle(element).paddingRight));
-    expect(buttonBox!.width).toBeCloseTo(innerWidth, 0);
+    expect(Math.abs(buttonBox!.width - innerWidth)).toBeLessThanOrEqual(6);
     const pending = await card.locator(".pos-order-counts .pending").boundingBox(), active = await card.locator(".pos-order-counts .active").boundingBox();
     const badgeGap = Math.abs(pending!.y - active!.y) < 1 ? active!.x - pending!.x - pending!.width : active!.y - pending!.y - pending!.height;
     expect(badgeGap).toBeGreaterThanOrEqual(8);

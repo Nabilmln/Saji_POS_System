@@ -36,6 +36,8 @@ test("one login routes by the stored account role and keeps owner access exclusi
     await page.goto(destination);
     await page.reload();
     await expect(page.locator(".staff-account-block")).toBeVisible();
+    // Expand first so the logout control has settled before clicking it.
+    await page.locator(".staff-sidebar").hover();
     await page.getByRole("button", { name: "Keluar", exact: true }).click();
     await expect(page).toHaveURL(/\/login$/);
     expect((await call(page.request, "/me")).status()).toBe(401);
