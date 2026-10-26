@@ -11,7 +11,7 @@ export function cartSubtotal(cart: CartItem[]): bigint {
   return cart.reduce((total, item) => total + BigInt(item.priceIdr) * BigInt(item.quantity), 0n);
 }
 
-export function formatIdr(value: bigint | string, _locale?: string): string {
+export function formatIdr(value: bigint | string): string {
   const amount = BigInt(value);
   const formatted = new Intl.NumberFormat("id-ID").format(amount < 0n ? -amount : amount);
   return amount < 0n ? `-Rp ${formatted}` : `Rp ${formatted}`;
