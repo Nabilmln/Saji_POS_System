@@ -1,5 +1,5 @@
-﻿import AxeBuilder from "@axe-core/playwright";
-import { test, expect, signIn, confirmAction } from "./fixtures";
+import AxeBuilder from "@axe-core/playwright";
+import { test, expect, signIn } from "./fixtures";
 
 test("menu cards share icon controls and five-column layouts with an unboxed search toolbar", async ({ page, data }, testInfo) => {
   await data.pool.query("UPDATE categories SET name='Pilihan dapur dan minuman segar' WHERE id=$1", [data.categoryId]);
