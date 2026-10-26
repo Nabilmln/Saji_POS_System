@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   billingSettingsSchema,
   checkoutSchema,
-  decimalString,
   manualOrderSchema,
   moneyIdrSchema,
   paymentSchema,
@@ -28,7 +27,6 @@ describe("API contracts", () => {
     expect(moneyIdrSchema.safeParse(1000).success).toBe(false);
     expect(moneyIdrSchema.safeParse("01").success).toBe(false);
     expect(moneyIdrSchema.safeParse("9".repeat(1000)).success).toBe(false);
-    expect(decimalString(9_000_000_000_000_000n)).toBe("9000000000000000");
     expect(revisionSchema.safeParse("0").success).toBe(false);
   });
 

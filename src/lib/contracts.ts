@@ -86,7 +86,3 @@ export const voidSchema = z.strictObject({
 }).refine((value) => Boolean(value.reasonType) === Boolean(value.reasonDetail), {
   message: "Provide both reason type and detail", path: ["reasonDetail"],
 });
-
-export function decimalString(value: bigint): string {
-  return value.toString();
-}
