@@ -1,4 +1,4 @@
-import { and, desc, eq, gte, isNull, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNull, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { orderItems, orders, payments, tableSessions } from "@/db/schema";
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     .where(and(gte(payments.paidAt, start), lt(payments.paidAt, end),
       isNull(orderItems.voidedAt)))
     .groupBy(orderItems.menuNameSnapshot)
-    .orderBy(desc(sql`sum(${orderItems.quantity})`), desc(sql`sum(${orderItems.unitPriceIdr} * ${orderItems.quantity})`))
+    .orderBy(desc(sql`sum(${orderItems.quantity})`), desc(sql`sum(${orderItems.unitPriceIdr} * ${orderItems.quantity})`), asc(orderItems.menuNameSnapshot))
     .limit(parsed.data.limit);
   return apiSuccess(rows);
 }
