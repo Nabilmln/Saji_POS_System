@@ -43,6 +43,13 @@
       "when": 1792488387056,
       "tag": "0005_deletable_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793000557865,
+      "tag": "0006_yummy_stephen_strange",
+      "breakpoints": true
     }
   ]
 }

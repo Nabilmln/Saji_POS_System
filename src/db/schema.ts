@@ -172,6 +172,7 @@ export const reservations = pgTable(
     uniqueIndex("reservations_one_reserved_per_table")
       .on(table.tableId)
       .where(sql`status = 'RESERVED'`),
+    index("reservations_created_at_idx").on(table.createdAt.desc()),
   ],
 );
 
