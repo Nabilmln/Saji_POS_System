@@ -77,7 +77,7 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
 
   function editDraft(changes: Partial<Draft>) {
     if (manualInFlight.current || draft.uncertain) return;
-    const next = { ...draft, ...changes, key: randomId() };
+    const next = { ...draft, ...changes, key: changes.key ?? (draft.key || randomId()) };
     sessionStorage.setItem(storageKey, JSON.stringify(next));
     setDraft(next);
   }
