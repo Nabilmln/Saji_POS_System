@@ -10,7 +10,7 @@ import { ReceiptPreview } from "@/components/pos-receipt";
 import { Pagination, Panel, Button, Alert, LoadingState } from "@/components/ui/controls";
 import { DataTable, TableDateTime, TableAction, TableActions } from "@/components/ui/data-table";
 import { usePagination } from "@/lib/use-pagination";
-import { adminPage } from "@/lib/admin/client";
+import { adminPage, AdminApiError } from "@/lib/admin/client";
 
 
 type Transaction = { id: string; tableNumber: string; method: "CASH"; grandTotalIdr: string; cashReceivedIdr: string; changeIdr: string; paidAt: string };
@@ -28,11 +28,12 @@ export function PosTransactions({ initialReceiptId = "" }: { initialReceiptId?: 
   const [error, setError] = useState("");
   const refresh = useCallback(async () => {
     if (from && to && from > to) { setRows([]); setError("Tanggal awal tidak boleh melewati tanggal akhir."); setLoaded(true); return; }
+    if (from && to && Date.parse(to) - Date.parse(from) > 366 * 86_400_000) { setRows([]); setError("Pilih rentang tanggal yang valid, maksimal 366 hari."); setLoaded(true); return; }
     const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
     if (from) query.set("from", from);
     if (to) query.set("to", to);
     try { const result = await adminPage<Transaction>(`/api/staff/payments?${query}`); setRows(result.items); setHasNext(result.hasNext); setError(""); }
-    catch { setRows([]); setError("Riwayat transaksi belum dapat dimuat. Periksa koneksi lalu coba lagi."); }
+    catch (cause) { setRows([]); setError(cause instanceof AdminApiError && cause.code === "VALIDATION_ERROR" ? "Pilih rentang tanggal yang valid, maksimal 366 hari." : "Riwayat transaksi belum dapat dimuat. Periksa koneksi lalu coba lagi."); }
     finally { setLoaded(true); }
   }, [from, to, page, pageSize]);
   useEffect(() => {
