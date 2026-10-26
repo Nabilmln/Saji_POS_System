@@ -11,6 +11,7 @@ import { MenuCard } from "@/components/menu-card";
 import { Selection, LoadingState, EmptyState, Button, Alert, Input, Pagination } from "@/components/ui/controls";
 import { CustomerShell } from "@/components/app-shells";
 import { cartSubtotal, changeCart, type CartItem } from "@/lib/customer/cart";
+import { randomId } from "@/lib/random-id";
 import { usePolling } from "@/lib/use-polling";
 import { CustomerCompletion } from "@/components/customer-completion";
 
@@ -210,7 +211,7 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
     if (!table || !guest || !cart.length || checkoutInFlight.current || visitEnded.current) return;
     checkoutInFlight.current = true;
     setBusy(true); setError("");
-    const requestKey = sessionStorage.getItem(`${storage}:requestKey`) ?? crypto.randomUUID();
+    const requestKey = sessionStorage.getItem(`${storage}:requestKey`) ?? randomId();
     sessionStorage.setItem(`${storage}:requestKey`, requestKey);
     try {
       const result = await api<{ orderId: string; orderViewToken: string }>(`/api/public/tables/${encodeURIComponent(tableToken)}/orders`, {

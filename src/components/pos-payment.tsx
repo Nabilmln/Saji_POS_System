@@ -18,6 +18,7 @@ import { BillBreakdown } from "@/components/pos-bill";
 import { ReceiptPreview } from "@/components/pos-receipt";
 
 import { canSubmitPayment, cashChange, quoteChanged, type BillQuote } from "@/lib/staff/payment-ui";
+import { randomId } from "@/lib/random-id";
 
 type TableDetail = { session: { id: string; billRevision: string } | null; orders: StaffOrder[] };
 type Payload = { idempotencyKey: string; expectedSessionRevision: string; expectedSettingsVersion: string; cashReceivedIdr: string };
@@ -142,6 +143,6 @@ export function PosPayment({ sessionId, onClose, onViewReceipt }: { sessionId: s
       </>}
     </Panel>
     {deleting && <OrderItemDeletion key={deleting.id} item={deleting} onClose={() => setDeleting(null)} onDeleted={async () => { setReviewed(false); setConfirming(false); setNotice({ text: "{0} dihapus dari pesanan. Tagihan diperbarui.", values: { 0: deleting.menuName } }); await refresh(true); }} />}
-    {confirming && quote && <ConfirmationDialog titleId="payment-confirm-title" onClose={() => setConfirming(false)}><h2 id="payment-confirm-title">{t("Konfirmasi pembayaran tunai")}</h2><p>{t("Meja")}{" "}{quote.tableNumber} {" "}{t("· Tagihan")}{" "}<strong>{money(quote.grandTotalIdr)}</strong></p><p>{t("Uang diterima")}{" "}{money(cash)} {" "}{t("· Kembalian")}{" "}{money(change ?? 0n)}</p><p className="muted">{t("Pembayaran akan menutup sesi dan mengembalikan meja ke status Tersedia.")}</p><div className="admin-actions"><Button className="secondary-button" onClick={() => setConfirming(false)}>{t("Periksa lagi")}</Button><Button className="primary-button" disabled={!ready} onClick={() => void sendPayment({ idempotencyKey: crypto.randomUUID(), expectedSessionRevision: quote.sessionRevision, expectedSettingsVersion: quote.settingsVersion, cashReceivedIdr: cash })}>{t("Bayar tunai")}</Button></div></ConfirmationDialog>}
+    {confirming && quote && <ConfirmationDialog titleId="payment-confirm-title" onClose={() => setConfirming(false)}><h2 id="payment-confirm-title">{t("Konfirmasi pembayaran tunai")}</h2><p>{t("Meja")}{" "}{quote.tableNumber} {" "}{t("· Tagihan")}{" "}<strong>{money(quote.grandTotalIdr)}</strong></p><p>{t("Uang diterima")}{" "}{money(cash)} {" "}{t("· Kembalian")}{" "}{money(change ?? 0n)}</p><p className="muted">{t("Pembayaran akan menutup sesi dan mengembalikan meja ke status Tersedia.")}</p><div className="admin-actions"><Button className="secondary-button" onClick={() => setConfirming(false)}>{t("Periksa lagi")}</Button><Button className="primary-button" disabled={!ready} onClick={() => void sendPayment({ idempotencyKey: randomId(), expectedSessionRevision: quote.sessionRevision, expectedSettingsVersion: quote.settingsVersion, cashReceivedIdr: cash })}>{t("Bayar tunai")}</Button></div></ConfirmationDialog>}
   </div>;
 }

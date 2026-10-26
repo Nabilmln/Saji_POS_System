@@ -5,4 +5,10 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL is required");
 }
 
-export const { db } = createDatabase(process.env.DATABASE_URL);
+const globalDb = globalThis as unknown as {
+  __db?: ReturnType<typeof createDatabase>;
+};
+
+export const { db } = (globalDb.__db ??= createDatabase(
+  process.env.DATABASE_URL,
+));

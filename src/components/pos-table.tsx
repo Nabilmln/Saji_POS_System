@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from "react"
 import Link from "next/link";
 import { adminApi, AdminApiError, jsonRequest } from "@/lib/admin/client";
 import { changeCart, cartSubtotal, type CartItem } from "@/lib/customer/cart";
+import { randomId } from "@/lib/random-id";
 import { usePagination } from "@/lib/use-pagination";
 import { MenuCard } from "@/components/menu-card";
 import { Alert, Button, LoadingState, EmptyState, Panel, Input, Textarea, Pagination } from "@/components/ui/controls";
@@ -76,7 +77,7 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
 
   function editDraft(changes: Partial<Draft>) {
     if (manualInFlight.current || draft.uncertain) return;
-    const next = { ...draft, ...changes, key: crypto.randomUUID() };
+    const next = { ...draft, ...changes, key: randomId() };
     sessionStorage.setItem(storageKey, JSON.stringify(next));
     setDraft(next);
   }
@@ -101,7 +102,7 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
     event.preventDefault();
     if (manualInFlight.current) return;
     if (!draft.cart.length) { setError("Pilih setidaknya satu menu."); return; }
-    const key = draft.key || crypto.randomUUID();
+    const key = draft.key || randomId();
     const payload = { clientRequestKey: key, customerName: draft.customerName.trim(), note: draft.note.trim(), items: draft.cart.map((item) => ({ menuItemId: item.id, quantity: item.quantity, note: item.note.trim() })) };
     manualInFlight.current = true;
     setDraft({ ...draft, key, uncertain: true });
