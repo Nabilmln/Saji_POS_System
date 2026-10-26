@@ -19,7 +19,7 @@ export function LocaleProvider({ children }: { children: ReactNode }) {
     locale,
     setLocale: (next: Locale) => { updateLocale(next); try { localStorage.setItem("saji:locale", next); } catch { /* Keep the selection for this page. */ } },
     t: (text: string, values?: Values) => translate(locale, text, values),
-    money: (amount: bigint | string) => formatIdr(amount, locale === "en" ? "en-GB" : "id-ID"),
+    money: (amount: bigint | string) => formatIdr(amount),
   }), [locale]);
   return <LocaleContext value={value}>{children}</LocaleContext>;
 }
