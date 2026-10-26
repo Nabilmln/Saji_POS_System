@@ -307,8 +307,8 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
         if (!items.length) return null;
         return <section className="menu-section" key={category.id}><div className="menu-section-heading"><h2>{category.name}</h2><span className="muted">{items.length} {" "}{t("menu")}</span></div><div className="menu-list menu-grid">{items.map((item) => {
           const current = cart.find((entry) => entry.id === item.id);
-          return <MenuCard key={item.id} menu={item}>
-            <Button className="add-button" disabled={uncertain || current?.quantity === 99} onClick={() => editCart(current ?? { id: item.id, name: item.name, priceIdr: item.priceIdr, quantity: 0, note: "" }, (current?.quantity ?? 0) + 1)} aria-label={t("Tambahkan {0} ke keranjang", { "0": item.name })}>{current ? t("Tambah · {0}", { "0": current.quantity }) : t("Tambah +")}</Button>
+          return <MenuCard key={item.id} menu={item} category={category.name}>
+            <Button className="add-button full-width" disabled={uncertain || current?.quantity === 99} onClick={() => editCart(current ?? { id: item.id, name: item.name, priceIdr: item.priceIdr, quantity: 0, note: "" }, (current?.quantity ?? 0) + 1)} aria-label={t("Tambahkan {0} ke keranjang", { "0": item.name })}>{current ? t("Tambah · {0}", { "0": current.quantity }) : t("Tambah +")}</Button>
           </MenuCard>;
         })}</div></section>;
       })}

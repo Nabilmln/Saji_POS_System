@@ -16,14 +16,16 @@ export function Input({ className, type, ...props }: ComponentProps<"input">) {
   return <input type={type} className={className ?? (type === "checkbox" || type === "radio" ? undefined : "text-field")} {...props} />;
 }
 
-export function Switch({ label, checked, onChange, disabled }: {
-  label: string; checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean;
+export function Switch({ label, checked, onChange, disabled, stateLabels, className = "" }: {
+  label: string; checked: boolean; onChange: (checked: boolean) => void; disabled?: boolean; stateLabels?: { on: string; off: string }; className?: string;
 }) {
   const { t } = useLocale();
-  return <label className="toggle-switch">
+  const onText = stateLabels ? stateLabels.on : "Aktif";
+  const offText = stateLabels ? stateLabels.off : "Nonaktif";
+  return <label className={`toggle-switch ${className}`.trim()}>
     <Input type="checkbox" role="switch" aria-label={t(label)} checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} />
     <span className="toggle-switch-track" aria-hidden="true" />
-    <span className="toggle-switch-state" aria-hidden="true">{t(checked ? "Aktif" : "Nonaktif")}</span>
+    <span className="toggle-switch-state" aria-hidden="true">{t(checked ? onText : offText)}</span>
   </label>;
 }
 

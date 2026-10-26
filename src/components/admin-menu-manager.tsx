@@ -15,7 +15,7 @@ import { usePagination } from "@/lib/use-pagination";
 import { Photo } from "@/components/ui/photo";
 import { MenuCard } from "@/components/menu-card";
 import { Section } from "@/components/ui/section";
-import { Selection, Pagination, Alert, Button, Input, Textarea, EmptyState, LoadingState } from "@/components/ui/controls";
+import { Selection, Pagination, Alert, Button, Input, Textarea, EmptyState, LoadingState, Switch } from "@/components/ui/controls";
 import { DetailPane } from "@/components/app-shells";
 import { MAX_MENU_IMAGE_BYTES, MENU_IMAGE_TYPES } from "@/lib/menu-images";
 
@@ -129,12 +129,15 @@ export function MenuManager() {
   }
 
   async function toggleMenu(item: Menu) {
-    if (!await confirm({ title: item.isAvailable ? "Nonaktifkan menu?" : "Aktifkan menu?", subject: item.name, description: item.isAvailable ? "Menu ini tidak dapat dipesan sampai diaktifkan kembali." : "Menu dapat dipesan jika kategorinya aktif.", confirmLabel: item.isAvailable ? "Nonaktifkan" : "Aktifkan" })) return;
+    const nextAvailable = !item.isAvailable;
+    setList((current) => current ? { ...current, items: current.items.map((m) => m.id === item.id ? { ...m, isAvailable: nextAvailable } : m) } : null);
     setBusy(true); setError(""); setNotice("");
     try {
-      await adminApi<Menu>(`/api/admin/menus/${item.id}/availability`, jsonRequest("PATCH", { isAvailable: !item.isAvailable }));
-      setNotice(statusNotice(item.name, item.isAvailable ? "Nonaktif" : "Aktif")); reload();
-    } catch (cause) { setError((cause as Error).message); }
+      await adminApi<Menu>(`/api/admin/menus/${item.id}/availability`, jsonRequest("PATCH", { isAvailable: nextAvailable }));
+      setNotice(statusNotice(item.name, nextAvailable ? "Tersedia" : "Tidak tersedia")); reload();
+    } catch (cause) {
+      setError((cause as Error).message);
+    }
     finally { setBusy(false); }
   }
 
@@ -172,7 +175,9 @@ export function MenuManager() {
     try {
       await adminApi<Category>(`/api/admin/categories/${category.id}`, jsonRequest("PATCH", { isActive: !category.isActive }));
       setNotice(statusNotice(category.name, category.isActive ? "Nonaktif" : "Aktif")); reload();
-    } catch (cause) { setError((cause as Error).message); }
+    } catch (cause) {
+      setError((cause as Error).message);
+    }
     finally { setBusy(false); }
   }
 
@@ -208,32 +213,52 @@ export function MenuManager() {
         <div className="admin-section-head"><h3>{editing === "new" ? t("Menu baru") : t("Edit menu")}</h3><Button className="text-button" type="button" disabled={busy} onClick={() => { setEditing(null); setPhoto(null); }}>{t("Tutup")}</Button></div>
         {editing !== "new" && !draft.categoryId && <p className="muted">{t("Kategori sebelumnya telah dihapus. Pilih kategori aktif agar menu ini tampil lagi untuk pelanggan.")}</p>}
         <fieldset className="admin-form-grid menu-form-fields" disabled={busy} aria-label={t("Detail menu")}>
+          <div className="admin-form-wide menu-photo-top-section">
+            <span id="menu-photo-label" className="field-label-text">{t("Foto menu")}</span>
+            {(photo || draft.imageUrl) ? (
+              <div className="menu-photo-preview-card">
+                <Photo src={photo?.url ?? draft.imageUrl} alt={t("Pratinjau foto menu")} className="menu-photo-preview-thumb" />
+                <div className="menu-photo-preview-details">
+                  {photo ? <strong className="menu-photo-filename">{photo.file.name}</strong> : <span className="muted">{t("Foto saat ini")}</span>}
+                  <small className="muted">{t("JPG, PNG, atau WebP. Maksimal 3 MB.")}</small>
+                  <div className="menu-photo-preview-actions">
+                    <label className="secondary-button photo-replace-btn" aria-disabled={busy}>
+                      {t("Ganti foto")}
+                      <Input ref={photoInput} type="file" accept={MENU_IMAGE_TYPES.join(",")} className="visually-hidden" disabled={busy} onChange={(event) => choosePhoto(event.target.files?.[0])} />
+                    </label>
+                    <Button type="button" className="text-button danger-text" disabled={busy} onClick={() => { setPhoto(null); setPhotoError(""); setDraft({ ...draft, imageUrl: "" }); if (photoInput.current) photoInput.current.value = ""; }}>{t("Hapus foto")}</Button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="menu-photo-dropzone-wrap">
+                <label className={`menu-photo-dropzone${draggingPhoto ? " is-dragging" : ""}`} aria-disabled={busy} onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = busy ? "none" : "copy"; if (!busy) setDraggingPhoto(true); }} onDragLeave={() => setDraggingPhoto(false)} onDrop={(event) => { event.preventDefault(); setDraggingPhoto(false); if (!busy && event.dataTransfer.files.length) choosePhoto(event.dataTransfer.files[0]); }}>
+                  <UploadSimpleIcon size={24} aria-hidden="true" />
+                  <span><strong>{t("Pilih foto")}</strong><small>{t("atau tarik dan lepas di sini")}</small></span>
+                  <Input ref={photoInput} id="menu-photo" type="file" accept={MENU_IMAGE_TYPES.join(",")} aria-labelledby="menu-photo-label" aria-describedby="menu-photo-hint menu-photo-error" aria-invalid={!!photoError} onChange={(event) => choosePhoto(event.target.files?.[0])} />
+                </label>
+                <small id="menu-photo-hint" className="muted">{t("JPG, PNG, atau WebP. Maksimal 3 MB. Foto diunggah saat menu disimpan.")}</small>
+              </div>
+            )}
+            <div className={`photo-upload-status${uploadingPhoto ? "" : " loading-label"}`} role="status" aria-atomic="true">{uploadingPhoto && <><CircleNotchIcon className="processing-spinner" size={18} weight="bold" aria-hidden="true" /><span>{t("Mengunggah foto…")}</span></>}</div>
+            {photoError && <small id="menu-photo-error" className="field-error" role="alert">{t(photoError)}</small>}
+            {fields.imageUrl && <small className="field-error">{fields.imageUrl.join(", ")}</small>}
+          </div>
           <label>{t("Nama menu *")}<Input className="text-field" maxLength={160} required value={draft.name} onChange={(event) => setDraft({ ...draft, name: event.target.value })} />{fields.name && <small className="field-error">{fields.name.join(", ")}</small>}</label>
           <div><Selection label={t("Kategori *")} kind="dropdown" required value={draft.categoryId} onChange={(value) => setDraft({ ...draft, categoryId: value })} options={[{ value: "", label: t("Pilih kategori"), disabled: true }, ...categories.filter((category) => category.isActive || category.id === draft.categoryId).map((category) => ({ value: category.id, label: category.name }))]} />{fields.categoryId && <small className="field-error">{fields.categoryId.join(", ")}</small>}</div>
           <label>{t("Harga (Rp) *")}<Input className="text-field" inputMode="numeric" pattern="(0|[1-9][0-9]*)" maxLength={16} required value={draft.priceIdr} onChange={(event) => setDraft({ ...draft, priceIdr: event.target.value })} />{fields.priceIdr && <small className="field-error">{fields.priceIdr.join(", ")}</small>}</label>
-          <div className="admin-form-wide menu-photo-upload">
-            <span id="menu-photo-label">{t("Unggah foto menu")}</span>
-            <label className={`menu-photo-dropzone${draggingPhoto ? " is-dragging" : ""}`} aria-disabled={busy} onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = busy ? "none" : "copy"; if (!busy) setDraggingPhoto(true); }} onDragLeave={() => setDraggingPhoto(false)} onDrop={(event) => { event.preventDefault(); setDraggingPhoto(false); if (!busy && event.dataTransfer.files.length) choosePhoto(event.dataTransfer.files[0]); }}>
-              <UploadSimpleIcon size={24} aria-hidden="true" />
-              <span><strong>{t("Pilih foto")}</strong><small>{t("atau tarik dan lepas di sini")}</small></span>
-              <Input ref={photoInput} id="menu-photo" type="file" accept={MENU_IMAGE_TYPES.join(",")} aria-labelledby="menu-photo-label" aria-describedby="menu-photo-hint menu-photo-error" aria-invalid={!!photoError} onChange={(event) => choosePhoto(event.target.files?.[0])} />
-            </label>
-            <small id="menu-photo-hint" className="muted">{t("JPG, PNG, atau WebP. Maksimal 3 MB. Foto diunggah saat menu disimpan.")}</small>
-            <div className={`photo-upload-status${uploadingPhoto ? "" : " loading-label"}`} role="status" aria-atomic="true">{uploadingPhoto && <><CircleNotchIcon className="processing-spinner" size={18} weight="bold" aria-hidden="true" /><span>{t("Mengunggah foto…")}</span></>}</div>
-            {photo && <small className="menu-photo-filename">{photo.file.name}</small>}
-            <small id="menu-photo-error" className="field-error" role={photoError ? "alert" : undefined}>{t(photoError)}</small>
-            {fields.imageUrl && <small className="field-error">{fields.imageUrl.join(", ")}</small>}
-            {(photo || photoError) && <Button type="button" className="text-button" onClick={() => { setPhoto(null); setPhotoError(""); if (photoInput.current) photoInput.current.value = ""; }}>{t("Batalkan pilihan foto")}</Button>}
-          </div>
           <label className="admin-form-wide">{t("Deskripsi")}<Textarea className="text-field" rows={3} maxLength={2000} value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} />{fields.description && <small className="field-error">{fields.description.join(", ")}</small>}</label>
           <label className="check-row admin-form-wide"><Input type="checkbox" checked={draft.isAvailable} onChange={(event) => setDraft({ ...draft, isAvailable: event.target.checked })} />{t("Tersedia untuk pelanggan")}</label>
         </fieldset>
-        {(photo || draft.imageUrl) && <div className="menu-photo-preview"><Photo src={photo?.url ?? draft.imageUrl} alt={t("Pratinjau foto menu")} className="image-preview" /><Button type="button" className="text-button" disabled={busy} onClick={() => { setPhoto(null); setPhotoError(""); setDraft({ ...draft, imageUrl: "" }); if (photoInput.current) photoInput.current.value = ""; }}>{t("Hapus foto")}</Button></div>}
+
         <div className="admin-actions"><Button className="primary-button" disabled={busy || !!photoError} aria-busy={busy}>{busy ? t("Menyimpan…") : t("Simpan Menu")}</Button><Button className="secondary-button" type="button" disabled={busy} onClick={() => { setEditing(null); setPhoto(null); }}>{t("Batal")}</Button></div>
       </form></DetailPane>}
       {loading ? <LoadingState variant="menu">{t("Memuat menu…")}</LoadingState> : !list?.items.length ? <EmptyState className="empty-state"><h2>{t("Menu tidak ditemukan")}</h2><p>{t("Ubah pencarian atau tambahkan menu baru.")}</p></EmptyState> : <>
         <div className="admin-menu-grid">{list.items.map((item) => <MenuCard menu={item} category={categoryName.get(item.categoryId) ?? t("Kategori dihapus")} className="admin-list-row admin-menu-card" key={item.id} badge={<StatusBadge status={categoryName.has(item.categoryId) && item.isAvailable ? "AVAILABLE" : "INACTIVE"}>{!categoryName.has(item.categoryId) ? t("Pilih kategori") : item.isAvailable ? t("Tersedia") : t("Tidak tersedia")}</StatusBadge>}>
-          <TableActions><TableAction action="edit" disabled={busy} onClick={() => beginMenu(item)} /><TableAction action={item.isAvailable ? "deactivate" : "activate"} disabled={busy} onClick={() => void toggleMenu(item)} /><TableAction action="delete" disabled={busy} onClick={() => setDeleting({ kind: "menu", item })} /></TableActions>
+          <div className="admin-menu-card-actions">
+            <Switch label={t("Ketersediaan {0}", { "0": item.name })} checked={categoryName.has(item.categoryId) && item.isAvailable} stateLabels={{ on: "Tersedia", off: "Tidak tersedia" }} disabled={busy || !categoryName.has(item.categoryId)} onChange={() => void toggleMenu(item)} />
+            <TableActions><TableAction action="edit" disabled={busy} onClick={() => beginMenu(item)} /><TableAction action="delete" disabled={busy} onClick={() => setDeleting({ kind: "menu", item })} /></TableActions>
+          </div>
         </MenuCard>)}</div>
         <Pagination label="Navigasi menu" pageSize={pageSize} onPageSizeChange={setPageSize} page={page} hasNext={page * list.pageSize < list.total} total={list.total} onChange={setPage} disabled={busy || loading} />
       </>}
@@ -259,3 +284,4 @@ export function MenuManager() {
     {deleting && <ConfirmDelete name={deleting.item.name} description={t(deleting.kind === "menu" ? "Menu ini dihapus dari katalog. Riwayat pesanan dan penjualan tetap tersimpan." : "Kategori ini dihapus dari daftar. Menu di dalamnya tetap tersimpan dan perlu dipindahkan ke kategori aktif agar tampil lagi untuk pelanggan. Riwayat pesanan tetap tersimpan.")} onClose={() => setDeleting(null)} onConfirm={() => deleting.kind === "menu" ? deleteMenu(deleting.item) : deleteCategory(deleting.item)} />}
   </div>;
 }
+

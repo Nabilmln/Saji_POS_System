@@ -1,4 +1,4 @@
-import AxeBuilder from "@axe-core/playwright";
+﻿import AxeBuilder from "@axe-core/playwright";
 import { test, expect, signIn, confirmAction } from "./fixtures";
 
 test("shared table confirmation is safe to cancel, accessible and cancelled by navigation", async ({ page, data }, testInfo) => {
@@ -68,20 +68,20 @@ test("shared table confirmation is safe to cancel, accessible and cancelled by n
   expect(mutations).toBe(2);
 });
 
-test("menu, category and billing changes require the shared confirmation", async ({ page, data }) => {
+test("category and billing changes require confirmation while menu availability toggles directly", async ({ page, data }) => {
   await signIn(page, "admin");
   await page.goto("/admin/menus");
   const dialog = page.getByRole("dialog");
   const menu = page.locator(".admin-menu-card").filter({ hasText: data.menuName });
-  await menu.getByRole("button", { name: "Nonaktifkan", exact: true }).click();
-  await expect(dialog).toHaveAccessibleName("Nonaktifkan menu?");
-  await expect(dialog.locator("strong")).toHaveText(data.menuName);
-  await page.keyboard.press("Escape");
-  expect((await data.pool.query("SELECT is_available FROM menu_items WHERE id=$1", [data.menuId])).rows[0].is_available).toBe(true);
-  await menu.getByRole("button", { name: "Nonaktifkan", exact: true }).click();
-  await confirmAction(page, "Nonaktifkan");
-  await expect(menu.getByRole("button", { name: "Aktifkan", exact: true })).toBeVisible();
+  const switchControl = menu.getByRole("switch");
+  await expect(switchControl).toBeChecked();
+  await switchControl.click();
+  await expect(switchControl).not.toBeChecked();
+  await expect(dialog).toHaveCount(0);
   expect((await data.pool.query("SELECT is_available FROM menu_items WHERE id=$1", [data.menuId])).rows[0].is_available).toBe(false);
+  await switchControl.click();
+  await expect(switchControl).toBeChecked();
+  expect((await data.pool.query("SELECT is_available FROM menu_items WHERE id=$1", [data.menuId])).rows[0].is_available).toBe(true);
   const category = page.locator("#menu-categories tr").filter({ hasText: `Demo ${data.categoryId}` });
   await category.getByRole("button", { name: "Nonaktifkan", exact: true }).click();
   await expect(dialog).toHaveAccessibleName("Nonaktifkan kategori?");

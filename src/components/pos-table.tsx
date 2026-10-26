@@ -152,7 +152,18 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
             return listed.length ? <div key={category.id} className="pos-menu-group"><h3>{category.name}</h3><div className="menu-grid">{listed.map((item) => {
               const selected = draft.cart.find((entry) => entry.id === item.id);
               const cartItem: CartItem = { id: item.id, name: item.name, priceIdr: item.priceIdr, quantity: selected?.quantity ?? 0, note: selected?.note ?? "" };
-              return <MenuCard key={item.id} menu={item} className="pos-menu-card"><div className="stepper"><Button type="button" aria-label={t("Kurangi {0}", { "0": item.name })} disabled={!selected} onClick={() => editDraft({ cart: changeCart(draft.cart, cartItem, cartItem.quantity - 1) })}>−</Button><span>{cartItem.quantity}</span><Button type="button" aria-label={t("Tambah {0}", { "0": item.name })} disabled={cartItem.quantity >= 99} onClick={() => editDraft({ cart: changeCart(draft.cart, cartItem, cartItem.quantity + 1) })}>+</Button></div></MenuCard>;
+              return <MenuCard key={item.id} menu={item} category={category.name} className="pos-menu-card">
+                <div className="pos-card-actions">
+                  <div className="stepper" role="group" aria-label={t("Jumlah {0}", { "0": item.name })}>
+                    <Button type="button" aria-label={t("Kurangi {0}", { "0": item.name })} disabled={!selected || cartItem.quantity <= 0} onClick={() => editDraft({ cart: changeCart(draft.cart, cartItem, cartItem.quantity - 1) })}>−</Button>
+                    <span className="stepper-value">{cartItem.quantity}</span>
+                    <Button type="button" aria-label={t("Tambah {0}", { "0": item.name })} disabled={cartItem.quantity >= 99} onClick={() => editDraft({ cart: changeCart(draft.cart, cartItem, cartItem.quantity + 1) })}>+</Button>
+                  </div>
+                  <Button type="button" className="primary-button pos-add-cart-btn" disabled={cartItem.quantity >= 99} onClick={() => editDraft({ cart: changeCart(draft.cart, cartItem, cartItem.quantity + 1) })}>
+                    {t("Tambah ke keranjang")}
+                  </Button>
+                </div>
+              </MenuCard>;
             })}</div></div> : null;
           })}
           {menu && <Pagination pageSize={menuPageSize} onPageSizeChange={setMenuPageSize} page={currentMenuPage} hasNext={currentMenuPage * menuPageSize < filteredMenuItems.length} total={filteredMenuItems.length} onChange={setMenuPage} />}

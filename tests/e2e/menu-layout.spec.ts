@@ -1,4 +1,4 @@
-import AxeBuilder from "@axe-core/playwright";
+﻿import AxeBuilder from "@axe-core/playwright";
 import { test, expect, signIn, confirmAction } from "./fixtures";
 
 test("menu cards share icon controls and five-column layouts with an unboxed search toolbar", async ({ page, data }, testInfo) => {
@@ -37,7 +37,7 @@ test("menu cards share icon controls and five-column layouts with an unboxed sea
       const box = element.getBoundingClientRect(), card = element.closest(".menu-card")!.getBoundingClientRect();
       return { label: element.getAttribute("aria-label"), title: element.getAttribute("title"), text: element.textContent, svg: element.querySelectorAll("svg").length, width: box.width, fits: box.left >= card.left && box.right <= card.right };
     }));
-    expect(buttons).toHaveLength(30);
+    expect(buttons).toHaveLength(20);
     for (const button of buttons) {
       expect(button.label).toBeTruthy(); expect(button.title).toBe(button.label);
       expect(button.text).toBe(""); expect(button.svg).toBe(1); expect(button.width).toBe(36); expect(button.fits).toBe(true);
@@ -63,19 +63,19 @@ test("menu cards share icon controls and five-column layouts with an unboxed sea
   await page.getByLabel("Harga (Rp) *", { exact: true }).fill("27000");
   await page.getByRole("button", { name: "Simpan Menu", exact: true }).click();
   await expect(dish).toContainText(/Rp\s*27\.000/);
-  await dish.getByRole("button", { name: "Nonaktifkan", exact: true }).click();
-  await confirmAction(page, "Nonaktifkan");
-  await expect(dish.getByRole("button", { name: "Aktifkan", exact: true })).toBeVisible();
+  const toggle = dish.getByRole("switch");
+  await expect(toggle).toBeChecked();
+  await toggle.click();
+  await expect(toggle).not.toBeChecked();
   await page.getByRole("group", { name: "Ketersediaan", exact: true }).getByText("Tersedia", { exact: true }).click();
   await expect(cards).toHaveCount(0);
   await page.getByRole("group", { name: "Ketersediaan", exact: true }).getByText("Tidak tersedia", { exact: true }).click();
   await expect(dish).toBeVisible();
-  await dish.getByRole("button", { name: "Aktifkan", exact: true }).click();
-  await confirmAction(page, "Aktifkan");
+  await dish.getByRole("switch").click();
   await expect(cards).toHaveCount(0);
   await page.getByRole("group", { name: "Ketersediaan", exact: true }).getByText("Semua", { exact: true }).click();
   await expect(dish).toBeVisible();
-  await expect(dish.getByRole("button", { name: "Nonaktifkan", exact: true })).toBeVisible();
+  await expect(dish.getByRole("switch")).toBeChecked();
   await dish.getByRole("button", { name: "Hapus", exact: true }).click();
   const dialog = page.getByRole("dialog");
   await dialog.getByRole("button", { name: "Lanjutkan", exact: true }).click();
