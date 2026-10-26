@@ -14,7 +14,7 @@ import { Selection, Pagination, Panel, Button, Alert, Input, Textarea, LoadingSt
 import { DataTable, TableDateTime, TableAction, TableActions } from "@/components/ui/data-table";
 import { StatusBadge } from "@/components/ui/status-badge";
 import { usePagination } from "@/lib/use-pagination";
-import { adminPage, adminApi, jsonRequest } from "@/lib/admin/client";
+import { adminPage, adminApi, jsonRequest, AdminApiError } from "@/lib/admin/client";
 
 type Reservation = { id: string; tableId: string; tableNumber: string; customerName: string; customerContact: string; guestCount: number; reservedFor: string; notes: string | null; status: "RESERVED" | "CHECKED_IN" | "CANCELLED" };
 type Table = { id: string; tableNumber: string; status: string };
@@ -49,7 +49,15 @@ export function PosReservations() {
     try {
       await adminApi("/api/staff/reservations", jsonRequest("POST", { tableId: data.get("tableId"), customerName: String(data.get("name")).trim(), customerContact: String(data.get("contact")).trim(), guestCount: Number(data.get("guests")), reservedFor: `${data.get("time")}:00+07:00`, notes: String(data.get("notes")).trim() }));
       await load(); setCreating(false); setNotice({ text: "Reservasi tersimpan. Meja diblokir sampai check-in atau pembatalan.", subject: String(data.get("name")).trim() });
-    } catch { setError("Reservasi gagal disimpan. Meja mungkin sudah terisi; segarkan pilihan meja dan coba lagi."); }
+    } catch (cause) {
+      if (cause instanceof AdminApiError) {
+        setError(cause.code === "TABLE_NOT_AVAILABLE" || cause.code === "TABLE_NOT_FOUND"
+          ? "Reservasi gagal disimpan. Meja mungkin sudah terisi; segarkan pilihan meja dan coba lagi."
+          : (cause.message || "Reservasi gagal disimpan. Periksa isian form."));
+      } else {
+        setError("Reservasi gagal disimpan. Periksa koneksi lalu coba lagi.");
+      }
+    }
     finally { setBusy(false); }
   }
   async function checkIn(item: Reservation) {
