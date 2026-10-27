@@ -115,7 +115,7 @@ export function TableManager() {
     <section className="admin-table-list" aria-label={t("Daftar meja")}>
       {loading ? <LoadingState variant="cards">{t("Memuat meja…")}</LoadingState> : !tables.length ? <EmptyState className="empty-state"><h2>{t("Belum ada meja")}</h2><p>{t("Tambahkan meja untuk membuat kode QR.")}</p></EmptyState> : <div className="admin-table-grid">{tables.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((table) => <TableCard revision={JSON.stringify(table)} className="admin-table-card" titleId={`admin-table-${table.id}`} title={t("Meja {0}", { "0": table.tableNumber })} status={table.status} selected={preview?.id === table.id} key={table.id}
         metadata={{ label: t("Pemesanan QR"), value: <StatusBadge status={table.isActive ? "ACTIVE" : "INACTIVE"} /> }}
-        primaryAction={<Button disabled={busy || !table.isActive} aria-pressed={preview?.id === table.id} onClick={() => openQr(table)}><QrCodeIcon size={16} aria-hidden="true" />{t("Lihat QR")}</Button>}
+        primaryAction={<Button disabled={busy || !table.isActive} aria-pressed={preview?.id === table.id} onClick={() => openQr(table)}><QrCodeIcon size={16} weight="fill" aria-hidden="true" />{t("Lihat QR")}</Button>}
         actions={<>
           <TableAction action="renumber" disabled={busy || table.status !== "AVAILABLE"} onClick={() => begin(table)} />
           <TableAction action={table.isActive ? "deactivate" : "activate"} disabled={busy || table.status !== "AVAILABLE"} onClick={() => void toggle(table)} />
@@ -133,7 +133,7 @@ export function TableManager() {
       </div>
       <p className="table-card-qr-hint">{t("Scan untuk memesan")}</p>
       <label className="table-card-qr-link-label">{t("Tautan tujuan")}<Input className="text-field" readOnly value={qrUrl} onFocus={(event) => event.target.select()} /></label>
-      {qrSvg && <a className="primary-button table-card-qr-download" download={`meja-${preview.tableNumber.replace(/[^A-Za-z0-9_-]/g, "-")}-qr.svg`} href={downloadHref}><DownloadSimpleIcon size={17} aria-hidden="true" />{t("Unduh QR (SVG)")}</a>}
+      {qrSvg && <a className="primary-button table-card-qr-download" download={`meja-${preview.tableNumber.replace(/[^A-Za-z0-9_-]/g, "-")}-qr.svg`} href={downloadHref}><DownloadSimpleIcon size={17} weight="fill" aria-hidden="true" />{t("Unduh QR (SVG)")}</a>}
     </section></DetailPane>}
   </div>;
 }

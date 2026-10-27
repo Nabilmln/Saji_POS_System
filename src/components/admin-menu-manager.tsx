@@ -233,7 +233,7 @@ export function MenuManager() {
             ) : (
               <div className="menu-photo-dropzone-wrap">
                 <label className={`menu-photo-dropzone${draggingPhoto ? " is-dragging" : ""}`} aria-disabled={busy} onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = busy ? "none" : "copy"; if (!busy) setDraggingPhoto(true); }} onDragLeave={() => setDraggingPhoto(false)} onDrop={(event) => { event.preventDefault(); setDraggingPhoto(false); if (!busy && event.dataTransfer.files.length) choosePhoto(event.dataTransfer.files[0]); }}>
-                  <UploadSimpleIcon size={24} aria-hidden="true" />
+                  <UploadSimpleIcon size={24} weight="fill" aria-hidden="true" />
                   <span><strong>{t("Pilih foto")}</strong><small>{t("atau tarik dan lepas di sini")}</small></span>
                   <Input ref={photoInput} id="menu-photo" type="file" accept={MENU_IMAGE_TYPES.join(",")} aria-labelledby="menu-photo-label" aria-describedby="menu-photo-hint menu-photo-error" aria-invalid={!!photoError} onChange={(event) => choosePhoto(event.target.files?.[0])} />
                 </label>
@@ -256,7 +256,7 @@ export function MenuManager() {
       {loading ? <LoadingState variant="menu">{t("Memuat menu…")}</LoadingState> : !list?.items.length ? <EmptyState className="empty-state"><h2>{t("Menu tidak ditemukan")}</h2><p>{t("Ubah pencarian atau tambahkan menu baru.")}</p></EmptyState> : <>
         <div className="admin-menu-grid">{list.items.map((item) => <MenuCard menu={item} category={categoryName.get(item.categoryId) ?? t("Kategori dihapus")} className="admin-list-row admin-menu-card" key={item.id} badge={<StatusBadge status={categoryName.has(item.categoryId) && item.isAvailable ? "AVAILABLE" : "INACTIVE"}>{!categoryName.has(item.categoryId) ? t("Pilih kategori") : item.isAvailable ? t("Tersedia") : t("Tidak tersedia")}</StatusBadge>}>
           <div className="admin-menu-card-actions">
-            <Switch label={t("Ketersediaan {0}", { "0": item.name })} checked={categoryName.has(item.categoryId) && item.isAvailable} stateLabels={{ on: "Tersedia", off: "Tidak tersedia" }} disabled={busy || !categoryName.has(item.categoryId)} onChange={() => void toggleMenu(item)} />
+            <Switch label={t("Ketersediaan {0}", { "0": item.name })} checked={categoryName.has(item.categoryId) && item.isAvailable} showStateLabel={false} disabled={busy || !categoryName.has(item.categoryId)} onChange={() => void toggleMenu(item)} />
             <TableActions><TableAction action="edit" disabled={busy} onClick={() => beginMenu(item)} /><TableAction action="delete" disabled={busy} onClick={() => setDeleting({ kind: "menu", item })} /></TableActions>
           </div>
         </MenuCard>)}</div>

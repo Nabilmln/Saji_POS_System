@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import type { ButtonHTMLAttributes, ComponentProps, ReactNode } from "react";
 import Link from "next/link";
-import { CheckIcon, EyeIcon, KeyIcon, PencilSimpleIcon, PowerIcon, ReceiptIcon, SignInIcon, SquaresFourIcon, TrashSimpleIcon, XIcon } from "@phosphor-icons/react";
+import { CheckCircleIcon, EyeIcon, KeyIcon, PencilSimpleIcon, PowerIcon, ReceiptIcon, SignInIcon, SquaresFourIcon, TrashSimpleIcon, XCircleIcon } from "@phosphor-icons/react";
 import { useLocale } from "@/components/locale-provider";
 import { Button } from "./controls";
 
@@ -14,10 +14,10 @@ const actions = {
   activate: { icon: PowerIcon, label: "Aktifkan" },
   deactivate: { icon: PowerIcon, label: "Nonaktifkan" },
   delete: { icon: TrashSimpleIcon, label: "Hapus" },
-  confirm: { icon: CheckIcon, label: "Konfirmasi" },
+  confirm: { icon: CheckCircleIcon, label: "Konfirmasi" },
   detail: { icon: EyeIcon, label: "Detail" },
   checkIn: { icon: SignInIcon, label: "Check-in" },
-  cancel: { icon: XIcon, label: "Batalkan reservasi" },
+  cancel: { icon: XCircleIcon, label: "Batalkan reservasi" },
   table: { icon: SquaresFourIcon, label: "Lihat meja" },
   receipt: { icon: ReceiptIcon, label: "Lihat struk" },
 };
@@ -30,7 +30,7 @@ type ActionProps = { action: keyof typeof actions } & (
 export function TableAction({ action, ...props }: ActionProps) {
   const { t } = useLocale();
   const { icon: Icon, label } = actions[action];
-  const shared = { className: "table-action", "data-action": action, title: t(label), "aria-label": t(label), children: <Icon size={18} aria-hidden="true" /> };
+  const shared = { className: "table-action", "data-action": action, title: t(label), "aria-label": t(label), children: <Icon size={18} weight="fill" aria-hidden="true" /> };
   if (props.href !== undefined) return <Link {...props} {...shared} />;
   return <Button type="button" {...props} {...shared} />;
 }
