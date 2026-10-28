@@ -5,7 +5,7 @@ import { useNotice, statusNotice } from "@/components/ui/notice";
 import { useConfirmation } from "@/components/ui/confirmation";
 
 import { StatusBadge } from "@/components/ui/status-badge";
-import { CircleNotchIcon, MagnifyingGlassIcon, UploadSimpleIcon } from "@phosphor-icons/react";
+import { CircleNotchIcon, MagnifyingGlassIcon, PlusIcon, TagIcon, UploadSimpleIcon } from "@phosphor-icons/react";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { adminApi, AdminApiError, jsonRequest } from "@/lib/admin/client";
@@ -245,27 +245,26 @@ export function MenuManager() {
 
       {loading && !categories.length ? (
         <LoadingState variant="cards">{t("Memuat kategori…")}</LoadingState>
-      ) : !visibleCategories.length ? (
-        <EmptyState className="empty-state">
-          <h2>{categories.length ? t("Kategori tidak ditemukan") : t("Belum ada kategori")}</h2>
-          <p>{categories.length ? t("Coba nama kategori lain.") : t("Tambahkan kategori untuk menyusun menu.")}</p>
-        </EmptyState>
       ) : (
         <div className="category-grid" role="list" aria-label={t("Daftar kategori")}>
+          {!visibleCategories.length && categories.length > 0 && (
+            <p className="category-empty-msg">{t("Kategori tidak ditemukan")}</p>
+          )}
           {visibleCategories.map((category) => (
             <article className={`category-card ${category.isActive ? "" : "is-inactive"}`.trim()} key={category.id} role="listitem">
-              <div className="category-card-main">
-                <div className="category-card-title-row">
-                  <strong className="category-card-name" title={category.name}>{category.name}</strong>
-                  <StatusBadge status={category.isActive ? "ACTIVE" : "INACTIVE"} />
-                </div>
-                <p className="category-card-meta">
-                  <span>{t("{0} menu", { "0": category.menuCount })}</span>
-                  <span className="category-meta-dot" aria-hidden="true">·</span>
-                  <span>{t("Urutan {0}", { "0": category.sortOrder })}</span>
-                </p>
+              <div className="category-card-top">
+                <span className="category-card-badge-wrap">
+                  <TagIcon size={14} weight="fill" aria-hidden="true" />
+                  <span className="category-card-order">#{category.sortOrder}</span>
+                </span>
+                <StatusBadge status={category.isActive ? "ACTIVE" : "INACTIVE"} />
               </div>
-              <div className="category-card-actions">
+              <div className="category-card-center">
+                <strong className="category-card-name" title={category.name}>{category.name}</strong>
+                <span className="category-card-count">{t("{0} menu", { "0": category.menuCount })}</span>
+              </div>
+              <div className="category-card-divider" aria-hidden="true" />
+              <div className="category-card-footer">
                 <TableActions>
                   <TableAction action="edit" disabled={busy} onClick={() => beginCategory(category)} />
                   <TableAction action={category.isActive ? "deactivate" : "activate"} disabled={busy} onClick={() => void changeCategory(category)} />
@@ -274,6 +273,17 @@ export function MenuManager() {
               </div>
             </article>
           ))}
+          <button
+            type="button"
+            className="category-card category-add-card"
+            disabled={busy}
+            onClick={() => beginCategory()}
+            aria-label={t("Tambah Kategori")}
+          >
+            <span className="category-add-icon"><PlusIcon size={20} weight="bold" aria-hidden="true" /></span>
+            <strong>{t("Tambah Kategori")}</strong>
+            <small>{t("Buat kategori baru")}</small>
+          </button>
         </div>
       )}
     </Section>
