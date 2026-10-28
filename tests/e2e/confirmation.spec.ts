@@ -1,4 +1,4 @@
-﻿import AxeBuilder from "@axe-core/playwright";
+import AxeBuilder from "@axe-core/playwright";
 import { test, expect, signIn, confirmAction } from "./fixtures";
 
 test("shared table confirmation is safe to cancel, accessible and cancelled by navigation", async ({ page, data }, testInfo) => {
@@ -82,7 +82,7 @@ test("category and billing changes require confirmation while menu availability 
   await switchControl.click();
   await expect(switchControl).toBeChecked();
   expect((await data.pool.query("SELECT is_available FROM menu_items WHERE id=$1", [data.menuId])).rows[0].is_available).toBe(true);
-  const category = page.locator("#menu-categories tr").filter({ hasText: `Demo ${data.categoryId}` });
+  const category = page.locator("#menu-categories tr, #menu-categories .category-card").filter({ hasText: `Demo ${data.categoryId}` });
   await category.getByRole("button", { name: "Nonaktifkan", exact: true }).click();
   await expect(dialog).toHaveAccessibleName("Nonaktifkan kategori?");
   await confirmAction(page, "Nonaktifkan");

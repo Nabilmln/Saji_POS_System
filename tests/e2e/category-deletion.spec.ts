@@ -25,7 +25,7 @@ test("categories with live and deleted menus can be removed, reused and reassign
     await page.goto("/admin/menus");
     await page.getByRole("combobox", { name: "Kategori", exact: true }).click();
     await page.getByRole("option", { name: categoryName, exact: true }).click();
-    const row = page.locator("#menu-categories tr").filter({ hasText: categoryName });
+    const row = page.locator("#menu-categories tr, #menu-categories .category-card").filter({ hasText: categoryName });
     await row.getByRole("button", { name: "Hapus", exact: true }).click();
     let dialog = page.getByRole("dialog");
     await expect(dialog).toContainText("Menu di dalamnya tetap tersimpan");

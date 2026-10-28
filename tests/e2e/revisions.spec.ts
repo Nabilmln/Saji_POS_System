@@ -194,9 +194,8 @@ test("menu page-size toggles reset paging, preserve row boundaries and stay sepa
   const listBox = await page.locator(".admin-menu-grid").boundingBox();
   const pagerBox = await pagination.boundingBox();
   expect(pagerBox!.y - (listBox!.y + listBox!.height)).toBeGreaterThanOrEqual(16);
-  const categoryTable = await page.locator("#menu-categories .data-table-wrap").boundingBox();
-  const categoryPager = await page.locator("#menu-categories .pagination-panel").boundingBox();
-  expect(categoryPager!.y - (categoryTable!.y + categoryTable!.height)).toBeGreaterThanOrEqual(16);
+  const categoryGrid = await page.locator("#menu-categories .category-grid, #menu-categories .data-table-wrap").boundingBox();
+  expect(categoryGrid).toBeTruthy();
   await page.setViewportSize({ width: 1680, height: 1050 });
   expect(await page.locator(".admin-menu-grid").evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" ").length)).toBe(5);
   await page.screenshot({ path: testInfo.outputPath("menu-five-columns.png"), fullPage: true });
