@@ -197,16 +197,36 @@ export function MenuManager() {
   const categoryName = new Map(categories.map((category) => [category.id, category.name]));
   const visibleCategories = categories.filter((category) => category.name.toLocaleLowerCase("id-ID").includes(categorySearch.toLocaleLowerCase("id-ID")));
   const currentCategoryPage = Math.min(categoryPage, Math.max(1, Math.ceil(visibleCategories.length / categoryPageSize)));
+
   return <div className="admin-stack menu-manager">
     {/* <p className="section-intro">{t("Kelola menu yang tampil di QR meja dan susun kategori katalog.")}</p> */}
 
     {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
 
+    <Section id="menu-categories" title={t("Kategori")} description={t("Susun kategori untuk memudahkan pelanggan menemukan menu.")} actions={<Button className="secondary-button" disabled={busy} onClick={() => beginCategory()}>{t("Tambah Kategori")}</Button>}>
+      <label className="category-search">{t("Cari kategori")}<Input className="text-field" type="search" maxLength={120} value={categorySearch} onChange={(event) => { setCategorySearch(event.target.value); setCategoryPage(1); }} placeholder={t("Nama kategori")} /></label>
+      {categoryEditing && <form className="admin-form" onSubmit={saveCategory}>
+        <div className="admin-section-head"><h3>{categoryEditing === "new" ? t("Kategori baru") : t("Edit kategori")}</h3><Button className="text-button" type="button" onClick={() => setCategoryEditing(null)}>{t("Tutup")}</Button></div>
+        <div className="admin-form-grid">
+          <label>{t("Nama kategori *")}<Input className="text-field" required maxLength={120} value={categoryDraft.name} onChange={(event) => setCategoryDraft({ ...categoryDraft, name: event.target.value })} />{fields.name && <small className="field-error">{fields.name.join(", ")}</small>}</label>
+          <label>{t("Urutan")}<Input className="text-field" type="number" min={-2147483648} max={2147483647} required value={categoryDraft.sortOrder} onChange={(event) => setCategoryDraft({ ...categoryDraft, sortOrder: Number(event.target.value) })} /></label>
+          <label className="check-row"><Input type="checkbox" checked={categoryDraft.isActive} onChange={(event) => setCategoryDraft({ ...categoryDraft, isActive: event.target.checked })} />{t("Kategori aktif")}</label>
+        </div>
+        <div className="admin-actions"><Button className="primary-button" disabled={busy}>{busy ? t("Menyimpan…") : t("Simpan Kategori")}</Button><Button className="secondary-button" type="button" disabled={busy} onClick={() => setCategoryEditing(null)}>{t("Batal")}</Button></div>
+      </form>}
+      {loading && !list ? <LoadingState variant="table">{t("Memuat menu…")}</LoadingState> : !visibleCategories.length ? <EmptyState className="empty-state"><h2>{categories.length ? t("Kategori tidak ditemukan") : t("Belum ada kategori")}</h2><p>{categories.length ? t("Coba nama kategori lain.") : t("Tambahkan kategori untuk menyusun menu.")}</p></EmptyState> : <DataTable revision={JSON.stringify([currentCategoryPage, categoryPageSize, visibleCategories])} caption={t("Kategori")} columns={[t("Nama kategori"), t("Urutan"), t("Jumlah menu"), t("Status"), t("Tindakan")]}>{visibleCategories.slice((currentCategoryPage - 1) * categoryPageSize, currentCategoryPage * categoryPageSize).map((category) => <tr key={category.id}>
+        <th scope="row">{category.name}</th><td>{category.sortOrder}</td><td>{category.menuCount}</td><td><StatusBadge status={category.isActive ? "ACTIVE" : "INACTIVE"} /></td>
+        <td><TableActions><TableAction action="edit" disabled={busy} onClick={() => beginCategory(category)} /><TableAction action={category.isActive ? "deactivate" : "activate"} disabled={busy} onClick={() => void changeCategory(category)} /><TableAction action="delete" disabled={busy} onClick={() => setDeleting({ kind: "category", item: category })} /></TableActions></td>
+      </tr>)}</DataTable>}
+      <Pagination label="Navigasi kategori" pageSize={categoryPageSize} onPageSizeChange={setCategoryPageSize} page={currentCategoryPage} hasNext={currentCategoryPage * categoryPageSize < visibleCategories.length} total={visibleCategories.length} onChange={setCategoryPage} disabled={busy || loading} />
+    </Section>
+
     <div id="menu-filters" className="menu-filters" role="search">
-        <label className="menu-search">{t("Cari menu")}<MagnifyingGlassIcon size={18} aria-hidden="true" /><Input className="text-field" type="search" maxLength={160} value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder={t("Nama menu")} /></label>
-        <Selection label={t("Kategori")} kind="dropdown" value={categoryFilter} onChange={(value) => { setCategoryFilter(value); setPage(1); }} options={[{ value: "", label: t("Semua kategori") }, ...categories.map((category) => ({ value: category.id, label: category.name }))]} />
-        <Selection label={t("Ketersediaan")} value={availability} onChange={(value) => { setAvailability(value); setPage(1); }} options={[{ value: "", label: t("Semua") }, { value: "true", label: t("Tersedia") }, { value: "false", label: t("Tidak tersedia") }]} />
+      <label className="menu-search">{t("Cari menu")}<MagnifyingGlassIcon size={18} aria-hidden="true" /><Input className="text-field" type="search" maxLength={160} value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder={t("Nama menu")} /></label>
+      <Selection label={t("Kategori")} kind="dropdown" value={categoryFilter} onChange={(value) => { setCategoryFilter(value); setPage(1); }} options={[{ value: "", label: t("Semua kategori") }, ...categories.map((category) => ({ value: category.id, label: category.name }))]} />
+      <Selection label={t("Ketersediaan")} value={availability} onChange={(value) => { setAvailability(value); setPage(1); }} options={[{ value: "", label: t("Semua") }, { value: "true", label: t("Tersedia") }, { value: "false", label: t("Tidak tersedia") }]} />
     </div>
+
     <Section id="menu-items" title={t("Daftar menu")} description={t("Kelola harga, foto, dan ketersediaan setiap menu.")} actions={<Button className="primary-button" disabled={busy || !categories.some((category) => category.isActive)} onClick={() => beginMenu()}>{t("Tambah Menu")}</Button>}>
       {!loading && !categories.some((category) => category.isActive) && <p className="muted">{t("Buat kategori aktif sebelum menambah menu.")}</p>}
       {editing && <DetailPane revision={editing}><form className="admin-form" onSubmit={saveMenu}>
@@ -256,32 +276,13 @@ export function MenuManager() {
       {loading ? <LoadingState variant="menu">{t("Memuat menu…")}</LoadingState> : !list?.items.length ? <EmptyState className="empty-state"><h2>{t("Menu tidak ditemukan")}</h2><p>{t("Ubah pencarian atau tambahkan menu baru.")}</p></EmptyState> : <>
         <div className="admin-menu-grid">{list.items.map((item) => <MenuCard menu={item} category={categoryName.get(item.categoryId) ?? t("Kategori dihapus")} className="admin-list-row admin-menu-card" key={item.id} badge={<StatusBadge status={categoryName.has(item.categoryId) && item.isAvailable ? "AVAILABLE" : "INACTIVE"}>{!categoryName.has(item.categoryId) ? t("Pilih kategori") : item.isAvailable ? t("Tersedia") : t("Tidak tersedia")}</StatusBadge>}>
           <div className="admin-menu-card-actions">
-            <Switch label={t("Ketersediaan {0}", { "0": item.name })} checked={categoryName.has(item.categoryId) && item.isAvailable} showStateLabel={false} disabled={busy || !categoryName.has(item.categoryId)} onChange={() => void toggleMenu(item)} />
             <TableActions><TableAction action="edit" disabled={busy} onClick={() => beginMenu(item)} /><TableAction action="delete" disabled={busy} onClick={() => setDeleting({ kind: "menu", item })} /></TableActions>
+            <Switch label={t("Ketersediaan {0}", { "0": item.name })} checked={categoryName.has(item.categoryId) && item.isAvailable} showStateLabel={false} disabled={busy || !categoryName.has(item.categoryId)} onChange={() => void toggleMenu(item)} />
           </div>
         </MenuCard>)}</div>
         <Pagination label="Navigasi menu" pageSize={pageSize} onPageSizeChange={setPageSize} page={page} hasNext={page * list.pageSize < list.total} total={list.total} onChange={setPage} disabled={busy || loading} />
       </>}
     </Section>
-
-    <Section id="menu-categories" title={t("Kategori")} description={t("Susun kategori untuk memudahkan pelanggan menemukan menu.")} actions={<Button className="secondary-button" disabled={busy} onClick={() => beginCategory()}>{t("Tambah Kategori")}</Button>}>
-      <label className="category-search">{t("Cari kategori")}<Input className="text-field" type="search" maxLength={120} value={categorySearch} onChange={(event) => { setCategorySearch(event.target.value); setCategoryPage(1); }} placeholder={t("Nama kategori")} /></label>
-      {categoryEditing && <form className="admin-form" onSubmit={saveCategory}>
-        <div className="admin-section-head"><h3>{categoryEditing === "new" ? t("Kategori baru") : t("Edit kategori")}</h3><Button className="text-button" type="button" onClick={() => setCategoryEditing(null)}>{t("Tutup")}</Button></div>
-        <div className="admin-form-grid">
-          <label>{t("Nama kategori *")}<Input className="text-field" required maxLength={120} value={categoryDraft.name} onChange={(event) => setCategoryDraft({ ...categoryDraft, name: event.target.value })} />{fields.name && <small className="field-error">{fields.name.join(", ")}</small>}</label>
-          <label>{t("Urutan")}<Input className="text-field" type="number" min={-2147483648} max={2147483647} required value={categoryDraft.sortOrder} onChange={(event) => setCategoryDraft({ ...categoryDraft, sortOrder: Number(event.target.value) })} /></label>
-          <label className="check-row"><Input type="checkbox" checked={categoryDraft.isActive} onChange={(event) => setCategoryDraft({ ...categoryDraft, isActive: event.target.checked })} />{t("Kategori aktif")}</label>
-        </div>
-        <div className="admin-actions"><Button className="primary-button" disabled={busy}>{busy ? t("Menyimpan…") : t("Simpan Kategori")}</Button><Button className="secondary-button" type="button" disabled={busy} onClick={() => setCategoryEditing(null)}>{t("Batal")}</Button></div>
-      </form>}
-      {loading && !list ? <LoadingState variant="table">{t("Memuat menu…")}</LoadingState> : !visibleCategories.length ? <EmptyState className="empty-state"><h2>{categories.length ? t("Kategori tidak ditemukan") : t("Belum ada kategori")}</h2><p>{categories.length ? t("Coba nama kategori lain.") : t("Tambahkan kategori untuk menyusun menu.")}</p></EmptyState> : <DataTable revision={JSON.stringify([currentCategoryPage, categoryPageSize, visibleCategories])} caption={t("Kategori")} columns={[t("Nama kategori"), t("Urutan"), t("Jumlah menu"), t("Status"), t("Tindakan")]}>{visibleCategories.slice((currentCategoryPage - 1) * categoryPageSize, currentCategoryPage * categoryPageSize).map((category) => <tr key={category.id}>
-        <th scope="row">{category.name}</th><td>{category.sortOrder}</td><td>{category.menuCount}</td><td><StatusBadge status={category.isActive ? "ACTIVE" : "INACTIVE"} /></td>
-        <td><TableActions><TableAction action="edit" disabled={busy} onClick={() => beginCategory(category)} /><TableAction action={category.isActive ? "deactivate" : "activate"} disabled={busy} onClick={() => void changeCategory(category)} /><TableAction action="delete" disabled={busy} onClick={() => setDeleting({ kind: "category", item: category })} /></TableActions></td>
-      </tr>)}</DataTable>}
-      <Pagination label="Navigasi kategori" pageSize={categoryPageSize} onPageSizeChange={setCategoryPageSize} page={currentCategoryPage} hasNext={currentCategoryPage * categoryPageSize < visibleCategories.length} total={visibleCategories.length} onChange={setCategoryPage} disabled={busy || loading} />
-    </Section>
     {deleting && <ConfirmDelete name={deleting.item.name} description={t(deleting.kind === "menu" ? "Menu ini dihapus dari katalog. Riwayat pesanan dan penjualan tetap tersimpan." : "Kategori ini dihapus dari daftar. Menu di dalamnya tetap tersimpan dan perlu dipindahkan ke kategori aktif agar tampil lagi untuk pelanggan. Riwayat pesanan tetap tersimpan.")} onClose={() => setDeleting(null)} onConfirm={() => deleting.kind === "menu" ? deleteMenu(deleting.item) : deleteCategory(deleting.item)} />}
   </div>;
 }
-
