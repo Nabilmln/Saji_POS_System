@@ -38,9 +38,8 @@ test("compact owner table cards keep QR, editing and status restrictions", async
         height: card.getBoundingClientRect().height,
         fits: card.scrollWidth <= card.clientWidth + 1,
         controlsFit: [...card.querySelectorAll("button")].every((button) => button.scrollWidth <= button.clientWidth + 1 && button.getBoundingClientRect().height >= 32),
-        primaryFills: Math.abs(card.querySelector("footer button")!.getBoundingClientRect().width - (card.clientWidth - parseFloat(getComputedStyle(card).paddingLeft) - parseFloat(getComputedStyle(card).paddingRight))) < 1,
       })));
-      for (const size of sizes) { expect(size.fits).toBe(true); expect(size.controlsFit).toBe(true); expect(size.primaryFills).toBe(true); expect(size.height).toBeLessThanOrEqual(220); }
+      for (const size of sizes) { expect(size.fits).toBe(true); expect(size.controlsFit).toBe(true); expect(size.height).toBeLessThanOrEqual(220); }
       expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
       const cardsBox = await page.locator(".admin-table-grid").boundingBox();
       const pagerBox = await page.locator(".pagination-panel").boundingBox();

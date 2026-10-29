@@ -249,28 +249,33 @@
 
 .admin-table-card .table-card-footer {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
   margin-top: auto;
   padding-top: 10px;
   border-top: 1px solid var(--border);
   width: 100%;
+  min-width: 0;
 }
 
 .admin-table-card .table-card-primary-action {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
+  display: flex;
 }
 
 .admin-table-card .table-card-primary-action > button {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 5px;
   width: 100%;
-  min-height: 34px;
-  height: 34px;
-  padding: 6px 12px;
-  font-size: 12px;
+  min-width: 0;
+  min-height: 32px;
+  height: 32px;
+  padding: 5px 8px;
+  font-size: 11px;
   font-weight: 650;
   border-radius: 8px;
   border: 1px solid var(--border);
@@ -278,6 +283,19 @@
   color: var(--foreground);
   transition: all 0.15s ease;
   cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-table-card .table-card-primary-action > button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-table-card .table-card-primary-action > button svg {
+  flex: none;
 }
 
 .admin-table-card .table-card-primary-action > button:hover:not(:disabled) {
@@ -293,11 +311,10 @@
 }
 
 .admin-table-card .table-card-footer .table-actions {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 6px;
-  width: 100%;
+  gap: 4px;
+  flex: none;
 }
 
 .admin-table-card .table-action {

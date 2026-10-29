@@ -182,7 +182,7 @@ export function TableManager() {
                     onClick={() => openQr(table)}
                   >
                     <QrCodeIcon size={16} weight="fill" aria-hidden="true" />
-                    {t("Lihat QR")}
+                    <span>{t("Lihat QR")}</span>
                   </Button>
                 }
                 actions={
