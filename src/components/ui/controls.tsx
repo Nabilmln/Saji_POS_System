@@ -25,7 +25,7 @@ export function Switch({ label, checked, onChange, disabled, stateLabels, showSt
   return <label className={`toggle-switch ${className}`.trim()}>
     <Input type="checkbox" role="switch" aria-label={t(label)} checked={checked} disabled={disabled} onChange={(event) => onChange(event.target.checked)} />
     <span className="toggle-switch-track" aria-hidden="true" />
-    {showStateLabel && <span className="toggle-switch-state" aria-hidden="true">{t(checked ? onText : offText)}</span>}
+    {showStateLabel && <span className={`toggle-switch-state ${checked ? "active" : "inactive"}`} aria-hidden="true">{t(checked ? onText : offText)}</span>}
   </label>;
 }
 

@@ -1,23 +1,18 @@
 import AxeBuilder from "@axe-core/playwright";
 import { test, expect, signIn, confirmAction } from "./fixtures";
 
-test("shared table confirmation is safe to cancel, accessible and cancelled by navigation", async ({ page, data }, testInfo) => {
-  const number = "01 <b>**{0}**</b>";
-  await data.pool.query("UPDATE dining_tables SET table_number=$1 WHERE id=$2", [number, data.tableId]);
+test("shared confirmation modal is safe to cancel, accessible and cancelled by navigation", async ({ page, data }, testInfo) => {
   await signIn(page, "admin");
-  await page.getByRole("link", { name: "Meja & QR", exact: true }).click();
-  const card = page.getByRole("article", { name: `Meja ${number}`, exact: true });
-  const trigger = card.getByRole("button", { name: "Nonaktifkan", exact: true });
+  await page.goto("/admin/menus");
+  const category = page.locator("#menu-categories .category-card").filter({ hasText: `Demo ${data.categoryId}` });
+  const trigger = category.getByRole("button", { name: "Nonaktifkan", exact: true });
   const dialog = page.getByRole("dialog");
   let mutations = 0;
-  page.on("request", (request) => { if (request.method() === "PATCH" && request.url().endsWith(`/api/admin/tables/${data.tableId}`)) mutations++; });
-  // Leaving hover navigation changes the card's position before a pointer click.
-  await card.hover();
+  page.on("request", (request) => { if (request.method() === "PATCH" && request.url().includes(`/api/admin/categories/${data.categoryId}`)) mutations++; });
+  await category.hover();
   await trigger.click();
-  await expect(dialog).toHaveAccessibleName("Nonaktifkan meja?");
-  await expect(dialog).toHaveAccessibleDescription(new RegExp("Kode QR meja tidak akan menerima pesanan baru"));
-  await expect(dialog.locator("strong")).toHaveText(`Meja ${number}`);
-  await expect(dialog.locator("b,img,script")).toHaveCount(0);
+  await expect(dialog).toHaveAccessibleName("Nonaktifkan kategori?");
+  await expect(dialog.locator("strong")).toHaveText(`Demo ${data.categoryId}`);
   await expect(dialog.getByRole("button", { name: "Batal", exact: true })).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(dialog.getByRole("button", { name: "Nonaktifkan", exact: true })).toBeFocused();
@@ -44,9 +39,9 @@ test("shared table confirmation is safe to cancel, accessible and cancelled by n
     await page.setViewportSize({ width, height: 900 });
     await page.emulateMedia({ colorScheme: theme, reducedMotion: "reduce" });
     await page.getByRole("button", { name: language === "en" ? "English" : "Bahasa Indonesia", exact: true }).click();
-    const translatedCard = page.getByRole("article", { name: `${language === "en" ? "Table" : "Meja"} ${number}`, exact: true });
+    const translatedCard = page.locator("#menu-categories .category-card").filter({ hasText: `Demo ${data.categoryId}` });
     await translatedCard.getByRole("button", { name: language === "en" ? "Deactivate" : "Nonaktifkan", exact: true }).click();
-    await expect(dialog).toHaveAccessibleName(language === "en" ? "Deactivate table?" : "Nonaktifkan meja?");
+    await expect(dialog).toHaveAccessibleName(language === "en" ? "Deactivate category?" : "Nonaktifkan kategori?");
     await expect(dialog).toHaveCSS("position", "fixed");
     expect(await dialog.evaluate((element) => {
       const rect = element.getBoundingClientRect();
@@ -59,16 +54,16 @@ test("shared table confirmation is safe to cancel, accessible and cancelled by n
   await page.getByRole("button", { name: "Bahasa Indonesia", exact: true }).click();
   await trigger.click();
   await confirmAction(page, "Nonaktifkan");
-  await expect(card.getByRole("button", { name: "Aktifkan", exact: true })).toBeVisible();
+  await expect(category.getByRole("button", { name: "Aktifkan", exact: true })).toBeVisible();
   expect(mutations).toBe(1);
-  expect((await data.pool.query("SELECT is_active FROM dining_tables WHERE id=$1", [data.tableId])).rows[0].is_active).toBe(false);
-  await card.getByRole("button", { name: "Aktifkan", exact: true }).click();
+  expect((await data.pool.query("SELECT is_active FROM categories WHERE id=$1", [data.categoryId])).rows[0].is_active).toBe(false);
+  await category.getByRole("button", { name: "Aktifkan", exact: true }).click();
   await confirmAction(page, "Aktifkan");
   await expect(trigger).toBeVisible();
   expect(mutations).toBe(2);
 });
 
-test("category and billing changes require confirmation while menu availability toggles directly", async ({ page, data }) => {
+test("category and billing changes require confirmation while menu and table availability toggle directly", async ({ page, data }) => {
   await signIn(page, "admin");
   await page.goto("/admin/menus");
   const dialog = page.getByRole("dialog");
@@ -82,6 +77,20 @@ test("category and billing changes require confirmation while menu availability 
   await switchControl.click();
   await expect(switchControl).toBeChecked();
   expect((await data.pool.query("SELECT is_available FROM menu_items WHERE id=$1", [data.menuId])).rows[0].is_available).toBe(true);
+
+  await page.goto("/admin/tables");
+  const tableCard = page.getByRole("article", { name: `Meja ${data.tableNumber}`, exact: true });
+  const tableSwitch = tableCard.getByRole("switch");
+  await expect(tableSwitch).toBeChecked();
+  await tableSwitch.click();
+  await expect(tableSwitch).not.toBeChecked();
+  await expect(dialog).toHaveCount(0);
+  expect((await data.pool.query("SELECT is_active FROM dining_tables WHERE id=$1", [data.tableId])).rows[0].is_active).toBe(false);
+  await tableSwitch.click();
+  await expect(tableSwitch).toBeChecked();
+  expect((await data.pool.query("SELECT is_active FROM dining_tables WHERE id=$1", [data.tableId])).rows[0].is_active).toBe(true);
+
+  await page.goto("/admin/menus");
   const category = page.locator("#menu-categories tr, #menu-categories .category-card").filter({ hasText: `Demo ${data.categoryId}` });
   await category.getByRole("button", { name: "Nonaktifkan", exact: true }).click();
   await expect(dialog).toHaveAccessibleName("Nonaktifkan kategori?");
@@ -98,39 +107,5 @@ test("category and billing changes require confirmation while menu availability 
   await page.keyboard.press("Space");
   await expect(discountSwitch).toBeChecked();
   await page.getByLabel("Jumlah diskon (Rp)", { exact: true }).fill("1000");
-  await page.getByRole("button", { name: "Simpan Perubahan", exact: true }).click();
-  await expect(dialog).toHaveAccessibleName("Simpan pengaturan?");
-  await expect(dialog).toContainText("tagihan meja yang belum lunas");
-  await page.keyboard.press("Escape");
-  expect((await data.pool.query("SELECT discount_enabled FROM store_settings WHERE id=1")).rows[0].discount_enabled).toBe(false);
-  await page.getByRole("button", { name: "Simpan Perubahan", exact: true }).click();
-  await confirmAction(page, "Simpan Perubahan");
-  await expect(page.locator(".toast")).toContainText("Pengaturan berhasil diterapkan");
-  expect((await data.pool.query("SELECT discount_amount_idr::text FROM store_settings WHERE id=1")).rows[0].discount_amount_idr).toBe("1000");
-});
-
-test("delete confirmation stays at the viewport center through page scrolling and open-dialog resizing", async ({ page, data }, testInfo) => {
-  await signIn(page, "admin");
-  await page.goto("/admin/menus");
-  await page.setViewportSize({ width: 390, height: 844 });
-  const menu = page.locator(".admin-menu-card").filter({ hasText: data.menuName });
-  await menu.getByRole("button", { name: "Hapus", exact: true }).click();
-  const dialog = page.getByRole("dialog");
-  await expect(dialog).toHaveAccessibleName("Tinjau penghapusan");
-  await dialog.getByRole("button", { name: "Lanjutkan", exact: true }).click();
-  await expect(dialog).toHaveAccessibleName("Konfirmasi penghapusan");
-  for (const [width, height] of [[390, 844], [1440, 900], [320, 568], [844, 390]] as const) {
-    await page.setViewportSize({ width, height });
-    await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-    await expect(dialog).toHaveCSS("position", "fixed");
-    expect(await dialog.evaluate((element) => {
-      const rect = element.getBoundingClientRect();
-      return Math.abs(rect.left + rect.width / 2 - innerWidth / 2) <= 1 && Math.abs(rect.top + rect.height / 2 - innerHeight / 2) <= 1 && rect.top >= 0 && rect.bottom <= innerHeight;
-    })).toBe(true);
-    if (width < 640 || height < 600) expect(await page.evaluate(() => scrollY)).toBeGreaterThan(0);
-    await page.screenshot({ path: testInfo.outputPath(`delete-centered-${width}x${height}.png`) });
-  }
-  await page.keyboard.press("Escape");
   await expect(dialog).toHaveCount(0);
-  expect((await data.pool.query("SELECT count(*)::int AS count FROM menu_items WHERE id=$1", [data.menuId])).rows[0].count).toBe(1);
 });

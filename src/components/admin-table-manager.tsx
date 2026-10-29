@@ -2,14 +2,14 @@
 
 import { Text, useLocale } from "@/components/locale-provider";
 import { useNotice, statusNotice } from "@/components/ui/notice";
-import { useConfirmation } from "@/components/ui/confirmation";
 
 import { StatusBadge } from "@/components/ui/status-badge";
 import { DownloadSimpleIcon, QrCodeIcon } from "@phosphor-icons/react";
 import { TableCard } from "@/components/ui/table-card";
 import { TableAction } from "@/components/ui/table-actions";
+import { Section } from "@/components/ui/section";
 
-import { Alert, Panel, Button, Input, EmptyState, Pagination, LoadingState } from "@/components/ui/controls";
+import { Alert, Button, Input, EmptyState, Pagination, LoadingState, Switch } from "@/components/ui/controls";
 import { ConfirmDelete } from "@/components/ui/confirm-delete";
 import { usePagination } from "@/lib/use-pagination";
 
@@ -31,7 +31,6 @@ export function TableManager() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const setNotice = useNotice();
-  const confirm = useConfirmation();
   const [fields, setFields] = useState<Record<string, string[]>>({});
   const [editing, setEditing] = useState<string | "new" | null>(null);
   const [number, setNumber] = useState("");
@@ -59,7 +58,12 @@ export function TableManager() {
   }, [preview]);
 
   function begin(table?: Table) {
-    setEditing(table?.id ?? "new"); setNumber(table?.tableNumber ?? ""); setError(""); setFields({}); setNotice("");
+    setEditing(table?.id ?? "new");
+    setNumber(table?.tableNumber ?? "");
+    setPreview(null);
+    setError("");
+    setFields({});
+    setNotice("");
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -75,17 +79,26 @@ export function TableManager() {
   }
 
   async function toggle(table: Table) {
-    if (!await confirm({ title: table.isActive ? "Nonaktifkan meja?" : "Aktifkan meja?", subject: <Text value={`Meja ${table.tableNumber}`} />, description: table.isActive ? "Kode QR meja tidak akan menerima pesanan baru." : "Pelanggan dapat memesan melalui kode QR meja ini.", confirmLabel: table.isActive ? "Nonaktifkan" : "Aktifkan" })) return;
+    const nextActive = !table.isActive;
+    setTables((current) => current.map((t) => t.id === table.id ? { ...t, isActive: nextActive } : t));
     setBusy(true); setError(""); setNotice("");
     try {
-      await adminApi<Table>(`/api/admin/tables/${table.id}`, jsonRequest("PATCH", { isActive: !table.isActive }));
-      setNotice(statusNotice(<Text value={`Meja ${table.tableNumber}`} />, table.isActive ? "Nonaktif" : "Aktif")); reload();
-      if (preview?.id === table.id) setPreview(null);
-    } catch (cause) { setError((cause as Error).message); setNotice({ text: "Status {0} belum dapat diperbarui.", values: { 0: <Text value={`Meja ${table.tableNumber}`} /> }, tone: "error" }); }
-    finally { setBusy(false); }
+      await adminApi<Table>(`/api/admin/tables/${table.id}`, jsonRequest("PATCH", { isActive: nextActive }));
+      setNotice(statusNotice(<Text value={`Meja ${table.tableNumber}`} />, nextActive ? "Aktif" : "Nonaktif")); reload();
+      if (preview?.id === table.id && !nextActive) setPreview(null);
+    } catch (cause) {
+      setError((cause as Error).message);
+      setNotice({ text: "Status {0} belum dapat diperbarui.", values: { 0: <Text value={`Meja ${table.tableNumber}`} /> }, tone: "error" });
+      reload();
+    } finally { setBusy(false); }
   }
 
-  function openQr(table: Table) { setQrSvg(""); setPreview(table); setError(""); }
+  function openQr(table: Table) {
+    setEditing(null);
+    setQrSvg("");
+    setPreview(table);
+    setError("");
+  }
 
   async function remove(table: Table) {
     setBusy(true); setNotice(""); setError("");
@@ -101,29 +114,91 @@ export function TableManager() {
   const qrUrl = preview ? new URL(preview.orderUrl, typeof window === "undefined" ? "http://localhost" : window.location.origin).href : "";
   const downloadHref = qrSvg ? `data:image/svg+xml;charset=utf-8,${encodeURIComponent(qrSvg)}` : "";
   return <div className="admin-stack">
-    {/* <p className="section-intro">{t("Atur nomor meja dan unduh kode QR unik untuk meja yang aktif.")}</p> */}
-
     {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
-    <Panel className="admin-panel">
-      <div className="admin-section-head"><div><h2>{t("Daftar meja")}</h2></div><Button className="primary-button" disabled={busy} onClick={() => begin()}>{t("Tambah Meja")}</Button></div>
-      {editing && <form className="admin-form" onSubmit={save}>
-        <div className="admin-section-head"><h3>{editing === "new" ? t("Meja baru") : t("Ubah nomor meja")}</h3><Button className="text-button" type="button" onClick={() => setEditing(null)}>{t("Tutup")}</Button></div>
-        <label>{t("Nomor meja *")}<Input className="text-field" required maxLength={30} value={number} onChange={(event) => setNumber(event.target.value)} />{fields.tableNumber && <small className="field-error">{fields.tableNumber.join(", ")}</small>}</label>
-        <div className="admin-actions"><Button className="primary-button" disabled={busy}>{busy ? t("Menyimpan…") : t("Simpan Meja")}</Button><Button className="secondary-button" type="button" disabled={busy} onClick={() => setEditing(null)}>{t("Batal")}</Button></div>
-      </form>}
-    </Panel>
-    <section className="admin-table-list" aria-label={t("Daftar meja")}>
-      {loading ? <LoadingState variant="cards">{t("Memuat meja…")}</LoadingState> : !tables.length ? <EmptyState className="empty-state"><h2>{t("Belum ada meja")}</h2><p>{t("Tambahkan meja untuk membuat kode QR.")}</p></EmptyState> : <div className="admin-table-grid">{tables.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((table) => <TableCard revision={JSON.stringify(table)} className="admin-table-card" titleId={`admin-table-${table.id}`} title={t("Meja {0}", { "0": table.tableNumber })} status={table.status} selected={preview?.id === table.id} key={table.id}
-        metadata={{ label: t("Pemesanan QR"), value: <StatusBadge status={table.isActive ? "ACTIVE" : "INACTIVE"} /> }}
-        primaryAction={<Button disabled={busy || !table.isActive} aria-pressed={preview?.id === table.id} onClick={() => openQr(table)}><QrCodeIcon size={16} weight="fill" aria-hidden="true" />{t("Lihat QR")}</Button>}
-        actions={<>
-          <TableAction action="renumber" disabled={busy || table.status !== "AVAILABLE"} onClick={() => begin(table)} />
-          <TableAction action={table.isActive ? "deactivate" : "activate"} disabled={busy || table.status !== "AVAILABLE"} onClick={() => void toggle(table)} />
-          <TableAction action="delete" disabled={busy || table.status !== "AVAILABLE"} onClick={() => setDeleting(table)} />
-        </>}
-      />)}</div>}
-    </section>
-    <Pagination pageSize={pageSize} onPageSizeChange={setPageSize} page={currentPage} hasNext={currentPage * pageSize < tables.length} total={tables.length} onChange={setPage} disabled={busy || loading} />
+
+    {editing && (
+      <DetailPane revision={editing}>
+        <form className="admin-form" onSubmit={save}>
+          <div className="admin-section-head">
+            <h3>{editing === "new" ? t("Meja baru") : t("Ubah nomor meja")}</h3>
+            <Button className="text-button" type="button" onClick={() => setEditing(null)}>{t("Tutup")}</Button>
+          </div>
+          <fieldset className="admin-form-grid" disabled={busy} aria-label={t("Detail meja")}>
+            <label className="admin-form-wide">
+              {t("Nomor meja *")}
+              <Input className="text-field" required maxLength={30} value={number} onChange={(event) => setNumber(event.target.value)} />
+              {fields.tableNumber && <small className="field-error">{fields.tableNumber.join(", ")}</small>}
+            </label>
+          </fieldset>
+          <div className="admin-actions">
+            <Button className="primary-button" disabled={busy}>{busy ? t("Menyimpan…") : t("Simpan Meja")}</Button>
+            <Button className="secondary-button" type="button" disabled={busy} onClick={() => setEditing(null)}>{t("Batal")}</Button>
+          </div>
+        </form>
+      </DetailPane>
+    )}
+
+    <Section
+      id="admin-tables"
+      title={t("Daftar meja")}
+      description={t("Atur nomor meja dan unduh kode QR unik untuk meja yang aktif.")}
+      actions={<Button className="primary-button" disabled={busy} onClick={() => begin()}>{t("Tambah Meja")}</Button>}
+    >
+      <section className="admin-table-list" aria-label={t("Daftar meja")}>
+        {loading ? (
+          <LoadingState variant="cards">{t("Memuat meja…")}</LoadingState>
+        ) : !tables.length ? (
+          <EmptyState className="empty-state">
+            <h2>{t("Belum ada meja")}</h2>
+            <p>{t("Tambahkan meja untuk membuat kode QR.")}</p>
+          </EmptyState>
+        ) : (
+          <div className="admin-table-grid">
+            {tables.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((table) => (
+              <TableCard
+                revision={JSON.stringify(table)}
+                className="admin-table-card"
+                titleId={`admin-table-${table.id}`}
+                title={t("Meja {0}", { "0": table.tableNumber })}
+                status={table.status}
+                selected={preview?.id === table.id}
+                key={table.id}
+                metadata={{
+                  label: t("Pemesanan QR"),
+                  value: (
+                    <Switch
+                      label={t("Pemesanan QR Meja {0}", { "0": table.tableNumber })}
+                      checked={table.isActive}
+                      disabled={busy || table.status !== "AVAILABLE"}
+                      showStateLabel={true}
+                      onChange={() => void toggle(table)}
+                    />
+                  ),
+                }}
+                primaryAction={
+                  <Button
+                    disabled={busy || !table.isActive}
+                    aria-pressed={preview?.id === table.id}
+                    onClick={() => openQr(table)}
+                  >
+                    <QrCodeIcon size={16} weight="fill" aria-hidden="true" />
+                    {t("Lihat QR")}
+                  </Button>
+                }
+                actions={
+                  <>
+                    <TableAction action="renumber" disabled={busy || table.status !== "AVAILABLE"} onClick={() => begin(table)} />
+                    <TableAction action="delete" disabled={busy || table.status !== "AVAILABLE"} onClick={() => setDeleting(table)} />
+                  </>
+                }
+              />
+            ))}
+          </div>
+        )}
+      </section>
+      <Pagination pageSize={pageSize} onPageSizeChange={setPageSize} page={currentPage} hasNext={currentPage * pageSize < tables.length} total={tables.length} onChange={setPage} disabled={busy || loading} />
+    </Section>
+
     {deleting && <ConfirmDelete name={t("Meja {0}", { "0": deleting.tableNumber })} description={t("Meja ini dihapus dari daftar. Kode QR lama berhenti menerima pesanan; riwayat transaksi tetap tersimpan.")} onClose={() => setDeleting(null)} onConfirm={() => remove(deleting)} />}
     {preview && <DetailPane revision={JSON.stringify(preview)}><section className="table-card-qr-section" aria-labelledby="qr-title">
       <div className="table-card-qr-heading"><h2 id="qr-title">{t("Meja")}{" "}{preview.tableNumber}</h2><Button className="text-button" onClick={() => setPreview(null)}>{t("Tutup")}</Button></div>

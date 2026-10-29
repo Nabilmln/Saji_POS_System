@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import AxeBuilder from "@axe-core/playwright";
-import { test, expect, signIn, confirmAction } from "./fixtures";
+import { test, expect, signIn } from "./fixtures";
 
 test("compact owner table cards keep QR, editing and status restrictions", async ({ page, data }, testInfo) => {
   const ids = [randomUUID(), randomUUID(), randomUUID()];
@@ -20,7 +20,8 @@ test("compact owner table cards keep QR, editing and status restrictions", async
     await expect(inactive).toContainText("Nonaktif");
     for (const number of ["Occupied card", "Reserved card"]) {
       const busy = page.getByRole("article", { name: `Meja ${number}`, exact: true });
-      for (const name of ["Ubah nomor", "Nonaktifkan", "Hapus"]) await expect(busy.getByRole("button", { name, exact: true })).toBeDisabled();
+      for (const name of ["Ubah nomor", "Hapus"]) await expect(busy.getByRole("button", { name, exact: true })).toBeDisabled();
+      await expect(busy.getByRole("switch")).toBeDisabled();
       await expect(busy.getByRole("button", { name: "Lihat QR", exact: true })).toBeEnabled();
     }
     await card.getByRole("button", { name: "Lihat QR", exact: true }).click();
@@ -57,8 +58,7 @@ test("compact owner table cards keep QR, editing and status restrictions", async
     await expect(page.getByRole("dialog")).toBeVisible();
     await page.keyboard.press("Escape");
     await expect(renamed).toBeVisible();
-    await renamed.getByRole("button", { name: "Nonaktifkan", exact: true }).click();
-    await confirmAction(page, "Nonaktifkan");
+    await renamed.getByRole("switch").click();
     await expect(renamed.getByRole("button", { name: "Lihat QR", exact: true })).toBeDisabled();
   } finally { await data.pool.query("DELETE FROM dining_tables WHERE id=ANY($1::uuid[])", [ids]); }
 });
