@@ -2,7 +2,6 @@
 
 import { useLocale } from "@/components/locale-provider";
 import { useNotice, statusNotice } from "@/components/ui/notice";
-import { useConfirmation } from "@/components/ui/confirmation";
 
 import { StatusBadge } from "@/components/ui/status-badge";
 import { CircleNotchIcon, MagnifyingGlassIcon, PlusIcon, TagIcon, UploadSimpleIcon } from "@phosphor-icons/react";
@@ -51,7 +50,6 @@ export function MenuManager() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const setNotice = useNotice();
-  const confirm = useConfirmation();
   const [fields, setFields] = useState<Record<string, string[]>>({});
 
   const reload = () => setRevision((value) => value + 1);
@@ -170,14 +168,15 @@ export function MenuManager() {
   }
 
   async function changeCategory(category: Category) {
-    const action = category.isActive ? "Nonaktifkan" : "Aktifkan";
-    if (!await confirm({ title: category.isActive ? "Nonaktifkan kategori?" : "Aktifkan kategori?", subject: category.name, description: category.isActive ? "Menu di kategori ini tidak akan tampil untuk pelanggan." : "Menu yang tersedia di kategori ini akan tampil untuk pelanggan.", confirmLabel: action })) return;
+    const nextActive = !category.isActive;
+    setCategories((current) => current.map((c) => c.id === category.id ? { ...c, isActive: nextActive } : c));
     setBusy(true); setError(""); setNotice("");
     try {
-      await adminApi<Category>(`/api/admin/categories/${category.id}`, jsonRequest("PATCH", { isActive: !category.isActive }));
-      setNotice(statusNotice(category.name, category.isActive ? "Nonaktif" : "Aktif")); reload();
+      await adminApi<Category>(`/api/admin/categories/${category.id}`, jsonRequest("PATCH", { isActive: nextActive }));
+      setNotice(statusNotice(category.name, nextActive ? "Aktif" : "Nonaktif")); reload();
     } catch (cause) {
       setError((cause as Error).message);
+      reload();
     }
     finally { setBusy(false); }
   }
@@ -267,9 +266,15 @@ export function MenuManager() {
               <div className="category-card-footer">
                 <TableActions>
                   <TableAction action="edit" disabled={busy} onClick={() => beginCategory(category)} />
-                  <TableAction action={category.isActive ? "deactivate" : "activate"} disabled={busy} onClick={() => void changeCategory(category)} />
                   <TableAction action="delete" disabled={busy} onClick={() => setDeleting({ kind: "category", item: category })} />
                 </TableActions>
+                <Switch
+                  label={t("Status {0}", { "0": category.name })}
+                  checked={category.isActive}
+                  showStateLabel={false}
+                  disabled={busy}
+                  onChange={() => void changeCategory(category)}
+                />
               </div>
             </article>
           ))}

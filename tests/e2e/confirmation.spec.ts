@@ -3,16 +3,16 @@ import { test, expect, signIn, confirmAction } from "./fixtures";
 
 test("shared confirmation modal is safe to cancel, accessible and cancelled by navigation", async ({ page, data }, testInfo) => {
   await signIn(page, "admin");
-  await page.goto("/admin/menus");
-  const category = page.locator("#menu-categories .category-card").filter({ hasText: `Demo ${data.categoryId}` });
-  const trigger = category.getByRole("button", { name: "Nonaktifkan", exact: true });
+  await page.goto("/admin/staff");
+  const cashierRow = page.getByRole("row").filter({ hasText: "Test Kasir" });
+  const trigger = cashierRow.getByRole("button", { name: "Nonaktifkan", exact: true });
   const dialog = page.getByRole("dialog");
   let mutations = 0;
-  page.on("request", (request) => { if (request.method() === "PATCH" && request.url().includes(`/api/admin/categories/${data.categoryId}`)) mutations++; });
-  await category.hover();
+  page.on("request", (request) => { if (request.method() === "PATCH" && request.url().includes("/api/admin/staff/00000000-0000-4000-8000-000000000002")) mutations++; });
+  await cashierRow.hover();
   await trigger.click();
-  await expect(dialog).toHaveAccessibleName("Nonaktifkan kategori?");
-  await expect(dialog.locator("strong")).toHaveText(`Demo ${data.categoryId}`);
+  await expect(dialog).toHaveAccessibleName("Nonaktifkan akses kasir?");
+  await expect(dialog.locator("strong")).toHaveText("Test Kasir");
   await expect(dialog.getByRole("button", { name: "Batal", exact: true })).toBeFocused();
   await page.keyboard.press("Tab");
   await expect(dialog.getByRole("button", { name: "Nonaktifkan", exact: true })).toBeFocused();
@@ -39,9 +39,9 @@ test("shared confirmation modal is safe to cancel, accessible and cancelled by n
     await page.setViewportSize({ width, height: 900 });
     await page.emulateMedia({ colorScheme: theme, reducedMotion: "reduce" });
     await page.getByRole("button", { name: language === "en" ? "English" : "Bahasa Indonesia", exact: true }).click();
-    const translatedCard = page.locator("#menu-categories .category-card").filter({ hasText: `Demo ${data.categoryId}` });
-    await translatedCard.getByRole("button", { name: language === "en" ? "Deactivate" : "Nonaktifkan", exact: true }).click();
-    await expect(dialog).toHaveAccessibleName(language === "en" ? "Deactivate category?" : "Nonaktifkan kategori?");
+    const translatedRow = page.getByRole("row").filter({ hasText: "Test Kasir" });
+    await translatedRow.getByRole("button", { name: language === "en" ? "Deactivate" : "Nonaktifkan", exact: true }).click();
+    await expect(dialog).toHaveAccessibleName(language === "en" ? "Deactivate cashier access?" : "Nonaktifkan akses kasir?");
     await expect(dialog).toHaveCSS("position", "fixed");
     expect(await dialog.evaluate((element) => {
       const rect = element.getBoundingClientRect();
@@ -54,16 +54,16 @@ test("shared confirmation modal is safe to cancel, accessible and cancelled by n
   await page.getByRole("button", { name: "Bahasa Indonesia", exact: true }).click();
   await trigger.click();
   await confirmAction(page, "Nonaktifkan");
-  await expect(category.getByRole("button", { name: "Aktifkan", exact: true })).toBeVisible();
+  await expect(cashierRow.getByRole("button", { name: "Aktifkan", exact: true })).toBeVisible();
   expect(mutations).toBe(1);
-  expect((await data.pool.query("SELECT is_active FROM categories WHERE id=$1", [data.categoryId])).rows[0].is_active).toBe(false);
-  await category.getByRole("button", { name: "Aktifkan", exact: true }).click();
+  expect((await data.pool.query("SELECT is_active FROM staff_profiles WHERE user_id='00000000-0000-4000-8000-000000000002'")).rows[0].is_active).toBe(false);
+  await cashierRow.getByRole("button", { name: "Aktifkan", exact: true }).click();
   await confirmAction(page, "Aktifkan");
   await expect(trigger).toBeVisible();
   expect(mutations).toBe(2);
 });
 
-test("category and billing changes require confirmation while menu and table availability toggle directly", async ({ page, data }) => {
+test("menu, table and category availability toggle directly while billing changes require confirmation", async ({ page, data }) => {
   await signIn(page, "admin");
   await page.goto("/admin/menus");
   const dialog = page.getByRole("dialog");
@@ -78,6 +78,17 @@ test("category and billing changes require confirmation while menu and table ava
   await expect(switchControl).toBeChecked();
   expect((await data.pool.query("SELECT is_available FROM menu_items WHERE id=$1", [data.menuId])).rows[0].is_available).toBe(true);
 
+  const category = page.locator("#menu-categories .category-card").filter({ hasText: `Demo ${data.categoryId}` });
+  const categorySwitch = category.getByRole("switch");
+  await expect(categorySwitch).toBeChecked();
+  await categorySwitch.click();
+  await expect(categorySwitch).not.toBeChecked();
+  await expect(dialog).toHaveCount(0);
+  expect((await data.pool.query("SELECT is_active FROM categories WHERE id=$1", [data.categoryId])).rows[0].is_active).toBe(false);
+  await categorySwitch.click();
+  await expect(categorySwitch).toBeChecked();
+  expect((await data.pool.query("SELECT is_active FROM categories WHERE id=$1", [data.categoryId])).rows[0].is_active).toBe(true);
+
   await page.goto("/admin/tables");
   const tableCard = page.getByRole("article", { name: `Meja ${data.tableNumber}`, exact: true });
   const tableSwitch = tableCard.getByRole("switch");
@@ -90,16 +101,6 @@ test("category and billing changes require confirmation while menu and table ava
   await expect(tableSwitch).toBeChecked();
   expect((await data.pool.query("SELECT is_active FROM dining_tables WHERE id=$1", [data.tableId])).rows[0].is_active).toBe(true);
 
-  await page.goto("/admin/menus");
-  const category = page.locator("#menu-categories tr, #menu-categories .category-card").filter({ hasText: `Demo ${data.categoryId}` });
-  await category.getByRole("button", { name: "Nonaktifkan", exact: true }).click();
-  await expect(dialog).toHaveAccessibleName("Nonaktifkan kategori?");
-  await confirmAction(page, "Nonaktifkan");
-  await expect(category.getByRole("button", { name: "Aktifkan", exact: true })).toBeVisible();
-  expect((await data.pool.query("SELECT is_active FROM categories WHERE id=$1", [data.categoryId])).rows[0].is_active).toBe(false);
-  await category.getByRole("button", { name: "Aktifkan", exact: true }).click();
-  await confirmAction(page, "Aktifkan");
-  await expect(category.getByRole("button", { name: "Nonaktifkan", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Diskon & Pajak", exact: true }).click();
   const discountSwitch = page.getByRole("switch", { name: "Gunakan diskon", exact: true });
   await expect(discountSwitch).not.toBeChecked();
