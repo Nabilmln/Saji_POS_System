@@ -79,27 +79,63 @@ export function StaffManager() {
     } finally { setBusy(false); }
   }
   return <div className="admin-stack">
-    <Panel><div className="admin-section-head"><h2>{t("Akun staf")}</h2><Button disabled={busy} onClick={() => begin("new")}>{t("Tambah Kasir")}</Button></div>
-      <p className="muted">{t("Pemilik membuat akun kasir. Nonaktifkan untuk jeda akses, atau hapus untuk mengeluarkan akun dari daftar.")}</p>
-      {error && <Alert>{t(error)}</Alert>}
-      {editing && <form className="admin-form" onSubmit={save}><h3>{t(passwordEditing ? "Atur kata sandi kasir" : editing === "new" ? "Kasir baru" : "Ubah nama staf")}</h3>
-        <div className="admin-form-grid credential-grid">
-          {!passwordEditing && <label>{t("Nama staf")}<Input required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} /></label>}
-          <label>{t("Email")}<Input type="email" required readOnly={editing !== "new"} maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-          {(editing === "new" || passwordEditing) && <label>{t(passwordEditing ? "Kata sandi baru" : "Kata sandi kasir")}<PasswordInput autoComplete="new-password" required minLength={8} maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} /></label>}
+    <Panel className="admin-panel">
+      <div className="admin-section-head">
+        <div>
+          <h2>{t("Akun staf")}</h2>
+          <p className="muted">{t("Pemilik membuat akun kasir. Nonaktifkan untuk jeda akses, atau hapus untuk mengeluarkan akun dari daftar.")}</p>
         </div>
-        <div className="admin-actions"><Button disabled={busy}>{busy ? t("Menyimpan\u2026") : t(passwordEditing ? "Simpan kata sandi" : "Simpan staf")}</Button><Button type="button" className="secondary-button" disabled={busy} onClick={() => { setEditing(null); setPassword(""); }}>{t("Batal")}</Button></div>
-      </form>}
-    </Panel>
-    <Panel><h2>{t("Daftar akun")}</h2>
-      {loading ? <LoadingState variant="table">{t("Memuat staf\u2026")}</LoadingState> : staff.length ? <DataTable revision={JSON.stringify(staff)} caption={t("Daftar akun")} columns={[t("Nama staf"), t("Email"), t("Peran"), t("Status"), t("Dibuat"), t("Tindakan")]}>{staff.map((item) => <tr key={item.userId}>
+        <Button className="primary-button" disabled={busy} onClick={() => begin("new")}>{t("Tambah Kasir")}</Button>
+      </div>
+      {error && !editing && <Alert role="alert">{t(error)}</Alert>}
+
+      {loading ? <LoadingState variant="table">{t("Memuat staf…")}</LoadingState> : staff.length ? <DataTable revision={JSON.stringify(staff)} caption={t("Daftar akun")} columns={[t("Nama staf"), t("Email"), t("Peran"), t("Status"), t("Dibuat"), t("Tindakan")]}>{staff.map((item) => <tr key={item.userId}>
         <th scope="row">{item.displayName}</th><td>{item.email ?? t("Email tidak tersedia")}</td><td>{t(item.role === "ADMIN" ? "Admin" : "Kasir")}</td><td><StatusBadge status={item.isActive ? "ACTIVE" : "INACTIVE"} /></td><td className="date-cell">{formatDate(item.createdAt, locale)}</td>
         <td><TableActions><TableAction action="rename" disabled={busy} onClick={() => begin(item)} />{item.role === "CASHIER" && <><TableAction action="password" disabled={busy} onClick={() => begin(item, true)} /><TableAction action={item.isActive ? "deactivate" : "activate"} disabled={busy} onClick={() => void toggle(item)} /><TableAction action="delete" disabled={busy} onClick={() => setDeleting(item)} /></>}</TableActions>{item.role === "ADMIN" && <span className="protected-label">{t("Pemilik eksklusif")}</span>}</td>
       </tr>)}</DataTable> : <p className="empty-state">{t("Tidak ada staf pada halaman ini.")}</p>}
+      <Pagination pageSize={pageSize} onPageSizeChange={setPageSize} page={page} hasNext={hasNext} onChange={setPage} disabled={busy || loading} />
     </Panel>
-    <Pagination pageSize={pageSize} onPageSizeChange={setPageSize} page={page} hasNext={hasNext} onChange={setPage} disabled={busy || loading} />
-    <DetailPane revision={credentials ? credentials.email : String(staff.length)}><div className="detail-heading"><h2>{t(credentials ? "Kredensial kasir" : "Akses tim")}</h2>{credentials && <Button className="text-button" onClick={() => setCredentials(null)}>{t("Tutup")}</Button>}</div>
-      {credentials ? <div className="credential-preview"><label>{t("Email")}<Input readOnly value={credentials.email} /></label><label>{t("Kata sandi kasir")}<PasswordInput readOnly autoComplete="off" value={credentials.password} /></label><p className="detail-note">{t("Salin dan bagikan secara pribadi. Kredensial ini hilang saat ditutup atau halaman dimuat ulang.")}</p></div> : <><p className="muted">{t("Pemilik mengelola akun kasir untuk restoran ini.")}</p><div className="detail-stat"><span>{t("Akun pada halaman ini")}</span><strong>{staff.length}</strong></div><p className="detail-note">{t("Email dapat dilihat. Kata sandi lama tidak dapat dibaca; atur kata sandi baru jika kasir lupa.")}</p></>}
+
+    <DetailPane revision={editing ? (editing === "new" ? `new:${passwordEditing}` : `${editing.userId}:${passwordEditing}`) : credentials ? credentials.email : String(staff.length)}>
+      {editing ? (
+        <form className="admin-form" onSubmit={save}>
+          <div className="admin-section-head">
+            <h3>{t(passwordEditing ? "Atur kata sandi kasir" : editing === "new" ? "Kasir baru" : "Ubah nama staf")}</h3>
+            <Button className="text-button" type="button" onClick={() => { setEditing(null); setPassword(""); }}>{t("Tutup")}</Button>
+          </div>
+          {error && <Alert role="alert">{t(error)}</Alert>}
+          <fieldset className="admin-form-grid credential-grid" disabled={busy} aria-label={t("Detail staf")}>
+            {!passwordEditing && <label>{t("Nama staf")}<Input required maxLength={120} value={name} onChange={(event) => setName(event.target.value)} /></label>}
+            <label>{t("Email")}<Input type="email" required readOnly={editing !== "new"} maxLength={254} value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+            {(editing === "new" || passwordEditing) && <label>{t(passwordEditing ? "Kata sandi baru" : "Kata sandi kasir")}<PasswordInput autoComplete="new-password" required minLength={8} maxLength={128} value={password} onChange={(event) => setPassword(event.target.value)} /></label>}
+          </fieldset>
+          <div className="admin-actions">
+            <Button className="primary-button" disabled={busy}>{busy ? t("Menyimpan…") : t(passwordEditing ? "Simpan kata sandi" : "Simpan staf")}</Button>
+            <Button type="button" className="secondary-button" disabled={busy} onClick={() => { setEditing(null); setPassword(""); }}>{t("Batal")}</Button>
+          </div>
+        </form>
+      ) : credentials ? (
+        <>
+          <div className="detail-heading">
+            <h2>{t("Kredensial kasir")}</h2>
+            <Button className="text-button" onClick={() => setCredentials(null)}>{t("Tutup")}</Button>
+          </div>
+          <div className="credential-preview">
+            <label>{t("Email")}<Input readOnly value={credentials.email} /></label>
+            <label>{t("Kata sandi kasir")}<PasswordInput readOnly autoComplete="off" value={credentials.password} /></label>
+            <p className="detail-note">{t("Salin dan bagikan secara pribadi. Kredensial ini hilang saat ditutup atau halaman dimuat ulang.")}</p>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="detail-heading">
+            <h2>{t("Akses tim")}</h2>
+          </div>
+          <p className="muted">{t("Pemilik mengelola akun kasir untuk restoran ini.")}</p>
+          <div className="detail-stat"><span>{t("Akun pada halaman ini")}</span><strong>{staff.length}</strong></div>
+          <p className="detail-note">{t("Email dapat dilihat. Kata sandi lama tidak dapat dibaca; atur kata sandi baru jika kasir lupa.")}</p>
+        </>
+      )}
     </DetailPane>
     {deleting && <ConfirmDelete name={deleting.displayName} description={t("Akun ini dihapus dari daftar dan tidak dapat masuk lagi. Riwayat transaksi tetap tersimpan.")} onClose={() => setDeleting(null)} onConfirm={() => remove(deleting)} />}
   </div>;
