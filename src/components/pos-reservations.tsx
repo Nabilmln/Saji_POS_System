@@ -15,6 +15,7 @@ import { DataTable, TableDateTime, TableAction, TableActions } from "@/component
 import { StatusBadge } from "@/components/ui/status-badge";
 import { usePagination } from "@/lib/use-pagination";
 import { adminPage, adminApi, jsonRequest, AdminApiError } from "@/lib/admin/client";
+import { DetailPane } from "@/components/app-shells";
 
 type Reservation = { id: string; tableId: string; tableNumber: string; customerName: string; customerContact: string; guestCount: number; reservedFor: string; notes: string | null; status: "RESERVED" | "CHECKED_IN" | "CANCELLED" };
 type Table = { id: string; tableNumber: string; status: string };
@@ -41,7 +42,7 @@ export function PosReservations() {
     try { const [reservations, available] = await Promise.all([adminPage<Reservation>(`/api/staff/reservations?${query}`), adminApi<Table[]>("/api/staff/tables?status=AVAILABLE")]); setRows(reservations.items); setHasNext(reservations.hasNext); setTables(available); setError(""); }
     catch { setError("Reservasi belum dapat dimuat. Periksa koneksi lalu segarkan."); }
     finally { setLoaded(true); }
-  }, [status, page, pageSize]);
+  }, [status, page, pageSize, setError]);
   usePolling(load);
   async function create(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); const form = event.currentTarget; const data = new FormData(form);
@@ -74,15 +75,70 @@ export function PosReservations() {
     catch { setError("Reservasi belum dapat dibatalkan. Periksa status terbaru dan coba lagi."); }
     finally { setBusy(false); }
   }
-  return <div className="admin-stack"><Panel className="admin-panel"><div className="admin-section-head"><h2>{t("Reservasi manual")}</h2><Button className="primary-button" disabled={busy} onClick={() => setCreating(!creating)}>{creating ? t("Tutup form") : t("Tambah reservasi")}</Button></div><p className="muted">{t("Catat pesanan meja dari telepon atau WhatsApp. Waktu menggunakan WIB; meja diblokir segera setelah reservasi dibuat.")}</p>
-    {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
-    {creating && <form className="admin-form" onSubmit={create}><div className="admin-form-grid"><label>{t("Nama pelanggan")}<Input className="text-field" name="name" required maxLength={120} /></label><label>{t("Kontak pelanggan")}<Input className="text-field" name="contact" required maxLength={80} /></label><Selection label={t("Meja tersedia")} kind="dropdown" name="tableId" required options={[{ value: "", label: t("Pilih meja"), disabled: true }, ...tables.map((table) => ({ value: table.id, label: t("Meja {0}", { "0": table.tableNumber }) }))]} /><label>{t("Jumlah tamu")}<Input className="text-field" name="guests" type="number" required min={1} max={100} defaultValue={2} /></label><DatePicker label="Waktu reservasi (WIB)" name="time" type="datetime-local" required disabled={busy} /><label>{t("Catatan")}<Textarea className="text-field" name="notes" maxLength={2000} /></label></div><div className="admin-actions"><Button className="primary-button" disabled={busy || !tables.length}>{busy ? t("Menyimpan…") : t("Simpan reservasi")}</Button></div>{!tables.length && <p className="muted">{t("Tidak ada meja tersedia.")}</p>}</form>}
-  </Panel><Panel className="admin-panel reservation-list"><div className="admin-section-head"><h2>{t("Daftar reservasi")}</h2></div>
-    <div className="admin-section-head"><Selection label={t("Status reservasi")} value={status} onChange={(value) => { setStatus(value); setPage(1); }} options={[{ value: "", label: t("Semua") }, ...Object.entries(labels).map(([value, label]) => ({ value, label: t(label) }))]} /><Button className="secondary-button" onClick={() => void load()}>{t("Segarkan")}</Button></div>
-    {cancelId && rows.some((row) => row.id === cancelId && row.status === "RESERVED") && <form className="admin-form" onSubmit={cancel}><h3>{t("Batalkan reservasi")}: {rows.find((row) => row.id === cancelId)?.customerName}</h3><label>{t("Alasan pembatalan")}<Textarea required minLength={5} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} /></label><div className="admin-actions"><Button disabled={busy}>{t("Konfirmasi pembatalan")}</Button><Button type="button" className="secondary-button" onClick={() => setCancelId("")}>{t("Kembali")}</Button></div></form>}
-    {!loaded ? <LoadingState variant="table">{t("Memuat reservasi\u2026")}</LoadingState> : rows.length ? <DataTable revision={JSON.stringify(rows)} caption={t("Daftar reservasi")} columns={[t("Pelanggan"), t("Kontak"), t("Meja"), t("Tamu"), t("Waktu"), t("Status"), t("Deskripsi"), t("Tindakan")]}>{rows.map((item) => <tr key={item.id}>
-      <th scope="row">{item.customerName}</th><td className="reservation-contact">{item.customerContact}</td><td>{item.tableNumber}</td><td>{item.guestCount}</td><td className="date-cell"><TableDateTime value={item.reservedFor} locale={locale} /></td><td><StatusBadge status={item.status}>{labels[item.status]}</StatusBadge></td><td className="reservation-description">{item.notes || <span className="muted">{t("Tanpa catatan")}</span>}</td>
-      <td><TableActions>{item.status === "RESERVED" ? <><TableAction action="checkIn" disabled={busy} onClick={() => void checkIn(item)} /><TableAction action="cancel" disabled={busy} onClick={() => { setCancelId(item.id); setReason(""); }} /></> : item.status === "CHECKED_IN" && <TableAction action="table" href={`/pos/tables/${item.tableId}`} />}</TableActions></td>
-    </tr>)}</DataTable> : <p className="empty-state">{t("Tidak ada reservasi pada status ini.")}</p>}
-  </Panel><Pagination pageSize={pageSize} onPageSizeChange={setPageSize} page={page} hasNext={hasNext} onChange={setPage} disabled={busy} /></div>;
+  return <div className="admin-stack">
+    <Panel className="admin-panel reservation-list">
+      <div className="admin-section-head">
+        <div>
+          <h2>{t("Daftar reservasi")}</h2>
+          <p className="muted">{t("Catat pesanan meja dari telepon atau WhatsApp. Waktu menggunakan WIB; meja diblokir segera setelah reservasi dibuat.")}</p>
+        </div>
+        <Button className="primary-button" disabled={busy} onClick={() => { setCreating((prev) => !prev); setCancelId(""); setError(""); }}>
+          {creating ? t("Tutup form") : t("Tambah reservasi")}
+        </Button>
+      </div>
+      <div className="admin-section-head">
+        <Selection label={t("Status reservasi")} value={status} onChange={(value) => { setStatus(value); setPage(1); }} options={[{ value: "", label: t("Semua") }, ...Object.entries(labels).map(([value, label]) => ({ value, label: t(label) }))]} />
+        <Button className="secondary-button" onClick={() => void load()}>{t("Segarkan")}</Button>
+      </div>
+      {error && !creating && !cancelId && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
+      {!loaded ? <LoadingState variant="table">{t("Memuat reservasi\u2026")}</LoadingState> : rows.length ? <DataTable revision={JSON.stringify(rows)} caption={t("Daftar reservasi")} columns={[t("Pelanggan"), t("Kontak"), t("Meja"), t("Tamu"), t("Waktu"), t("Status"), t("Deskripsi"), t("Tindakan")]}>{rows.map((item) => <tr key={item.id}>
+        <th scope="row">{item.customerName}</th><td className="reservation-contact">{item.customerContact}</td><td>{item.tableNumber}</td><td>{item.guestCount}</td><td className="date-cell"><TableDateTime value={item.reservedFor} locale={locale} /></td><td><StatusBadge status={item.status}>{labels[item.status]}</StatusBadge></td><td className="reservation-description">{item.notes || <span className="muted">{t("Tanpa catatan")}</span>}</td>
+        <td><TableActions>{item.status === "RESERVED" ? <><TableAction action="checkIn" disabled={busy} onClick={() => void checkIn(item)} /><TableAction action="cancel" disabled={busy} onClick={() => { setCancelId(item.id); setReason(""); setCreating(false); setError(""); }} /></> : item.status === "CHECKED_IN" && <TableAction action="table" href={`/pos/tables/${item.tableId}`} />}</TableActions></td>
+      </tr>)}</DataTable> : <p className="empty-state">{t("Tidak ada reservasi pada status ini.")}</p>}
+      <Pagination pageSize={pageSize} onPageSizeChange={setPageSize} page={page} hasNext={hasNext} onChange={setPage} disabled={busy || !loaded} />
+    </Panel>
+
+    {creating && (
+      <DetailPane revision={String(creating)}>
+        <form className="admin-form" onSubmit={create}>
+          <div className="admin-section-head">
+            <h3>{t("Reservasi manual")}</h3>
+            <Button className="text-button" type="button" onClick={() => { setCreating(false); setError(""); }}>{t("Tutup")}</Button>
+          </div>
+          <p className="muted">{t("Catat pesanan meja dari telepon atau WhatsApp. Waktu menggunakan WIB; meja diblokir segera setelah reservasi dibuat.")}</p>
+          {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
+          <div className="admin-form-grid">
+            <label>{t("Nama pelanggan")}<Input className="text-field" name="name" required maxLength={120} /></label>
+            <label>{t("Kontak pelanggan")}<Input className="text-field" name="contact" required maxLength={80} /></label>
+            <Selection label={t("Meja tersedia")} kind="dropdown" name="tableId" required options={[{ value: "", label: t("Pilih meja"), disabled: true }, ...tables.map((table) => ({ value: table.id, label: t("Meja {0}", { "0": table.tableNumber }) }))]} />
+            <label>{t("Jumlah tamu")}<Input className="text-field" name="guests" type="number" required min={1} max={100} defaultValue={2} /></label>
+            <DatePicker label="Waktu reservasi (WIB)" name="time" type="datetime-local" required disabled={busy} />
+            <label>{t("Catatan")}<Textarea className="text-field" name="notes" maxLength={2000} /></label>
+          </div>
+          <div className="admin-actions">
+            <Button className="primary-button" disabled={busy || !tables.length}>{busy ? t("Menyimpan…") : t("Simpan reservasi")}</Button>
+            <Button type="button" className="secondary-button" disabled={busy} onClick={() => { setCreating(false); setError(""); }}>{t("Batal")}</Button>
+          </div>
+          {!tables.length && <p className="muted">{t("Tidak ada meja tersedia.")}</p>}
+        </form>
+      </DetailPane>
+    )}
+
+    {cancelId && rows.some((row) => row.id === cancelId && row.status === "RESERVED") && (
+      <DetailPane revision={cancelId}>
+        <form className="admin-form" onSubmit={cancel}>
+          <div className="admin-section-head">
+            <h3>{t("Batalkan reservasi")}: {rows.find((row) => row.id === cancelId)?.customerName}</h3>
+            <Button className="text-button" type="button" onClick={() => { setCancelId(""); setError(""); }}>{t("Tutup")}</Button>
+          </div>
+          {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
+          <label>{t("Alasan pembatalan")}<Textarea required minLength={5} maxLength={500} value={reason} onChange={(event) => setReason(event.target.value)} /></label>
+          <div className="admin-actions">
+            <Button className="primary-button" disabled={busy}>{t("Konfirmasi pembatalan")}</Button>
+            <Button type="button" className="secondary-button" disabled={busy} onClick={() => { setCancelId(""); setError(""); }}>{t("Kembali")}</Button>
+          </div>
+        </form>
+      </DetailPane>
+    )}
+  </div>;
 }
