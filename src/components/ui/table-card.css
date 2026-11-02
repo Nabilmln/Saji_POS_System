@@ -27,6 +27,36 @@
   gap: 8px;
   width: 100%;
   min-width: 0;
+  flex-wrap: wrap;
+}
+
+.table-card-status-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.pos-order-counts {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+}
+
+.pos-order-counts .status-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.pos-order-counts .status-chip svg {
+  flex: none;
 }
 
 .table-card-heading h3 {
