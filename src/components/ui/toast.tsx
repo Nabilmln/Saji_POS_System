@@ -13,5 +13,16 @@ export function Toast({ children, messageKey = children, tone = "success" }: { c
   useEffect(() => { const timer = window.setTimeout(() => setDismissed({ key: messageKey }), 10_000); return () => window.clearTimeout(timer); }, [messageKey]);
   if (dismissed?.key === messageKey || typeof document === "undefined") return null;
   const Icon = tone === "success" ? CheckCircleIcon : tone === "info" ? InfoIcon : WarningCircleIcon;
-  return createPortal(<div className="toast inline-alert info" data-tone={tone} role={tone === "error" ? "alert" : "status"} aria-live={tone === "error" ? "assertive" : "polite"} aria-atomic="true"><Icon size={20} aria-hidden="true" /><div className="toast-content">{children}</div><button type="button" className="icon-button" aria-label={t("Tutup notifikasi")} onClick={() => setDismissed({ key: messageKey })}><XIcon size={16} /></button></div>, document.body);
+  return createPortal(
+    <div className="toast inline-alert info" data-tone={tone} role={tone === "error" ? "alert" : "status"} aria-live={tone === "error" ? "assertive" : "polite"} aria-atomic="true">
+      <Icon size={20} aria-hidden="true" />
+      <div className="toast-content">
+        <div className="toast-message-wrap">{children}</div>
+      </div>
+      <button type="button" className="icon-button" aria-label={t("Tutup notifikasi")} onClick={() => setDismissed({ key: messageKey })}>
+        <XIcon size={16} />
+      </button>
+    </div>,
+    document.body
+  );
 }

@@ -42,7 +42,7 @@ export function PosTransactions({ initialReceiptId = "" }: { initialReceiptId?: 
   }, [refresh]);
   return <div className="admin-stack"><Panel className="admin-panel">
     <div className="admin-section-head"><div><h2>{t("Riwayat pembayaran")}</h2></div><Button className="secondary-button" onClick={() => void refresh()}>{t("Segarkan")}</Button></div>
-    <p className="muted">{t("Hanya pembayaran yang telah dikonfirmasi server. Struk menggunakan data transaksi saat pembayaran.")}</p>
+    {/* <p className="muted">{t("Hanya pembayaran yang telah dikonfirmasi server. Struk menggunakan data transaksi saat pembayaran.")}</p> */}
     <div className="admin-filters"><DatePicker label="Dari tanggal" value={from} onChange={(value) => { setFrom(value); setPage(1); }} /><DatePicker label="Sampai tanggal" value={to} onChange={(value) => { setTo(value); setPage(1); }} /></div>
     {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
   </Panel><Panel><h2>{t("Daftar transaksi")}</h2>

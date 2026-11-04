@@ -80,7 +80,7 @@ export function PosReservations() {
       <div className="admin-section-head">
         <div>
           <h2>{t("Daftar reservasi")}</h2>
-          <p className="muted">{t("Catat pesanan meja dari telepon atau WhatsApp. Waktu menggunakan WIB; meja diblokir segera setelah reservasi dibuat.")}</p>
+          {/* <p className="muted">{t("Catat pesanan meja dari telepon atau WhatsApp. Waktu menggunakan WIB; meja diblokir segera setelah reservasi dibuat.")}</p> */}
         </div>
         <Button className="primary-button" disabled={busy} onClick={() => { setCreating((prev) => !prev); setCancelId(""); setError(""); }}>
           {creating ? t("Tutup form") : t("Tambah reservasi")}

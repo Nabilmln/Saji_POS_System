@@ -13,7 +13,7 @@ export function TableCard({ titleId, title, status, badges, selected = false, cl
   const content = useRef<HTMLElement>(null);
   return <article ref={content} className={`table-card ${className}${selected ? " table-card-selected selected" : ""}`} aria-labelledby={titleId}>
     <header className="table-card-heading">
-      <h3 id={titleId}>{title}</h3>
+      <h3 id={titleId}><span className="table-name-wrap">{title}</span></h3>
       <div className="table-card-status-group">
         {badges}
         <StatusBadge status={status} />
