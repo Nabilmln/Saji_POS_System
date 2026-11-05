@@ -166,6 +166,20 @@ h1,h2,h3,p{overflow-wrap:break-word}h1,h2,h3{letter-spacing:-.025em;line-height:
 .reservation-list thead th:nth-child(3){width:7%}.reservation-list thead th:nth-child(4){width:8%}
 .reservation-list thead th:nth-child(6){width:13%}.reservation-list thead th:nth-child(7),.reservation-list thead th:nth-child(8){width:15%}
 .reservation-description{white-space:pre-wrap}
+/* Reservation toolbar */
+.reservation-toolbar{flex-wrap:wrap;gap:12px 16px}
+.reservation-toolbar-main{display:flex;align-items:center;gap:12px;flex:1;min-width:0;flex-wrap:wrap}
+.reservation-toolbar-main h2{margin:0;white-space:nowrap}
+.reservation-toolbar-main .selection{flex:none}
+.reservation-toolbar-actions{display:flex;align-items:center;gap:8px;flex:none}
+/* Transaction toolbar */
+.transaction-toolbar{flex-wrap:wrap;gap:10px 16px;align-items:flex-end}
+.transaction-toolbar-head{flex:none;min-width:0}
+.transaction-toolbar-head h2{margin:0;white-space:nowrap}
+.transaction-toolbar-dates{display:flex;align-items:flex-end;gap:12px;flex:1;min-width:0;flex-wrap:wrap}
+.transaction-toolbar-dates .date-field{flex:1;min-width:140px}
+.transaction-toolbar-actions{flex:none}
+@media(max-width:639px){.reservation-toolbar-main{flex-direction:column;align-items:flex-start}.transaction-toolbar-dates{flex-direction:column}.transaction-toolbar-dates .date-field{width:100%}}
 
 .table-secondary{display:block;color:var(--text-muted);font-size:11px;font-weight:400;margin-top:4px}
 .pagination-panel{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-top:18px;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:8px;font-size:12px}

@@ -77,18 +77,23 @@ export function PosReservations() {
   }
   return <div className="admin-stack">
     <Panel className="admin-panel reservation-list">
-      <div className="admin-section-head">
-        <div>
+      <div className="admin-section-head reservation-toolbar">
+        <div className="reservation-toolbar-main">
           <h2>{t("Daftar reservasi")}</h2>
-          {/* <p className="muted">{t("Catat pesanan meja dari telepon atau WhatsApp. Waktu menggunakan WIB; meja diblokir segera setelah reservasi dibuat.")}</p> */}
+          <Selection
+            className="reservation-status-toggle"
+            label={t("Status reservasi")}
+            value={status}
+            onChange={(value) => { setStatus(value); setPage(1); }}
+            options={[{ value: "", label: t("Semua") }, ...Object.entries(labels).map(([value, label]) => ({ value, label: t(label) }))]}
+          />
         </div>
-        <Button className="primary-button" disabled={busy} onClick={() => { setCreating((prev) => !prev); setCancelId(""); setError(""); }}>
-          {creating ? t("Tutup form") : t("Tambah reservasi")}
-        </Button>
-      </div>
-      <div className="admin-section-head">
-        <Selection label={t("Status reservasi")} value={status} onChange={(value) => { setStatus(value); setPage(1); }} options={[{ value: "", label: t("Semua") }, ...Object.entries(labels).map(([value, label]) => ({ value, label: t(label) }))]} />
-        <Button className="secondary-button" onClick={() => void load()}>{t("Segarkan")}</Button>
+        <div className="reservation-toolbar-actions">
+          <Button className="secondary-button" onClick={() => void load()}>{t("Segarkan")}</Button>
+          <Button className="primary-button" disabled={busy} onClick={() => { setCreating((prev) => !prev); setCancelId(""); setError(""); }}>
+            {creating ? t("Tutup form") : t("Tambah reservasi")}
+          </Button>
+        </div>
       </div>
       {error && !creating && !cancelId && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
       {!loaded ? <LoadingState variant="table">{t("Memuat reservasi\u2026")}</LoadingState> : rows.length ? <DataTable revision={JSON.stringify(rows)} caption={t("Daftar reservasi")} columns={[t("Pelanggan"), t("Kontak"), t("Meja"), t("Tamu"), t("Waktu"), t("Status"), t("Deskripsi"), t("Tindakan")]}>{rows.map((item) => <tr key={item.id}>

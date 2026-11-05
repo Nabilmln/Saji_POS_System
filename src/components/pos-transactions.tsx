@@ -40,12 +40,51 @@ export function PosTransactions({ initialReceiptId = "" }: { initialReceiptId?: 
     const initial = window.setTimeout(() => void refresh(), 0);
     return () => window.clearTimeout(initial);
   }, [refresh]);
-  return <div className="admin-stack"><Panel className="admin-panel">
-    <div className="admin-section-head"><div><h2>{t("Riwayat pembayaran")}</h2></div><Button className="secondary-button" onClick={() => void refresh()}>{t("Segarkan")}</Button></div>
-    {/* <p className="muted">{t("Hanya pembayaran yang telah dikonfirmasi server. Struk menggunakan data transaksi saat pembayaran.")}</p> */}
-    <div className="admin-filters"><DatePicker label="Dari tanggal" value={from} onChange={(value) => { setFrom(value); setPage(1); }} /><DatePicker label="Sampai tanggal" value={to} onChange={(value) => { setTo(value); setPage(1); }} /></div>
-    {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
-  </Panel><Panel><h2>{t("Daftar transaksi")}</h2>
-    {!loaded ? <LoadingState variant="table">{t("Memuat transaksi\u2026")}</LoadingState> : rows.length ? <DataTable revision={JSON.stringify(rows)} caption={t("Daftar transaksi")} columns={[t("Transaksi"), t("Meja"), t("Waktu"), t("Total"), t("Metode"), t("Tindakan")]}>{rows.map((row) => <tr key={row.id}><th scope="row">{row.id.slice(0, 8)}</th><td>{row.tableNumber}</td><td className="date-cell"><TableDateTime value={row.paidAt} locale={locale} /></td><td className="money-cell">{money(row.grandTotalIdr)}</td><td>{t("Tunai")}</td><td><TableActions><TableAction action="receipt" aria-pressed={receiptId === row.id} onClick={() => setReceiptId(row.id)} /></TableActions></td></tr>)}</DataTable> : <p className="empty-state">{t("Belum ada transaksi lunas pada rentang ini.")}</p>}
-  </Panel><Pagination pageSize={pageSize} onPageSizeChange={setPageSize} page={page} hasNext={hasNext} onChange={setPage} />{receiptId && <DetailPane revision={receiptId}><ReceiptPreview key={receiptId} paymentId={receiptId} onClose={() => setReceiptId("")} /></DetailPane>}</div>;
+  return (
+    <div className="admin-stack">
+      <Panel className="admin-panel">
+        <div className="admin-section-head transaction-toolbar">
+          <div className="transaction-toolbar-head">
+            <h2>{t("Riwayat pembayaran")}</h2>
+          </div>
+          <div className="transaction-toolbar-dates">
+            <DatePicker label="Dari tanggal" value={from} onChange={(value) => { setFrom(value); setPage(1); }} />
+            <DatePicker label="Sampai tanggal" value={to} onChange={(value) => { setTo(value); setPage(1); }} />
+          </div>
+          <div className="transaction-toolbar-actions">
+            <Button className="secondary-button" onClick={() => void refresh()}>{t("Segarkan")}</Button>
+          </div>
+        </div>
+        {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
+        {!loaded ? (
+          <LoadingState variant="table">{t("Memuat transaksi…")}</LoadingState>
+        ) : rows.length ? (
+          <DataTable revision={JSON.stringify(rows)} caption={t("Daftar transaksi")} columns={[t("Transaksi"), t("Meja"), t("Waktu"), t("Total"), t("Metode"), t("Tindakan")]}>
+            {rows.map((row) => (
+              <tr key={row.id}>
+                <th scope="row">{row.id.slice(0, 8)}</th>
+                <td>{row.tableNumber}</td>
+                <td className="date-cell"><TableDateTime value={row.paidAt} locale={locale} /></td>
+                <td className="money-cell">{money(row.grandTotalIdr)}</td>
+                <td>{t("Tunai")}</td>
+                <td>
+                  <TableActions>
+                    <TableAction action="receipt" aria-pressed={receiptId === row.id} onClick={() => setReceiptId(row.id)} />
+                  </TableActions>
+                </td>
+              </tr>
+            ))}
+          </DataTable>
+        ) : (
+          <p className="empty-state">{t("Belum ada transaksi lunas pada rentang ini.")}</p>
+        )}
+        <Pagination pageSize={pageSize} onPageSizeChange={setPageSize} page={page} hasNext={hasNext} onChange={setPage} />
+      </Panel>
+      {receiptId && (
+        <DetailPane revision={receiptId}>
+          <ReceiptPreview key={receiptId} paymentId={receiptId} onClose={() => setReceiptId("")} />
+        </DetailPane>
+      )}
+    </div>
+  );
 }
