@@ -13,7 +13,7 @@ import { randomId } from "@/lib/random-id";
 import { usePagination } from "@/lib/use-pagination";
 import { MenuCard } from "@/components/menu-card";
 import { Alert, Button, LoadingState, EmptyState, Panel, Input, Textarea, Pagination } from "@/components/ui/controls";
-import { DetailPane } from "@/components/app-shells";
+import { DetailPane, HeaderAction } from "@/components/app-shells";
 import { OrderDetails, type OrderItem as Item, type StaffOrder as Order } from "@/components/order-details";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { PosBillPreview } from "@/components/pos-bill";
@@ -132,12 +132,15 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
   const items = table?.orders.flatMap((order) => order.items) ?? [];
   const allVoid = Boolean(table?.session && items.length && items.every((item) => item.voided));
   return <div className="admin-stack">
+    <HeaderAction>
+      <Button className="secondary-button header-action-button" onClick={() => void refresh()}>{t("Segarkan")}</Button>
+    </HeaderAction>
     {onClose ? <Button className="text-button" disabled={!!busy} onClick={onClose}>{t("← Semua meja")}</Button> : <Link className="text-button" href="/pos">{t("← Semua meja")}</Link>}
     {error && <Alert className="inline-alert" role="alert">{t(error)} <Button className="text-button" onClick={() => void refresh()}>{t("Segarkan")}</Button></Alert>}
 
     {!ready ? <LoadingState className="loading-block" role="status">{t("Memuat detail meja…")}</LoadingState> : !table ? <EmptyState className="empty-state">{t("Meja tidak ditemukan.")}{" "}<Button className="text-button" onClick={() => void refresh()}>{t("Coba lagi")}</Button></EmptyState> : <>
       <Panel className="admin-panel">
-        <div className="admin-section-head"><div><h2>{t("Meja")}{" "}{table.tableNumber}</h2></div><Button className="secondary-button" onClick={() => void refresh()}>{t("Segarkan")}</Button></div>
+        <div className="admin-section-head"><div><h2>{t("Meja")}{" "}{table.tableNumber}</h2></div></div>
         <p className="muted">{table.status === "AVAILABLE" ? t("Tersedia") : table.status === "RESERVED" ? t("Dipesan · check-in diperlukan sebelum order manual") : t("Terisi")}{table.session ? t(" · Sesi {0}", { "0": table.session.id.slice(0, 8) }) : ""}</p>
         <div className="admin-actions">{allVoid && <Button className="secondary-button danger-text" onClick={() => setClosing("ALL_VOID")}>{t("Tutup sesi tanpa pembayaran")}</Button>}{table.session && !table.orders.length && <Button className="secondary-button danger-text" onClick={() => setClosing("EMPTY")}>{t("Tutup sesi kosong")}</Button>}</div>
       </Panel>

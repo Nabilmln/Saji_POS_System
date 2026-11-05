@@ -11,7 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { adminApi, AdminApiError, jsonRequest } from "@/lib/admin/client";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
-import { DetailPane } from "@/components/app-shells";
+import { DetailPane, HeaderAction } from "@/components/app-shells";
 import { OrderDetails, type OrderItem, type StaffOrder } from "@/components/order-details";
 import { OrderItemDeletion } from "@/components/order-item-deletion";
 import { BillBreakdown } from "@/components/pos-bill";
@@ -128,7 +128,8 @@ export function PosPayment({ sessionId, onClose, onViewReceipt }: { sessionId: s
   if (payment) return <div className="admin-stack"><Panel className="admin-panel success-panel" role="status"><p className="context-label">{t("LUNAS")}</p><h2>{t("Pembayaran berhasil")}</h2><p>{t("Total")}{" "}{money(payment.grandTotalIdr)} {" "}{t("· Tunai")}{" "}{money(payment.cashReceivedIdr)} {" "}{t("· Kembalian")}{" "}{money(payment.changeIdr)}</p><p className="muted">{t("Meja kembali tersedia setelah pembayaran dikonfirmasi server.")}</p><div className="admin-actions">{onViewReceipt ? <Button onClick={() => onViewReceipt(payment.paymentId)}>{t("Lihat struk digital")}</Button> : <Link className="primary-button" href={payment.receiptUrl}>{t("Lihat struk digital")}</Link>}{onClose ? <Button className="secondary-button" onClick={onClose}>{t("Kembali ke meja")}</Button> : <Link className="secondary-button" href="/pos">{t("Kembali ke meja")}</Link>}</div></Panel>{receiptOpen && <DetailPane><ReceiptPreview key={payment.paymentId} paymentId={payment.paymentId} onClose={() => setReceiptOpen(false)} /></DetailPane>}</div>;
   return <div className="admin-stack">
     {onClose ? <Button className="text-button" disabled={busy} onClick={onClose}>{t("← Kembali ke meja")}</Button> : <Link className="text-button" href={quote ? `/pos/tables/${quote.tableId}` : "/pos"}>{t("← Kembali ke meja")}</Link>}
-    <Panel className="admin-panel"><div className="admin-section-head"><div><h2>{quote ? t("Meja {0}", { "0": quote.tableNumber }) : t("Tagihan sesi")}</h2></div><Button className="secondary-button" disabled={busy} onClick={() => void refresh()}>{t("Segarkan")}</Button></div>
+    <HeaderAction><Button className="secondary-button header-action-button" disabled={busy} onClick={() => void refresh()}>{t("Segarkan")}</Button></HeaderAction>
+    <Panel className="admin-panel"><div className="admin-section-head"><div><h2>{quote ? t("Meja {0}", { "0": quote.tableNumber }) : t("Tagihan sesi")}</h2></div></div>
       {error && <Alert className="inline-alert" role="alert">{t(error)} {pending && <Link href="/pos/transactions">{t("Periksa riwayat")}</Link>}</Alert>}
       {!loaded ? <LoadingState>{t("Memuat tagihan…")}</LoadingState> : !quote ? <EmptyState className="empty-state"><p>{t("Tagihan tidak tersedia.")}</p>{pending && <Button className="primary-button" disabled={busy} onClick={() => void sendPayment(pending)}>{busy ? t("Memeriksa pembayaran…") : t("Ulangi transaksi yang sama")}</Button>} <Link href="/pos/transactions">{t("Lihat riwayat transaksi")}</Link></EmptyState> : <>
         <p className="muted">{t("Sesi")}{" "}{sessionId.slice(0, 8)} {" "}{t("· Revisi")}{" "}{quote.sessionRevision} {" "}{t("· Pengaturan")}{" "}{quote.settingsVersion} {" "}{t("· Dihitung")}{" "}{new Date(quote.calculatedAt).toLocaleTimeString(locale === "en" ? "en-GB" : "id-ID", { timeZone: "Asia/Jakarta" })}</p>

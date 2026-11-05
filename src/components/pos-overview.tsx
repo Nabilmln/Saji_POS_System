@@ -15,7 +15,7 @@ import { DataTable, TableDateTime, TableAction, TableActions } from "@/component
 import { usePagination } from "@/lib/use-pagination";
 import { adminPage, adminApi, jsonRequest } from "@/lib/admin/client";
 import { Selection, Panel, Button, Alert, Input, LoadingState, Pagination } from "@/components/ui/controls";
-import { DetailPane } from "@/components/app-shells";
+import { DetailPane, HeaderAction } from "@/components/app-shells";
 import { OrderDetails, type OrderItem } from "@/components/order-details";
 import { PosTable, type StaffTable } from "@/components/pos-table";
 import { PosPayment } from "@/components/pos-payment";
@@ -114,10 +114,11 @@ export function PosOverview() {
   if (workspace === "PAYMENT" && paymentSessionId) return <PosPayment key={paymentSessionId} sessionId={paymentSessionId} onClose={closeWorkspace} onViewReceipt={(paymentId) => { setReceipt({ paymentId }); closeWorkspace(); }} />;
   return <div className="admin-stack">
     <Panel className="admin-panel">
-      <div className="admin-section-head pos-overview-head"><div><h2>{t("Ringkasan meja")}</h2></div><div className="pos-sync-actions">
-        <div className="pos-sync-status" title={t("Diperbarui otomatis setiap 5 detik saat tab aktif.")}><ArrowsClockwiseIcon size={15} aria-hidden="true" /><span title={syncFailed ? t("Belum tersinkron") : syncedAt ? t("Tersinkron") : t("Menunggu data…")}>{syncFailed ? t("Belum tersinkron") : syncedAt ? t("Tersinkron") : t("Menunggu data…")}</span>{syncedAt && <time dateTime={syncedAt.toISOString()}>{syncedAt.toLocaleTimeString("en-GB", { timeZone: "Asia/Jakarta", hour12: false })}</time>}</div>
-        <Button className="secondary-button" onClick={() => void refresh()}>{t("Segarkan")}</Button>
-      </div></div>
+      <HeaderAction>
+        <div className="pos-sync-status header-sync-status" title={t("Diperbarui otomatis setiap 5 detik saat tab aktif.")}><ArrowsClockwiseIcon size={15} aria-hidden="true" /><span title={syncFailed ? t("Belum tersinkron") : syncedAt ? t("Tersinkron") : t("Menunggu data…")}>{syncFailed ? t("Belum tersinkron") : syncedAt ? t("Tersinkron") : t("Menunggu data…")}</span>{syncedAt && <time dateTime={syncedAt.toISOString()}>{syncedAt.toLocaleTimeString("en-GB", { timeZone: "Asia/Jakarta", hour12: false })}</time>}</div>
+        <Button className="secondary-button header-action-button" onClick={() => void refresh()}>{t("Segarkan")}</Button>
+      </HeaderAction>
+      <div className="admin-section-head"><h2>{t("Ringkasan meja")}</h2></div>
       {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
       <div className="admin-filters">
         <label>{t("Cari meja")}<Input className="text-field" value={query} maxLength={30} onChange={(event) => { setQuery(event.target.value); setTablePage(1); }} placeholder={t("Nomor meja")} /></label>

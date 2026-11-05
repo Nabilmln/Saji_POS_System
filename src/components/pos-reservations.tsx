@@ -15,7 +15,7 @@ import { DataTable, TableDateTime, TableAction, TableActions } from "@/component
 import { StatusBadge } from "@/components/ui/status-badge";
 import { usePagination } from "@/lib/use-pagination";
 import { adminPage, adminApi, jsonRequest, AdminApiError } from "@/lib/admin/client";
-import { DetailPane } from "@/components/app-shells";
+import { DetailPane, HeaderAction } from "@/components/app-shells";
 
 type Reservation = { id: string; tableId: string; tableNumber: string; customerName: string; customerContact: string; guestCount: number; reservedFor: string; notes: string | null; status: "RESERVED" | "CHECKED_IN" | "CANCELLED" };
 type Table = { id: string; tableNumber: string; status: string };
@@ -76,6 +76,9 @@ export function PosReservations() {
     finally { setBusy(false); }
   }
   return <div className="admin-stack">
+    <HeaderAction>
+      <Button className="secondary-button header-action-button" onClick={() => void load()}>{t("Segarkan")}</Button>
+    </HeaderAction>
     <Panel className="admin-panel reservation-list">
       <div className="admin-section-head reservation-toolbar">
         <div className="reservation-toolbar-main">
@@ -89,7 +92,6 @@ export function PosReservations() {
           />
         </div>
         <div className="reservation-toolbar-actions">
-          <Button className="secondary-button" onClick={() => void load()}>{t("Segarkan")}</Button>
           <Button className="primary-button" disabled={busy} onClick={() => { setCreating((prev) => !prev); setCancelId(""); setError(""); }}>
             {creating ? t("Tutup form") : t("Tambah reservasi")}
           </Button>

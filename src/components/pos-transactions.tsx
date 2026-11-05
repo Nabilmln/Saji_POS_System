@@ -5,7 +5,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { useLocale } from "@/components/locale-provider";
 
 import { useCallback, useEffect, useState } from "react";
-import { DetailPane } from "@/components/app-shells";
+import { DetailPane, HeaderAction } from "@/components/app-shells";
 import { ReceiptPreview } from "@/components/pos-receipt";
 import { Pagination, Panel, Button, Alert, LoadingState } from "@/components/ui/controls";
 import { DataTable, TableDateTime, TableAction, TableActions } from "@/components/ui/data-table";
@@ -42,6 +42,9 @@ export function PosTransactions({ initialReceiptId = "" }: { initialReceiptId?: 
   }, [refresh]);
   return (
     <div className="admin-stack">
+      <HeaderAction>
+        <Button className="secondary-button header-action-button" onClick={() => void refresh()}>{t("Segarkan")}</Button>
+      </HeaderAction>
       <Panel className="admin-panel">
         <div className="admin-section-head transaction-toolbar">
           <div className="transaction-toolbar-head">
@@ -50,9 +53,6 @@ export function PosTransactions({ initialReceiptId = "" }: { initialReceiptId?: 
           <div className="transaction-toolbar-dates">
             <DatePicker label="Dari tanggal" value={from} onChange={(value) => { setFrom(value); setPage(1); }} />
             <DatePicker label="Sampai tanggal" value={to} onChange={(value) => { setTo(value); setPage(1); }} />
-          </div>
-          <div className="transaction-toolbar-actions">
-            <Button className="secondary-button" onClick={() => void refresh()}>{t("Segarkan")}</Button>
           </div>
         </div>
         {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
