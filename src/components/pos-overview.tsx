@@ -10,12 +10,13 @@ import { StatusBadge, statusLabels, orderStatusOptions } from "@/components/ui/s
 import { usePolling } from "@/lib/use-polling";
 
 import { useCallback, useEffect, useState } from "react";
-import { ArrowsClockwiseIcon, ClockIcon, CheckCircleIcon } from "@phosphor-icons/react";
+import { ClockIcon, CheckCircleIcon } from "@phosphor-icons/react";
 import { DataTable, TableDateTime, TableAction, TableActions } from "@/components/ui/data-table";
 import { usePagination } from "@/lib/use-pagination";
 import { adminPage, adminApi, jsonRequest } from "@/lib/admin/client";
 import { Selection, Panel, Button, Alert, Input, LoadingState, Pagination } from "@/components/ui/controls";
 import { DetailPane, HeaderAction } from "@/components/app-shells";
+import { SyncStatus } from "@/components/ui/sync-status";
 import { OrderDetails, type OrderItem } from "@/components/order-details";
 import { PosTable, type StaffTable } from "@/components/pos-table";
 import { PosPayment } from "@/components/pos-payment";
@@ -115,7 +116,7 @@ export function PosOverview() {
   return <div className="admin-stack">
     <Panel className="admin-panel">
       <HeaderAction>
-        <div className="pos-sync-status header-sync-status" title={t("Diperbarui otomatis setiap 5 detik saat tab aktif.")}><ArrowsClockwiseIcon size={15} aria-hidden="true" /><span title={syncFailed ? t("Belum tersinkron") : syncedAt ? t("Tersinkron") : t("Menunggu data…")}>{syncFailed ? t("Belum tersinkron") : syncedAt ? t("Tersinkron") : t("Menunggu data…")}</span>{syncedAt && <time dateTime={syncedAt.toISOString()}>{syncedAt.toLocaleTimeString("en-GB", { timeZone: "Asia/Jakarta", hour12: false })}</time>}</div>
+        <SyncStatus syncedAt={syncedAt} syncFailed={syncFailed} />
         <Button className="secondary-button header-action-button" onClick={() => void refresh()}>{t("Segarkan")}</Button>
       </HeaderAction>
       <div className="admin-section-head"><h2>{t("Ringkasan meja")}</h2></div>

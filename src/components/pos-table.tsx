@@ -14,6 +14,7 @@ import { usePagination } from "@/lib/use-pagination";
 import { MenuCard } from "@/components/menu-card";
 import { Alert, Button, LoadingState, EmptyState, Panel, Input, Textarea, Pagination } from "@/components/ui/controls";
 import { DetailPane, HeaderAction } from "@/components/app-shells";
+import { SyncStatus } from "@/components/ui/sync-status";
 import { OrderDetails, type OrderItem as Item, type StaffOrder as Order } from "@/components/order-details";
 import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { PosBillPreview } from "@/components/pos-bill";
@@ -28,6 +29,8 @@ type Draft = { customerName: string; note: string; cart: CartItem[]; key: string
 export function PosTable({ tableId, onClose, onPayment, initialManual = false }: { tableId: string; onClose?: () => void; onPayment?: (sessionId: string) => void; initialManual?: boolean }) {
   const { t, money } = useLocale();
   const [table, setTable] = useState<StaffTable | null>(null);
+  const [syncedAt, setSyncedAt] = useState<Date | null>(null);
+  const [syncFailed, setSyncFailed] = useState(false);
   const [menu, setMenu] = useState<Menu | null>(null);
   const [menuError, setMenuError] = useState("");
   const [draft, setDraft] = useState<Draft>({ customerName: "", note: "", cart: [], key: "" });
@@ -49,8 +52,8 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
   const storageKey = `pos-manual:${tableId}`;
 
   const refresh = useCallback(async () => {
-    try { setTable(await adminApi<StaffTable>(`/api/staff/tables/${tableId}`)); setError(""); }
-    catch { setError("Data meja belum tersinkron. Periksa koneksi lalu segarkan."); }
+    try { setTable(await adminApi<StaffTable>(`/api/staff/tables/${tableId}`)); setError(""); setSyncedAt(new Date()); setSyncFailed(false); }
+    catch { setError("Data meja belum tersinkron. Periksa koneksi lalu segarkan."); setSyncFailed(true); }
     finally { setReady(true); }
   }, [tableId]);
   usePolling(refresh);
@@ -133,6 +136,7 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
   const allVoid = Boolean(table?.session && items.length && items.every((item) => item.voided));
   return <div className="admin-stack">
     <HeaderAction>
+      <SyncStatus syncedAt={syncedAt} syncFailed={syncFailed} />
       <Button className="secondary-button header-action-button" onClick={() => void refresh()}>{t("Segarkan")}</Button>
     </HeaderAction>
     {onClose ? <Button className="text-button" disabled={!!busy} onClick={onClose}>{t("← Semua meja")}</Button> : <Link className="text-button" href="/pos">{t("← Semua meja")}</Link>}

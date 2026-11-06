@@ -16,6 +16,7 @@ import { StatusBadge } from "@/components/ui/status-badge";
 import { usePagination } from "@/lib/use-pagination";
 import { adminPage, adminApi, jsonRequest, AdminApiError } from "@/lib/admin/client";
 import { DetailPane, HeaderAction } from "@/components/app-shells";
+import { SyncStatus } from "@/components/ui/sync-status";
 
 type Reservation = { id: string; tableId: string; tableNumber: string; customerName: string; customerContact: string; guestCount: number; reservedFor: string; notes: string | null; status: "RESERVED" | "CHECKED_IN" | "CANCELLED" };
 type Table = { id: string; tableNumber: string; status: string };
@@ -37,10 +38,12 @@ export function PosReservations() {
   const setNotice = useNotice();
   const confirm = useConfirmation();
   const [loaded, setLoaded] = useState(false);
+  const [syncedAt, setSyncedAt] = useState<Date | null>(null);
+  const [syncFailed, setSyncFailed] = useState(false);
   const load = useCallback(async () => {
     const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) }); if (status) query.set("status", status);
-    try { const [reservations, available] = await Promise.all([adminPage<Reservation>(`/api/staff/reservations?${query}`), adminApi<Table[]>("/api/staff/tables?status=AVAILABLE")]); setRows(reservations.items); setHasNext(reservations.hasNext); setTables(available); setError(""); }
-    catch { setError("Reservasi belum dapat dimuat. Periksa koneksi lalu segarkan."); }
+    try { const [reservations, available] = await Promise.all([adminPage<Reservation>(`/api/staff/reservations?${query}`), adminApi<Table[]>("/api/staff/tables?status=AVAILABLE")]); setRows(reservations.items); setHasNext(reservations.hasNext); setTables(available); setError(""); setSyncedAt(new Date()); setSyncFailed(false); }
+    catch { setError("Reservasi belum dapat dimuat. Periksa koneksi lalu segarkan."); setSyncFailed(true); }
     finally { setLoaded(true); }
   }, [status, page, pageSize, setError]);
   usePolling(load);
@@ -77,6 +80,7 @@ export function PosReservations() {
   }
   return <div className="admin-stack">
     <HeaderAction>
+      <SyncStatus syncedAt={syncedAt} syncFailed={syncFailed} />
       <Button className="secondary-button header-action-button" onClick={() => void load()}>{t("Segarkan")}</Button>
     </HeaderAction>
     <Panel className="admin-panel reservation-list">

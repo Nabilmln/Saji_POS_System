@@ -6,6 +6,8 @@ import { useLocale } from "@/components/locale-provider";
 
 import { useCallback, useEffect, useState } from "react";
 import { DetailPane, HeaderAction } from "@/components/app-shells";
+import { SyncStatus } from "@/components/ui/sync-status";
+import { usePolling } from "@/lib/use-polling";
 import { ReceiptPreview } from "@/components/pos-receipt";
 import { Pagination, Panel, Button, Alert, LoadingState } from "@/components/ui/controls";
 import { DataTable, TableDateTime, TableAction, TableActions } from "@/components/ui/data-table";
@@ -26,16 +28,19 @@ export function PosTransactions({ initialReceiptId = "" }: { initialReceiptId?: 
   const { page, setPage, pageSize, setPageSize } = usePagination();
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState("");
+  const [syncedAt, setSyncedAt] = useState<Date | null>(null);
+  const [syncFailed, setSyncFailed] = useState(false);
   const refresh = useCallback(async () => {
     if (from && to && from > to) { setRows([]); setError("Tanggal awal tidak boleh melewati tanggal akhir."); setLoaded(true); return; }
     if (from && to && Date.parse(to) - Date.parse(from) > 366 * 86_400_000) { setRows([]); setError("Pilih rentang tanggal yang valid, maksimal 366 hari."); setLoaded(true); return; }
     const query = new URLSearchParams({ page: String(page), pageSize: String(pageSize) });
     if (from) query.set("from", from);
     if (to) query.set("to", to);
-    try { const result = await adminPage<Transaction>(`/api/staff/payments?${query}`); setRows(result.items); setHasNext(result.hasNext); setError(""); }
-    catch (cause) { setRows([]); setError(cause instanceof AdminApiError && cause.code === "VALIDATION_ERROR" ? "Pilih rentang tanggal yang valid, maksimal 366 hari." : "Riwayat transaksi belum dapat dimuat. Periksa koneksi lalu coba lagi."); }
+    try { const result = await adminPage<Transaction>(`/api/staff/payments?${query}`); setRows(result.items); setHasNext(result.hasNext); setError(""); setSyncedAt(new Date()); setSyncFailed(false); }
+    catch (cause) { setRows([]); setError(cause instanceof AdminApiError && cause.code === "VALIDATION_ERROR" ? "Pilih rentang tanggal yang valid, maksimal 366 hari." : "Riwayat transaksi belum dapat dimuat. Periksa koneksi lalu coba lagi."); setSyncFailed(true); }
     finally { setLoaded(true); }
   }, [from, to, page, pageSize]);
+  usePolling(refresh);
   useEffect(() => {
     const initial = window.setTimeout(() => void refresh(), 0);
     return () => window.clearTimeout(initial);
@@ -43,6 +48,7 @@ export function PosTransactions({ initialReceiptId = "" }: { initialReceiptId?: 
   return (
     <div className="admin-stack">
       <HeaderAction>
+        <SyncStatus syncedAt={syncedAt} syncFailed={syncFailed} />
         <Button className="secondary-button header-action-button" onClick={() => void refresh()}>{t("Segarkan")}</Button>
       </HeaderAction>
       <Panel className="admin-panel">
