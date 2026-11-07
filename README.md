@@ -107,15 +107,3 @@ Uploads use the existing private Neon `images` bucket. Configure `AWS_ACCESS_KEY
 
 An upload failure stops the menu save and leaves the form available for retry. Menu photos are intended for public display, so do not upload confidential images.
 
-### Unused photo cleanup
-
-Run these maintenance commands with the database and storage credentials for the **same Neon branch**:
-
-```bash
-npm run photos:cleanup
-npm run photos:cleanup -- --apply
-```
-
-The first command previews candidates. `--apply` removes only managed `images/menus/{uuid}.webp` files older than 24 hours with no menu reference. It keeps recent uploads, photos referenced by active or archived menus, matching legacy absolute image URLs, bundled assets and unrelated bucket files. Replacing/removing a menu photo makes its old file eligible once no other menu references it and the age threshold is met; abandoning an upload works the same way. Deleting a menu keeps its photo while the archived menu still references it for order history.
-
-Cleanup and menu saves coordinate with database locks; a save cannot attach a managed photo that cleanup has already removed. Failed deletes stop the command with a nonzero exit status and can be retried. No menu, account, reservation, order or payment rows are deleted by this command. Run it manually or schedule this command on your host; no background job is installed. Deleting storage files does not invalidate already cached browser/CDN copies.
