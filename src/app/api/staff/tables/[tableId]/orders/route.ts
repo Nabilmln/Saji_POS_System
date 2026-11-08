@@ -53,7 +53,11 @@ export async function POST(request: Request, context: { params: Promise<{ tableI
         return apiError(422, "ORDER_TOTAL_TOO_LARGE", "Order total exceeds the supported amount");
       }
       let sessionId: string;
+      let existingCustomerName = "";
       if (table.status === "AVAILABLE") {
+        if (!body.customerName || !body.customerName.trim()) {
+          return apiError(422, "VALIDATION_ERROR", "Customer name is required for new session");
+        }
         const [session] = await tx.insert(tableSessions).values({
           tableId, openedByUserId: staff.userId,
         }).returning({ id: tableSessions.id });
@@ -65,9 +69,18 @@ export async function POST(request: Request, context: { params: Promise<{ tableI
           .where(and(eq(tableSessions.tableId, tableId), isNull(tableSessions.closedAt))).for("update");
         if (!session) return apiError(409, "SESSION_NOT_ACTIVE", "Table has no active session");
         sessionId = session.id;
+        const [prevOrder] = await tx.select({ customerName: orders.customerName })
+          .from(orders)
+          .where(eq(orders.sessionId, sessionId))
+          .orderBy(asc(orders.createdAt))
+          .limit(1);
+        if (prevOrder) {
+          existingCustomerName = prevOrder.customerName;
+        }
       }
+      const finalCustomerName = body.customerName || existingCustomerName || "Kasir";
       const [order] = await tx.insert(orders).values({
-        sessionId, customerName: body.customerName, source: "MANUAL",
+        sessionId, customerName: finalCustomerName, source: "MANUAL",
         createdByUserId: staff.userId, note: body.note || null,
         clientRequestKey: body.clientRequestKey, requestFingerprint: fingerprint,
       }).returning();

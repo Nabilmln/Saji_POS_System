@@ -19,7 +19,7 @@ export function manualOrderFingerprint(tableId: string, order: z.output<typeof m
     menuItemId: item.menuItemId.toLowerCase(), quantity: item.quantity, note: item.note ?? "",
   })).sort((a, b) => a.menuItemId.localeCompare(b.menuItemId));
   return createHash("sha256").update(JSON.stringify({
-    source: "MANUAL", tableId: tableId.toLowerCase(), customerName: order.customerName,
+    source: "MANUAL", tableId: tableId.toLowerCase(), customerName: order.customerName ?? "",
     note: order.note ?? "", items,
   })).digest("hex");
 }

@@ -51,7 +51,7 @@ export const checkoutSchema = z
 
 export const manualOrderSchema = z.strictObject({
   clientRequestKey: uuid,
-  customerName: z.string().trim().min(1).max(120),
+  customerName: z.string().trim().max(120).optional(),
   note: note.optional(),
   items: checkoutSchema.shape.items,
 }).superRefine(({ items }, context) => {

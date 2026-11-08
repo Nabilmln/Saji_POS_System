@@ -18,13 +18,14 @@ import { Selection, Panel, Button, Alert, Input, LoadingState, Pagination } from
 import { DetailPane, HeaderAction } from "@/components/app-shells";
 import { SyncStatus } from "@/components/ui/sync-status";
 import { OrderDetails, type OrderItem } from "@/components/order-details";
-import { PosTable, type StaffTable } from "@/components/pos-table";
+import type { StaffTable } from "@/components/pos-table";
 import { PosPayment } from "@/components/pos-payment";
 import { ReceiptPreview } from "@/components/pos-receipt";
 import { OrderItemDeletion } from "@/components/order-item-deletion";
 import { PosBillPreview } from "@/components/pos-bill";
 import { PosTableActions } from "@/components/pos-table-actions";
 import { TableCard } from "@/components/ui/table-card";
+import { PosManualOrderModal } from "@/components/pos-manual-order-modal";
 
 
 type Table = { id: string; tableNumber: string; status: "AVAILABLE" | "OCCUPIED" | "RESERVED"; activeOrderCount: number; pendingOrderCount: number; grandTotalIdr: string };
@@ -35,7 +36,8 @@ export function PosOverview() {
   const { t, locale, money } = useLocale();
   const [selectedId, setSelectedId] = useState("");
   const [selected, setSelected] = useState<StaffTable | null>(null);
-  const [workspace, setWorkspace] = useState<"DETAIL" | "ORDER" | "PAYMENT">("DETAIL");
+  const [orderingTable, setOrderingTable] = useState<{ id: string; tableNumber: string; occupied: boolean } | null>(null);
+  const [workspace, setWorkspace] = useState<"DETAIL" | "PAYMENT">("DETAIL");
   const [paymentSessionId, setPaymentSessionId] = useState("");
   const [receipt, setReceipt] = useState<{ sessionId: string; paymentId?: never } | { paymentId: string; sessionId?: never } | null>(null);
   const [deleting, setDeleting] = useState<OrderItem | null>(null);
@@ -111,7 +113,6 @@ export function PosOverview() {
     sessionStorage.removeItem("pos-payment-workspace");
     setWorkspace("DETAIL"); void refresh(); void refreshDetail();
   }
-  if (workspace === "ORDER" && selectedId) return <PosTable key={selectedId} tableId={selectedId} initialManual onClose={closeWorkspace} onPayment={openPayment} />;
   if (workspace === "PAYMENT" && paymentSessionId) return <PosPayment key={paymentSessionId} sessionId={paymentSessionId} onClose={closeWorkspace} onViewReceipt={(paymentId) => { setReceipt({ paymentId }); closeWorkspace(); }} />;
   return <div className="admin-stack">
     <Panel className="admin-panel">
@@ -176,7 +177,8 @@ export function PosOverview() {
       </tr>)}</DataTable> : <p className="empty-state">{t("Belum ada pesanan pada status ini.")}</p>}
       <Pagination label="Navigasi pesanan" pageSize={orderPageSize} onPageSizeChange={setOrderPageSize} page={orderPage} hasNext={hasNext} onChange={setOrderPage} disabled={!!busy} />
     </Panel>
-    {selectedId && <DetailPane revision={JSON.stringify([selectedId, receipt, selected])} footer={!receipt && selected?.id === selectedId ? <PosTableActions sessionId={selected.session?.id} reserved={selected.status === "RESERVED"} busy={Boolean(busy)} onAddOrder={() => setWorkspace("ORDER")} onReceipt={() => selected.session && setReceipt({ sessionId: selected.session.id })} onPayment={openPayment} /> : undefined}>{receipt ? <ReceiptPreview key={receipt.paymentId ?? receipt.sessionId} {...receipt} onClose={() => setReceipt(null)} /> : <><div className="detail-heading"><h2>{t("Meja")} {selected?.tableNumber ?? tables.find((table) => table.id === selectedId)?.tableNumber}</h2><Button className="text-button" onClick={() => setSelectedId("")}>{t("Tutup")}</Button></div>{detailError && <Alert>{t(detailError)}</Alert>}{selected?.id === selectedId ? <><OrderDetails orders={selected.orders} busy={busy} onConfirm={(id) => void updateOrder(`/api/staff/orders/${id}/confirm`, "POST", {}, `confirm:${id}`)} onServe={(id) => void updateOrder(`/api/staff/order-items/${id}/served`, "PATCH", { served: true }, `served:${id}`)} onVoid={setDeleting} />{selected.session && <PosBillPreview key={selected.session.id} sessionId={selected.session.id} />}</> : !detailError && <LoadingState>{t("Memuat detail...")}</LoadingState>}</>}</DetailPane>}
+    {selectedId && <DetailPane revision={JSON.stringify([selectedId, receipt, selected])} footer={!receipt && selected?.id === selectedId ? <PosTableActions sessionId={selected.session?.id} reserved={selected.status === "RESERVED"} busy={Boolean(busy)} onAddOrder={() => setOrderingTable({ id: selected.id, tableNumber: selected.tableNumber, occupied: selected.status === "OCCUPIED" || Boolean(selected.session) })} onReceipt={() => selected.session && setReceipt({ sessionId: selected.session.id })} onPayment={openPayment} /> : undefined}>{receipt ? <ReceiptPreview key={receipt.paymentId ?? receipt.sessionId} {...receipt} onClose={() => setReceipt(null)} /> : <><div className="detail-heading"><h2>{t("Meja")} {selected?.tableNumber ?? tables.find((table) => table.id === selectedId)?.tableNumber}</h2><Button className="text-button" onClick={() => setSelectedId("")}>{t("Tutup")}</Button></div>{detailError && <Alert>{t(detailError)}</Alert>}{selected?.id === selectedId ? <><OrderDetails orders={selected.orders} busy={busy} onConfirm={(id) => void updateOrder(`/api/staff/orders/${id}/confirm`, "POST", {}, `confirm:${id}`)} onServe={(id) => void updateOrder(`/api/staff/order-items/${id}/served`, "PATCH", { served: true }, `served:${id}`)} onVoid={setDeleting} />{selected.session && <PosBillPreview key={selected.session.id} sessionId={selected.session.id} />}</> : !detailError && <LoadingState>{t("Memuat detail...")}</LoadingState>}</>}</DetailPane>}
+    {orderingTable && <PosManualOrderModal key={orderingTable.id} tableId={orderingTable.id} tableNumber={orderingTable.tableNumber} tableOccupied={orderingTable.occupied} onClose={() => setOrderingTable(null)} onSuccess={async () => { setOrderingTable(null); await Promise.all([refresh(), refreshDetail()]); setNotice({ text: "Pesanan tersimpan sebagai {0}. Konfirmasikan saat siap diproses.", values: { 0: <Text value="Menunggu" /> }, subject: <Text value={`Meja ${orderingTable.tableNumber}`} /> }); }} />}
     {deleting && <OrderItemDeletion key={deleting.id} item={deleting} onClose={() => setDeleting(null)} onDeleted={async () => { await Promise.all([refresh(), refreshDetail()]); setNotice({ text: "{0} dihapus dari pesanan. Tagihan diperbarui.", values: { 0: deleting.menuName } }); }} />}
   </div>;
 }
