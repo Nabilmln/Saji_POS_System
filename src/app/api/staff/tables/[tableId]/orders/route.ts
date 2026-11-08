@@ -1,7 +1,7 @@
-import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { categories, diningTables, menuItems, orderItems, orders, tableSessions } from "@/db/schema";
+import { categories, diningTables, menuItems, orderItems, orders, reservations, tableSessions } from "@/db/schema";
 import { apiError, apiSuccess, apiValidationError } from "@/lib/api-response";
 import { requireStaff } from "@/lib/auth/guards";
 import { manualOrderFingerprint } from "@/lib/checkout";
@@ -54,7 +54,37 @@ export async function POST(request: Request, context: { params: Promise<{ tableI
       }
       let sessionId: string;
       let existingCustomerName = "";
-      if (table.status === "AVAILABLE") {
+
+      const [activeSession] = await tx.select({ id: tableSessions.id }).from(tableSessions)
+        .where(and(eq(tableSessions.tableId, tableId), isNull(tableSessions.closedAt))).for("update");
+
+      if (activeSession) {
+        sessionId = activeSession.id;
+        if (table.status !== "OCCUPIED") {
+          await tx.update(diningTables).set({ status: "OCCUPIED", updatedAt: new Date() })
+            .where(eq(diningTables.id, tableId));
+        }
+        const [prevOrder] = await tx.select({ customerName: orders.customerName })
+          .from(orders)
+          .where(eq(orders.sessionId, sessionId))
+          .orderBy(asc(orders.createdAt))
+          .limit(1);
+        if (prevOrder) {
+          existingCustomerName = prevOrder.customerName;
+        } else {
+          const [res] = await tx.select({ customerName: reservations.customerName })
+            .from(reservations)
+            .where(and(eq(reservations.tableId, tableId), eq(reservations.status, "CHECKED_IN")))
+            .orderBy(desc(reservations.updatedAt))
+            .limit(1);
+          if (res) {
+            existingCustomerName = res.customerName;
+          }
+        }
+      } else {
+        if (table.status === "OCCUPIED") {
+          return apiError(409, "SESSION_NOT_ACTIVE", "Table has no active session");
+        }
         if (!body.customerName || !body.customerName.trim()) {
           return apiError(422, "VALIDATION_ERROR", "Customer name is required for new session");
         }
@@ -64,21 +94,9 @@ export async function POST(request: Request, context: { params: Promise<{ tableI
         sessionId = session.id;
         await tx.update(diningTables).set({ status: "OCCUPIED", updatedAt: new Date() })
           .where(eq(diningTables.id, tableId));
-      } else {
-        const [session] = await tx.select({ id: tableSessions.id }).from(tableSessions)
-          .where(and(eq(tableSessions.tableId, tableId), isNull(tableSessions.closedAt))).for("update");
-        if (!session) return apiError(409, "SESSION_NOT_ACTIVE", "Table has no active session");
-        sessionId = session.id;
-        const [prevOrder] = await tx.select({ customerName: orders.customerName })
-          .from(orders)
-          .where(eq(orders.sessionId, sessionId))
-          .orderBy(asc(orders.createdAt))
-          .limit(1);
-        if (prevOrder) {
-          existingCustomerName = prevOrder.customerName;
-        }
       }
-      const finalCustomerName = body.customerName || existingCustomerName || "Kasir";
+
+      const finalCustomerName = body.customerName?.trim() || existingCustomerName || "Kasir";
       const [order] = await tx.insert(orders).values({
         sessionId, customerName: finalCustomerName, source: "MANUAL",
         createdByUserId: staff.userId, note: body.note || null,
@@ -95,9 +113,13 @@ export async function POST(request: Request, context: { params: Promise<{ tableI
       return apiSuccess(orderData(order, saved, table.tableNumber), 201);
     });
   } catch (error) {
-    const pg = error as { code?: string; cause?: { code?: string } };
-    if (pg.code === "23505" || pg.cause?.code === "23505") {
-      return apiError(409, "IDEMPOTENCY_KEY_REUSED", "Use a new key for a different order");
+    const pg = error as { code?: string; constraint?: string; cause?: { code?: string; constraint?: string } };
+    const code = pg.code ?? pg.cause?.code;
+    const constraint = pg.constraint ?? pg.cause?.constraint;
+    if (code === "23505") {
+      if (constraint === "orders_client_request_key_key" || !constraint) {
+        return apiError(409, "IDEMPOTENCY_KEY_REUSED", "Use a new key for a different order");
+      }
     }
     throw error;
   }

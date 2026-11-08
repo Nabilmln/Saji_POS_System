@@ -120,8 +120,8 @@ export function PosManualOrderModal({
   }, [storageKey]);
 
   function editDraft(changes: Partial<Draft>) {
-    if (manualInFlight.current || draft.uncertain) return;
-    const next = { ...draft, ...changes, key: changes.key ?? (draft.key || randomId()) };
+    if (manualInFlight.current) return;
+    const next = { ...draft, ...changes, uncertain: false, key: changes.key ?? (draft.key || randomId()) };
     sessionStorage.setItem(storageKey, JSON.stringify(next));
     setDraft(next);
   }
@@ -187,32 +187,50 @@ export function PosManualOrderModal({
       sessionStorage.removeItem(storageKey);
       onSuccess();
     } catch (cause) {
-      if (
-        cause instanceof AdminApiError &&
-        ["MENU_UNAVAILABLE", "VALIDATION_ERROR", "TABLE_RESERVED", "TABLE_NOT_FOUND"].includes(
-          cause.code
-        )
-      ) {
-        const editable = { ...draft, key, uncertain: false };
-        setDraft(editable);
-        sessionStorage.setItem(storageKey, JSON.stringify(editable));
+      let message = "Belum dapat memastikan pesanan tersimpan. Coba lagi.";
+      let newKey = key;
+
+      if (cause instanceof AdminApiError) {
+        if (cause.code === "MENU_UNAVAILABLE") {
+          message = "Menu berubah. Periksa ketersediaan sebelum mencoba lagi.";
+        } else if (cause.code === "IDEMPOTENCY_KEY_REUSED") {
+          message = "Kunci pesanan telah digunakan. Kunci baru telah disiapkan, silakan klik simpan kembali.";
+          newKey = randomId();
+        } else if (cause.code === "SESSION_NOT_ACTIVE") {
+          message = "Sesi meja ini tidak aktif. Silakan segarkan halaman.";
+        } else if (cause.code === "TABLE_RESERVED") {
+          message = "Meja masih dalam status reservasi. Lakukan check-in terlebih dahulu.";
+        } else if (cause.code === "VALIDATION_ERROR") {
+          message = cause.message || "Data pesanan tidak valid. Periksa kembali isian.";
+        } else if (cause.message) {
+          message = cause.message;
+        }
       }
-      setError(
-        cause instanceof AdminApiError && cause.code === "MENU_UNAVAILABLE"
-          ? "Menu berubah. Periksa ketersediaan sebelum mencoba lagi."
-          : "Belum dapat memastikan pesanan tersimpan. Coba lagi tanpa mengubah isian."
-      );
+
+      const editable = { ...draft, key: newKey, uncertain: false };
+      setDraft(editable);
+      sessionStorage.setItem(storageKey, JSON.stringify(editable));
+      setError(message);
     } finally {
       manualInFlight.current = false;
       setBusy(false);
     }
   }
 
+  function handleClose() {
+    if (draft.uncertain) {
+      const reset = { ...draft, uncertain: false };
+      sessionStorage.setItem(storageKey, JSON.stringify(reset));
+      setDraft(reset);
+    }
+    onClose();
+  }
+
   return (
     <ConfirmationDialog
       titleId="manual-order-title"
       busy={busy}
-      onClose={onClose}
+      onClose={handleClose}
       className="pos-order-modal-dialog"
     >
       <div className="pos-order-modal">
@@ -242,7 +260,7 @@ export function PosManualOrderModal({
             <Button
               type="button"
               className="text-button pos-order-close-btn"
-              onClick={onClose}
+              onClick={handleClose}
               aria-label={t("Tutup")}
             >
               <XIcon size={18} weight="bold" />
@@ -628,7 +646,7 @@ export function PosManualOrderModal({
                   type="button"
                   className="secondary-button pos-order-cancel-btn"
                   disabled={busy}
-                  onClick={onClose}
+                  onClick={handleClose}
                 >
                   {t("Batal")}
                 </Button>
