@@ -17,6 +17,8 @@ import {
   ForkKnifeIcon,
   ShoppingCartIcon,
 } from "@phosphor-icons/react";
+import "./pos-manual-order-modal.css";
+import { resolveMenuImage } from "@/lib/menu-images";
 
 type Menu = {
   categories: {
@@ -349,6 +351,7 @@ export function PosManualOrderModal({
                   {displayedItems.map((item) => {
                     const inCart = draft.cart.find((c) => c.id === item.id);
                     const quantity = inCart?.quantity ?? 0;
+                    const imageSrc = resolveMenuImage(item.imageUrl, item.name);
                     return (
                       <div
                         key={item.id}
@@ -371,10 +374,10 @@ export function PosManualOrderModal({
                           }
                         }}
                       >
-                        {item.imageUrl && (
+                        {imageSrc && (
                           <div className="pos-menu-tile-thumb">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={item.imageUrl} alt={item.name} loading="lazy" />
+                            <img src={imageSrc} alt={item.name} loading="lazy" />
                           </div>
                         )}
                         <div className="pos-menu-tile-details">
