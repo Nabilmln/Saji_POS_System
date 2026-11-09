@@ -7,8 +7,8 @@ import { Button, Input } from "@/components/ui/controls";
 import { calendarDate, formatDateInput, parseDateInput, shiftCalendarMonth, type DateInputType } from "@/lib/date-input";
 import { restaurantDate } from "@/lib/time";
 
-export function DatePicker({ label, value: controlledValue, onChange, name, required = false, disabled = false, type = "date" }: {
-  label: string; value?: string; onChange?: (value: string) => void; name?: string; required?: boolean; disabled?: boolean; type?: DateInputType;
+export function DatePicker({ label, value: controlledValue, onChange, name, required = false, disabled = false, type = "date", disableTyping = false }: {
+  label: string; value?: string; onChange?: (value: string) => void; name?: string; required?: boolean; disabled?: boolean; type?: DateInputType; disableTyping?: boolean;
 }) {
   const { t, locale } = useLocale();
   const id = useId(), calendarId = `${id}-calendar`;
@@ -83,11 +83,55 @@ export function DatePicker({ label, value: controlledValue, onChange, name, requ
   return <div className="date-field">
     <label htmlFor={id}>{t(label)}</label>
     <div className="date-input-wrap">
-      <Input ref={field} id={id} role="combobox" aria-haspopup="dialog" aria-expanded={open} aria-controls={calendarId} aria-autocomplete="none" aria-invalid={invalid || undefined} type="text" required={required} disabled={disabled} autoComplete="off" placeholder={t(type === "date" ? "Pilih tanggal" : "Pilih tanggal dan waktu")} value={draft ?? formatDateInput(value, locale, type)}
-        onChange={(event) => { const text = event.target.value, next = parseDateInput(text, locale, type); setDraft(text); event.currentTarget.setCustomValidity(next === null ? t(type === "date" ? "Masukkan tanggal yang valid." : "Masukkan tanggal dan waktu yang valid.") : ""); if (next !== null) change(next); }}
-        onBlur={() => { if (!invalid) setDraft(null); }}
-        onKeyDown={(event) => { if (event.key === "ArrowDown") { event.preventDefault(); trigger.current?.click(); } }} />
-      <button ref={trigger} type="button" className="button icon-button date-trigger" disabled={disabled} popoverTarget={calendarId} aria-label={t("Buka kalender: {0}", { "0": t(label) })} aria-expanded={open} onClick={prepare}><CalendarBlankIcon size={18} aria-hidden="true" /></button>
+      <Input
+        ref={field}
+        id={id}
+        role={disableTyping ? "button" : "combobox"}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        aria-controls={calendarId}
+        aria-autocomplete="none"
+        aria-invalid={invalid || undefined}
+        type="text"
+        required={required}
+        disabled={disabled}
+        readOnly={disableTyping}
+        autoComplete="off"
+        placeholder={t(type === "date" ? "Pilih tanggal" : "Pilih tanggal dan waktu")}
+        value={draft ?? formatDateInput(value, locale, type)}
+        className={`text-field${disableTyping ? " date-picker-readonly" : ""}`}
+        onClick={() => {
+          if (disableTyping && !disabled) trigger.current?.click();
+        }}
+        onChange={disableTyping ? undefined : (event) => {
+          const text = event.target.value, next = parseDateInput(text, locale, type);
+          setDraft(text);
+          event.currentTarget.setCustomValidity(next === null ? t(type === "date" ? "Masukkan tanggal yang valid." : "Masukkan tanggal dan waktu yang valid.") : "");
+          if (next !== null) change(next);
+        }}
+        onBlur={disableTyping ? undefined : () => {
+          if (!invalid) setDraft(null);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "ArrowDown" || (disableTyping && (event.key === "Enter" || event.key === " "))) {
+            event.preventDefault();
+            if (!disabled) trigger.current?.click();
+          }
+        }}
+      />
+      <button
+        ref={trigger}
+        type="button"
+        className="button icon-button date-trigger"
+        disabled={disabled}
+        popoverTarget={calendarId}
+        aria-label={t("Buka kalender: {0}", { "0": t(label) })}
+        aria-expanded={open}
+        onClick={prepare}
+        tabIndex={disableTyping ? -1 : undefined}
+      >
+        <CalendarBlankIcon size={18} aria-hidden="true" />
+      </button>
     </div>
     {name && <input type="hidden" name={name} value={value} disabled={disabled} />}
     <div ref={popup} id={calendarId} className="calendar-popover" popover="auto" role="dialog" aria-label={t("Pilih tanggal: {0}", { "0": t(label) })} aria-describedby={`${id}-help`} onToggle={(event) => {

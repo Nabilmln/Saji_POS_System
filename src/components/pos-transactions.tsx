@@ -57,8 +57,21 @@ export function PosTransactions({ initialReceiptId = "" }: { initialReceiptId?: 
             <h2>{t("Riwayat pembayaran")}</h2>
           </div>
           <div className="transaction-toolbar-dates">
-            <DatePicker label="Dari tanggal" value={from} onChange={(value) => { setFrom(value); setPage(1); }} />
-            <DatePicker label="Sampai tanggal" value={to} onChange={(value) => { setTo(value); setPage(1); }} />
+            <DatePicker label="Dari tanggal" value={from} onChange={(value) => { setFrom(value); setPage(1); }} disableTyping />
+            <DatePicker label="Sampai tanggal" value={to} onChange={(value) => { setTo(value); setPage(1); }} disableTyping />
+            {(from || to) && (
+              <Button
+                type="button"
+                className="text-button transaction-clear-dates"
+                onClick={() => {
+                  setFrom("");
+                  setTo("");
+                  setPage(1);
+                }}
+              >
+                {t("Kosongkan")}
+              </Button>
+            )}
           </div>
         </div>
         {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
