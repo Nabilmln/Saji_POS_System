@@ -116,7 +116,7 @@ export function PosReservations() {
             <h3>{t("Reservasi manual")}</h3>
             <Button className="text-button" type="button" onClick={() => { setCreating(false); setError(""); }}>{t("Tutup")}</Button>
           </div>
-          <p className="muted">{t("Catat pesanan meja dari telepon atau WhatsApp. Waktu menggunakan WIB; meja diblokir segera setelah reservasi dibuat.")}</p>
+          {/* <p className="muted">{t("Catat pesanan meja dari telepon atau WhatsApp. Waktu menggunakan WIB; meja diblokir segera setelah reservasi dibuat.")}</p> */}
           {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
           <div className="admin-form-grid">
             <label>{t("Nama pelanggan")}<Input className="text-field" name="name" required maxLength={120} /></label>
