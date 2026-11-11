@@ -197,6 +197,28 @@ h1,h2,h3,p{overflow-wrap:break-word}h1,h2,h3{letter-spacing:-.025em;line-height:
 .transaction-toolbar-dates .date-trigger{top:1px;right:1px;min-height:36px;height:36px;width:36px}
 .transaction-toolbar-dates .transaction-clear-dates{font-size:12px;white-space:nowrap;padding:4px 8px;min-height:36px;height:36px}
 
+/* POS Table Overview Toolbar */
+.pos-table-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;width:100%;margin-bottom:18px}
+.pos-table-toolbar-head{flex:none}
+.pos-table-toolbar-head h2{margin:0;white-space:nowrap;font-size:18px;font-weight:650}
+.pos-table-toolbar-controls{display:flex;align-items:center;gap:12px;flex:1;justify-content:flex-end;min-width:0}
+.pos-table-search{position:relative;display:flex;align-items:center;flex:1;min-width:140px;max-width:280px}
+.pos-table-search-icon{position:absolute;left:11px;color:var(--text-muted);pointer-events:none}
+.pos-table-search-input{width:100%;height:38px;min-height:38px;padding-left:34px;padding-right:30px;font-size:12px;border-radius:var(--control-radius)}
+.pos-table-search-input::-webkit-search-cancel-button,.pos-table-search-input::-webkit-search-decoration{-webkit-appearance:none;appearance:none}
+.pos-table-search-clear{position:absolute;right:8px;display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;padding:0;border:none;background:transparent;color:var(--text-muted);cursor:pointer;border-radius:50%}
+.pos-table-search-clear:hover{color:var(--foreground);background:var(--surface-muted)}
+.pos-table-search-clear:focus-visible{outline:2px solid var(--focus-ring);outline-offset:2px}
+.pos-table-status-filter{display:inline-flex;margin:0;border:0;padding:0;min-width:0;flex:none}
+.pos-table-status-filter legend{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.pos-table-status-filter .segmented-control{min-height:38px;height:38px;padding:2px;gap:2px;flex-wrap:nowrap}
+.pos-table-status-filter .segment-option span{min-height:32px;height:32px;padding:4px 11px;font-size:12px;white-space:nowrap;line-height:24px}
+
+@media(max-width:899px){
+  .pos-table-toolbar{flex-wrap:wrap;gap:12px}
+  .pos-table-toolbar-controls{flex:1 1 100%;justify-content:flex-start}
+}
+
 @media(max-width:639px){
   .reservation-toolbar{flex-direction:column;align-items:stretch;gap:12px}
   .reservation-toolbar-main{flex-direction:column;align-items:stretch;gap:10px}
@@ -206,6 +228,11 @@ h1,h2,h3,p{overflow-wrap:break-word}h1,h2,h3{letter-spacing:-.025em;line-height:
   .transaction-toolbar-dates{flex-direction:column;align-items:stretch;gap:10px}
   .transaction-toolbar-dates .date-field{justify-content:space-between}
   .transaction-toolbar-dates .date-input-wrap{flex:1;max-width:none}
+  .pos-table-toolbar{flex-direction:column;align-items:stretch;gap:12px}
+  .pos-table-toolbar-controls{flex-direction:column;align-items:stretch;width:100%;gap:10px}
+  .pos-table-search{max-width:none;width:100%}
+  .pos-table-status-filter{width:100%}
+  .pos-table-status-filter .segmented-control{width:100%;overflow-x:auto}
 }
 
 .table-secondary{display:block;color:var(--text-muted);font-size:11px;font-weight:400;margin-top:4px}

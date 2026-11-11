@@ -10,7 +10,7 @@ import { StatusBadge, statusLabels, orderStatusOptions } from "@/components/ui/s
 import { usePolling } from "@/lib/use-polling";
 
 import { useCallback, useEffect, useState } from "react";
-import { ClockIcon, CheckCircleIcon } from "@phosphor-icons/react";
+import { ClockIcon, CheckCircleIcon, MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
 import { DataTable, TableDateTime, TableAction, TableActions } from "@/components/ui/data-table";
 import { usePagination } from "@/lib/use-pagination";
 import { adminPage, adminApi, jsonRequest } from "@/lib/admin/client";
@@ -120,12 +120,43 @@ export function PosOverview() {
         <SyncStatus syncedAt={syncedAt} syncFailed={syncFailed} />
         <Button className="secondary-button header-action-button" onClick={() => void refresh()}>{t("Segarkan")}</Button>
       </HeaderAction>
-      <div className="admin-section-head"><h2>{t("Ringkasan meja")}</h2></div>
-      {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
-      <div className="admin-filters">
-        <label>{t("Cari meja")}<Input className="text-field" value={query} maxLength={30} onChange={(event) => { setQuery(event.target.value); setTablePage(1); }} placeholder={t("Nomor meja")} /></label>
-        <Selection label={t("Status meja")} value={filter} onChange={(value) => { setFilter(value); setTablePage(1); }} options={[{ value: "ALL", label: t("Semua") }, ...Object.entries(tableLabels).map(([value, label]) => ({ value, label: t(label) }))]} />
+      <div className="admin-section-head pos-table-toolbar">
+        <div className="pos-table-toolbar-head">
+          <h2>{t("Ringkasan meja")}</h2>
+        </div>
+        <div className="pos-table-toolbar-controls">
+          <div className="pos-table-search">
+            <MagnifyingGlassIcon size={16} className="pos-table-search-icon" aria-hidden="true" />
+            <Input
+              className="text-field pos-table-search-input"
+              type="search"
+              value={query}
+              maxLength={30}
+              onChange={(event) => { setQuery(event.target.value); setTablePage(1); }}
+              placeholder={t("Nomor meja")}
+              aria-label={t("Cari meja")}
+            />
+            {query && (
+              <button
+                type="button"
+                className="pos-table-search-clear"
+                onClick={() => { setQuery(""); setTablePage(1); }}
+                aria-label={t("Kosongkan")}
+              >
+                <XIcon size={14} />
+              </button>
+            )}
+          </div>
+          <Selection
+            className="pos-table-status-filter"
+            label={t("Status meja")}
+            value={filter}
+            onChange={(value) => { setFilter(value); setTablePage(1); }}
+            options={[{ value: "ALL", label: t("Semua") }, ...Object.entries(tableLabels).map(([value, label]) => ({ value, label: t(label) }))]}
+          />
+        </div>
       </div>
+      {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
       {!loaded ? <LoadingState variant="cards">{t("Memuat meja…")}</LoadingState> : visible.length ? (
         <div className="pos-table-grid">
           {visible.slice((currentTablePage - 1) * tablePageSize, currentTablePage * tablePageSize).map((table) => (
