@@ -1,109 +1,112 @@
-# Restaurant POS
+# Saji
 
-Single-outlet restaurant POS and QR table ordering app. The backend uses Next.js Route Handlers, TypeScript, Drizzle, PostgreSQL on Neon, and Neon Auth. The local `docs/` folder contains the detailed design and is intentionally excluded from Git.
+Saji is a single-outlet restaurant point-of-sale (POS) and QR table ordering application. It enables contactless dining room ordering for customers while giving cashiers and restaurant owners real-time control over table sessions, manual orders, billing, menu catalogs, and sales performance.
 
-## Local development
+## What you can do
+
+- **Customer QR Ordering**: Guests scan their table QR code, browse dishes and categories, submit orders with item notes directly to the kitchen, and monitor live preparation progress.
+- **Cashier POS Operations**: Cashiers track a real-time table grid with a unified search and status filter toolbar, create manual orders via a dedicated POS modal with automated customer-name detection, manage order progression (`Pending` → `Preparing` → `Served`), and settle payments in cash.
+- **Table & Reservation Management**: Real-time occupancy tracking, bill previews with tax and service charges, side detail panes for quick edits, and reservation check-in or cancellation.
+- **Owner Administration**: Catalog management for dishes and categories with drag-and-drop photo uploads (automatically converted to WebP on cloud storage), table layout setups with printable QR codes, cashier account provisioning, and tax/service settings.
+- **Sales Analytics & Reports**: Live sales activity, revenue insights, top-selling items, and daily performance metrics, along with payment transaction history featuring calendar-based date range pickers.
+- **Bilingual Interface**: Seamless switching between Indonesian and English across all customer, cashier, and admin interfaces with persistent language preferences.
+
+Saji is designed for in-store single-outlet dining operations with cash settlement. All financial transactions and menu prices are recorded in whole Indonesian rupiah (IDR).
+
+## Tech stack
+
+| Icon | Technology | Role |
+| :---: | --- | --- |
+| <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/nextjs/nextjs-original.svg" width="22" alt="" /> | **Next.js + React** | App Router, Server Actions, Route Handlers, and responsive UI components |
+| <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/typescript/typescript-original.svg" width="22" alt="" /> | **TypeScript** | Type-safe business contracts, data models, and API schemas |
+| <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/tailwindcss/tailwindcss-original.svg" width="22" alt="" /> | **Tailwind CSS** | Interface styling, responsive layouts, and restaurant warm-theme design |
+| <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/postgresql/postgresql-original.svg" width="22" alt="" /> | **Neon PostgreSQL + Drizzle** | Serverless relational database, schema migrations, and Drizzle ORM |
+| <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/postgresql/postgresql-original.svg" width="22" alt="" /> | **Neon Auth** | Managed authentication with role-based routing (Admin and Cashier) |
+| <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-plain-wordmark.svg" width="22" alt="" /> | **Neon Object Storage** | S3-compatible private cloud storage for uploaded menu photos |
+| <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/vitest/vitest-original.svg" width="22" alt="" /> | **Vitest** | Unit tests, business calculation verification, and API contract tests |
+
+## Workspaces and access
+
+All staff members sign in through the unified `/login` page. The system inspects the account's active role profile and routes users to their respective workspace:
+
+- **Owner / Admin Workspace** (`/admin/reports`): Access to sales analytics, menu and category catalog, dining tables, cashier staff accounts, and store billing settings.
+- **Cashier POS Workspace** (`/pos`): Access to table overview, manual order entry, order status progression, bill settlement, reservations, and payment transaction history.
+- **Customer Dining Experience** (`/order/{tableToken}`): Accessed by scanning the table's QR code. Guests enter their name, view menu items with starter illustrations or owner photos, build their order cart, and submit directly to the POS.
+
+## Set up your own copy
+
+### Prerequisites
+
+- [Node.js 22](https://nodejs.org/) and npm
+- A [Neon](https://neon.tech/) account with PostgreSQL, Neon Auth, and an Object Storage bucket
+
+### 1. Get the code and install packages
+
+Clone the repository and install dependencies:
 
 ```bash
 npm ci
-npm run dev
 ```
 
-Open <http://localhost:3000>. Customer QR ordering, cashier operations and the owner workspace are available. Opening the main URL redirects straight to `/login`. Both the exclusive owner and cashiers use `/login`; the account's stored role determines the workspace. Old `/owner-login` links redirect to `/login`.
+### 2. Configure environment settings
+
+Copy `.env.example` to create your local `.env.local` file:
 
 ```bash
-npm run lint
-npm run typecheck
-npm test
-npm run build
+cp .env.example .env.local
 ```
 
-Contracts, Auth guards, and business calculations live in `src/lib/`; database schema and connection live in `src/db/`; versioned migrations live in `drizzle/`. Keep a separate copy of the local `docs/` folder if you need its API contract and ERD after cloning.
+Fill in the required server-side environment variables:
 
-## Neon setup
+| Setting | Description |
+| --- | --- |
+| `DATABASE_URL` | Pooled Neon PostgreSQL connection string for application queries. |
+| `DATABASE_URL_UNPOOLED` | Direct Neon PostgreSQL connection string for migrations and seeding. |
+| `NEON_AUTH_BASE_URL` | Base URL for your Neon Auth instance. |
+| `NEON_AUTH_COOKIE_SECRET` | Stable random string (at least 32 characters) for signing Auth cookies. |
+| `CUSTOMER_TOKEN_SECRET` | Stable random secret (at least 32 characters) for signing customer table tokens. |
+| `AWS_ACCESS_KEY_ID` | Access key for Neon Object Storage (S3-compatible). |
+| `AWS_SECRET_ACCESS_KEY` | Secret access key for Neon Object Storage. |
+| `AWS_ENDPOINT_URL_S3` | S3 endpoint URL for your Neon project storage bucket. |
+| `AWS_REGION` | Storage bucket region (e.g., `ap-southeast-1`). |
 
-Work on Git `main` with the existing Neon `production` link. Treat its data as disposable development/demo data until release; review migrations and take a backup before changing the schema. Run destructive integration tests against local PostgreSQL, not the linked Neon database. `.env.local` and `.neon` are Git-ignored; keep credentials in server-side environment variables and never prefix them with `NEXT_PUBLIC_`.
+> To generate secure 32-character secrets, run:
+> ```bash
+> node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+> ```
 
-Copy `.env.example` to `.env.local` and fill the server-only values. `DATABASE_URL` is for app queries; `DATABASE_URL_UNPOOLED` is for migrations and seed data. **Check both URLs before running a migration or seed**. For a fresh local PostgreSQL database, create the minimal Auth table before the app migrations:
+### 3. Run migrations and database seed
 
-```powershell
-psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f scripts/db/local-auth-stub.sql
-```
-
-Point both database URLs in `.env.local` at that local database, then run:
+Apply schema migrations and initialize default store settings:
 
 ```bash
 npm run db:migrate
 npm run db:seed
-npm run db:health
 ```
 
-The default seed initializes store settings only and never injects sample categories, menus, tables or staff. Optional demo data is an explicit development action: `npm run db:seed -- --demo`. Running it again can recreate missing demo tables; do not use demo seeding on a live store. To include demo staff profiles, first create the two matching Neon Auth users, then set `SEED_ADMIN_USER_ID` and `SEED_CASHIER_USER_ID` before the explicit demo seed. The local Auth stub exists only to satisfy the staff foreign key during local database tests; it does not authenticate users.
-
-Makanan and Minuman are ordinary demo categories and can be deleted like any category. Deletion removes the category from management and ordering, preserves its linked menu items and order history, and frees its name for reuse. Remaining menu items are marked as needing a category in the owner catalogue; edit them to choose an active category before selling them again. Category counts exclude deleted menus. Only the exclusive owner account is protected from deletion; occupied/reserved tables are temporarily protected until their active work is settled.
-
-## Staff authentication (BE-03)
-
-Neon Managed Auth is proxied at `/api/auth/*`; the browser SDK is in `src/lib/auth/client.ts`. Email/password sign-in, sign-out, and session requests use that SDK. Everyone signs in at `/login`, then `GET /api/me` verifies the session and an active, non-deleted `staff_profiles` row to resolve the account role. Owners go to `/admin/reports`; cashiers go to `/pos`. Role selection or query parameters cannot change access. `/api/staff/me` still requires `CASHIER` and `/api/admin/me` requires `ADMIN`; the roles cannot use each other's workspace or APIs. The owner creates cashier accounts and public signup stays closed. Future staff and admin handlers must call `requireStaff(request)` or `requireAdmin(request)` before reading or changing protected data; those guards also reject cross-origin mutations. `requireAccount` is for identity discovery only, not role-specific operations.
-
-Set `NEON_AUTH_BASE_URL` and a unique `NEON_AUTH_COOKIE_SECRET` (at least 32 characters) in `.env.local` and on the app host. Do not expose the cookie secret to the browser. On the linked Neon `production` branch, public email signup is disabled and the shared Google OAuth provider has been removed. Verify those settings before deploying staff login or after changing Auth configuration:
+To optionally populate sample dining tables, starter categories, and dishes for testing:
 
 ```bash
-neon neon-auth config email-password get --project-id purple-band-68637667 --branch production
-neon neon-auth oauth-provider list --project-id purple-band-68637667 --branch production
+npm run db:seed -- --demo
 ```
 
-The first Admin Auth user and its `staff_profiles` link have been created on the linked branch. For a fresh database, create the first Auth user through a trusted Neon operation. Set `BOOTSTRAP_ADMIN_USER_ID` to its UUID and `BOOTSTRAP_ADMIN_NAME` to the desired display name in the server environment, then run the one-time profile link:
+### 4. Start the application
+
+Launch the local development server:
 
 ```bash
-neon neon-auth user create --project-id purple-band-68637667 --branch production --email you@example.com --name "Restaurant Admin"
-npm run auth:bootstrap-admin
+npm run dev
 ```
 
-The bootstrap script verifies that the Auth user exists and refuses to create a second admin. It never stores or prints a password. The server guards revalidate privileged sessions with Neon Auth on each request, so a signed-out cookie cannot continue to access staff/admin routes. Do not use public signup for future staff provisioning.
-The Neon CLI's user-create command does not accept a password; complete credential setup with Neon Auth before expecting email/password sign-in for a newly created user.
-The initial `admin@saji.id` account has both the application `ADMIN` profile and Neon Auth `admin` role on the linked production branch. The latter allows the server to provision Cashier Auth users. Browser requests to `/api/auth/admin/*` are blocked; account changes go through audited `/api/admin/staff/*` routes.
+Open [http://localhost:3000](http://localhost:3000) in your browser. Visiting the root page redirects to `/login`.
 
-## Customer access (BE-05)
+## Verification and code quality
 
-Set `CUSTOMER_TOKEN_SECRET` to a separate random secret of at least 32 bytes on the app host. This workspace has one in `.env.local`; create a new one on a fresh clone. Never expose it with `NEXT_PUBLIC_`. Public table metadata is available at `/api/public/tables/{tableToken}`. A guest submits a name to `/guests` and sends the returned bearer token to `/menu`. Guest tokens expire after two hours. `POST /api/public/tables/{tableToken}/orders` uses that guest token to create or join an active table session, snapshots menu prices, and returns an order view token. The `/api/public/orders/{orderId}` status route requires that order-scoped token, valid for 24 hours.
-
-The HTTP integration test needs the local app and PostgreSQL running with the same `CUSTOMER_TOKEN_SECRET`. Set `TEST_DATABASE_URL` and `TEST_API_BASE_URL` to their localhost URLs before `npm test`.
-To run the optional BE-03 role test as well, set `TEST_ADMIN_EMAIL` and `TEST_ADMIN_PASSWORD` for an existing Neon Auth login. The test uses only temporary role profiles in local PostgreSQL and signs out afterward; it does not change the production staff profile.
-
-## Backend API map
-
-| Area | Routes | Access |
-|---|---|---|
-| Table QR, guest, menu, checkout, order status | `/api/public/tables/*`, `/api/public/orders/*` | Public with scoped guest or order token where required |
-| Table overview, order progress, bill, payment, receipt | `/api/staff/tables/*`, `/api/staff/orders/*`, `/api/staff/order-items/*`, `/api/staff/table-sessions/*`, `/api/staff/payments/*` | Active Cashier only |
-| Reservation and check-in | `/api/staff/reservations/*` | Active Cashier only |
-| Categories, menus, tables, billing settings | `/api/admin/categories/*`, `/api/admin/menus/*`, `/api/admin/tables/*`, `/api/admin/settings/*` | Active Admin |
-| Staff and Paid-only reports | `/api/admin/staff/*`, `/api/admin/reports/*` | Active Admin |
-
-The API returns `{ "data": ... }` on success and a typed `{ "error": ... }` on failure. IDs are UUIDs, money is serialized as decimal IDR strings, and restaurant dates use Asia/Jakarta. Public guest-token issuance is limited to 30 requests per minute per table; checkout is limited to 20. A `429` response includes `Retry-After: 60`. Limits are shared by all guests at a table.
-
-## Backend verification
-
-`npm test` runs the unit suite. Integration tests are skipped unless their required environment variables are present. For the database and public HTTP tests, run the local PostgreSQL database and app, then set `TEST_DATABASE_URL`, `TEST_API_BASE_URL`, and `CUSTOMER_TOKEN_SECRET` in the test shell. Both URLs must point to localhost. Run:
+Run the test suite and quality checks:
 
 ```bash
-npx vitest run src/db/schema.integration.test.ts src/lib/public/http.integration.test.ts src/lib/checkout.integration.test.ts
+npm run lint        # Check code quality with ESLint
+npm run typecheck   # Typecheck TypeScript codebase
+npm test            # Run unit and contract test suites
+npm run build       # Build production Next.js application
 ```
-
-For staff, payment, reservation, and report HTTP tests, additionally set `TEST_ADMIN_EMAIL` and `TEST_ADMIN_PASSWORD` for an existing Neon Auth account, then run `npm test`. Those tests mutate only `TEST_DATABASE_URL`, never the linked Neon database, and clean up their fixtures. Do not point `TEST_DATABASE_URL` or `TEST_API_BASE_URL` at production. The GitHub workflow is configured to run lint, typecheck, unit tests, build, migration, repeatable seed, database health, and the public HTTP suite against a PostgreSQL service. Auth-backed HTTP tests need the login variables and are run locally.
-
-Application limitations: cash is the only payment method; no split bills, printing, inventory, or online booking. The owner creates cashier email/password in `/admin/staff` and shares credentials privately. Public signup is blocked and the exclusive owner cannot be deactivated. Live Neon credential provisioning and optional reset email delivery still need a deployment smoke test. The per-table public rate limit can temporarily affect other guests at the same table during an abuse burst.
-
-## Interface languages and menu images
-
-Use EN/ID in the page header or staff sidebar to select English or Indonesian. The preference persists in the browser. App controls, messages, reports and receipts are translated; restaurant-entered menu names/descriptions and customer notes stay as written. Amounts remain integer IDR in the API/database; language changes only their display.
-
-Menu management separates filters, dishes and categories. Public, owner and cashier catalogues reuse the same MenuCard. Four bundled white-background illustrations appear for starter menu names when no image URL is supplied; owner photos take precedence. Generated asset paths, prompts and provenance: [menu image notes](public/images/menu/README.md).
-
-Owners can choose or drag and drop a photo in the new/edit menu form, preview it, then upload it when saving. JPG, PNG and WebP files up to 3 MB are accepted; the server decodes them, limits input to 25 megapixels and converts them to static WebP up to 1600px while removing metadata. There is no image URL input. Existing menu photos from HTTPS URLs still display and remain attached when editing other fields. Menu images have no illustration label.
-
-Uploads use the existing private Neon `images` bucket. Configure `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ENDPOINT_URL_S3` and `AWS_REGION` on the app host as well as `.env.local` (see `.env.example`). These are Neon storage credentials, kept on the server. The app exposes only normalized `menus/{uuid}.webp` objects through `/api/menu-images/{uuid}` for customer/cashier display, with an immutable cache policy; unrelated private bucket objects remain inaccessible. See [Neon storage setup](https://neon.com/docs/storage/get-started) for credentials. No local filesystem storage is used, so files persist across app deployments.
-
-An upload failure stops the menu save and leaves the form available for retry. Menu photos are intended for public display, so do not upload confidential images.
-
