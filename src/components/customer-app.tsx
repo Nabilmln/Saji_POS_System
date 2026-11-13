@@ -3,6 +3,8 @@
 import { useLocale } from "@/components/locale-provider";
 
 import { StatusBadge } from "@/components/ui/status-badge";
+import { MinusIcon, PlusIcon } from "@phosphor-icons/react";
+import "./menu-card-stepper.css";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
@@ -305,7 +307,12 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
           const current = cart.find((entry) => entry.id === item.id);
           return <MenuCard key={item.id} menu={item} category={category.name}>
             {current && current.quantity > 0 ? (
-              <div className="menu-card-stepper" role="group" aria-label={t("Tambahkan {0} ke keranjang", { "0": item.name })}>
+              <div
+                className="menu-card-stepper"
+                role="group"
+                aria-label={t("Tambahkan {0} ke keranjang", { "0": item.name })}
+                onClick={(e) => e.stopPropagation()}
+              >
                 <button
                   type="button"
                   className="menu-stepper-btn"
@@ -313,7 +320,7 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
                   onClick={() => editCart(current, current.quantity - 1)}
                   aria-label={t("Kurangi {0}", { "0": item.name })}
                 >
-                  −
+                  <MinusIcon size={14} weight="bold" />
                 </button>
                 <span className="menu-stepper-qty" aria-live="polite">
                   {current.quantity}
@@ -325,7 +332,7 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
                   onClick={() => editCart(current, current.quantity + 1)}
                   aria-label={t("Tambah {0}", { "0": item.name })}
                 >
-                  +
+                  <PlusIcon size={14} weight="bold" />
                 </button>
               </div>
             ) : (
@@ -335,7 +342,8 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
                 onClick={() => editCart(current ?? { id: item.id, name: item.name, priceIdr: item.priceIdr, quantity: 0, note: "" }, 1)}
                 aria-label={t("Tambahkan {0} ke keranjang", { "0": item.name })}
               >
-                {t("Tambah +")}
+                <PlusIcon size={14} weight="bold" />
+                <span>{t("Tambah")}</span>
               </Button>
             )}
           </MenuCard>;
