@@ -3,8 +3,10 @@
 import { useLocale } from "@/components/locale-provider";
 
 import { StatusBadge } from "@/components/ui/status-badge";
-import { MinusIcon, PlusIcon } from "@phosphor-icons/react";
+import { MinusIcon, PlusIcon, TrashIcon } from "@phosphor-icons/react";
+import { Photo } from "@/components/ui/photo";
 import "./menu-card-stepper.css";
+import "./customer-cart.css";
 
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
@@ -198,7 +200,9 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
 
   function editCart(item: CartItem, quantity: number) {
     if (uncertain || busy || visitEnded.current) return;
-    const next = changeCart(cart, item, quantity);
+    const resolvedImageUrl = item.imageUrl ?? menu?.categories.flatMap((c) => c.items).find((m) => m.id === item.id)?.imageUrl ?? null;
+    const itemWithImage = { ...item, ...(resolvedImageUrl !== undefined ? { imageUrl: resolvedImageUrl } : {}) };
+    const next = changeCart(cart, itemWithImage, quantity);
     sessionStorage.setItem(`${storage}:cart`, JSON.stringify(next));
     setCart(next);
     sessionStorage.removeItem(`${storage}:requestKey`);
@@ -273,24 +277,115 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
       </form>
     </> : view === "cart" ? <>
       <p className="context-label">{t("MEJA")}{" "}{table.tableNumber} · {guest.customerName}</p><h1>{t("Keranjang Anda")}</h1>
-      <p className="section-intro">{t("Periksa pesanan sebelum dikirim ke kasir.")}</p>
-      {!cart.length ? <EmptyState className="empty-state"><h2>{t("Keranjang masih kosong")}</h2><p>{t("Pilih menu favorit Anda untuk mulai memesan.")}</p><Button className="secondary-button" onClick={() => router.push(base)}>{t("Lihat Menu")}</Button></EmptyState> : <>
-        {cart.map((item) => <div className="cart-row" key={item.id}>
-          <div className="cart-row-head"><strong>{item.name}</strong><span>{money(BigInt(item.priceIdr) * BigInt(item.quantity))}</span></div>
-          <p className="muted">{money(item.priceIdr)} {" "}{t("per item")}</p>
-          <div className="cart-controls"><div className="stepper">
-            <Button type="button" aria-label={t("Kurangi {0}", { "0": item.name })} disabled={uncertain} onClick={() => editCart(item, item.quantity - 1)}>−</Button>
-            <strong>{item.quantity}</strong>
-            <Button type="button" aria-label={t("Tambah {0}", { "0": item.name })} disabled={uncertain || item.quantity >= 99} onClick={() => editCart(item, item.quantity + 1)}>+</Button>
-          </div><Button className="text-button" disabled={uncertain} onClick={() => editCart(item, 0)}>{t("Hapus")}</Button></div>
-          <Input className="text-field cart-note" aria-label={t("Catatan untuk {0}", { "0": item.name })} placeholder={t("Catatan untuk item ini (opsional)")} maxLength={500} disabled={uncertain} value={item.note} onChange={(event) => editCart({ ...item, note: event.target.value }, item.quantity)} />
-        </div>)}
-        <div className="summary-card"><div className="money-row"><span>{t("Subtotal menu")}</span><strong>{money(cartSubtotal(cart))}</strong></div><p className="muted">{t("Belum termasuk pajak atau diskon yang dihitung kasir pada tagihan akhir.")}</p></div>
-        {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
-        {table.status === "RESERVED" && <Alert className="inline-alert info">{t("Kasir perlu melakukan check-in meja reservasi sebelum Anda dapat memesan.")}</Alert>}
-        <Button className="primary-button full-width" disabled={busy || table.status === "RESERVED"} onClick={() => void checkout()}>{busy ? t("Mengirim pesanan…") : uncertain ? t("Coba Lagi dengan Aman") : t("Konfirmasi Pesanan")}</Button>
-        <Button className="secondary-button full-width" style={{ marginTop: 10 }} disabled={busy || uncertain} onClick={() => router.push(base)}>{t("Kembali ke Menu")}</Button>
-      </>}
+      {!cart.length ? (
+        <EmptyState className="empty-state">
+          <h2>{t("Keranjang masih kosong")}</h2>
+          <p>{t("Pilih menu favorit Anda untuk mulai memesan.")}</p>
+          <Button className="secondary-button" onClick={() => router.push(base)}>{t("Lihat Menu")}</Button>
+        </EmptyState>
+      ) : (
+        <>
+          <div className="customer-receipt-card">
+            <div className="receipt-card-header">
+              <div className="receipt-card-meta">
+                <span className="receipt-card-table-badge">{t("MEJA")}{" "}{table.tableNumber}</span>
+                <span className="receipt-card-guest-name">{guest.customerName}</span>
+              </div>
+              <span className="receipt-card-count-badge">
+                {cart.reduce((n, item) => n + item.quantity, 0)} {t("item")}
+              </span>
+            </div>
+            <div className="receipt-card-items">
+              {cart.map((item) => {
+                const itemImageUrl = item.imageUrl ?? menu?.categories.flatMap((c) => c.items).find((m) => m.id === item.id)?.imageUrl ?? null;
+                return (
+                  <div className="receipt-item-row" key={item.id}>
+                    <Photo
+                      src={itemImageUrl}
+                      menuName={item.name}
+                      alt={item.name}
+                      className="receipt-item-photo"
+                    />
+                    <div className="receipt-item-body">
+                      <div className="receipt-item-top">
+                        <strong className="receipt-item-name">{item.name}</strong>
+                        <div className="receipt-item-price-block">
+                          {item.quantity > 1 && (
+                            <span className="receipt-item-calc">
+                              {money(item.priceIdr)} x {item.quantity}
+                            </span>
+                          )}
+                          <span className="receipt-item-total">
+                            {money(BigInt(item.priceIdr) * BigInt(item.quantity))}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="receipt-item-controls">
+                        <div className="receipt-stepper" role="group" aria-label={t("Ubah jumlah {0}", { "0": item.name })}>
+                          <button
+                            type="button"
+                            className="receipt-stepper-btn"
+                            disabled={uncertain}
+                            onClick={() => editCart(item, item.quantity - 1)}
+                            aria-label={t("Kurangi {0}", { "0": item.name })}
+                          >
+                            <MinusIcon size={12} weight="bold" />
+                          </button>
+                          <span className="receipt-stepper-qty" aria-live="polite">{item.quantity}</span>
+                          <button
+                            type="button"
+                            className="receipt-stepper-btn"
+                            disabled={uncertain || item.quantity >= 99}
+                            onClick={() => editCart(item, item.quantity + 1)}
+                            aria-label={t("Tambah {0}", { "0": item.name })}
+                          >
+                            <PlusIcon size={12} weight="bold" />
+                          </button>
+                        </div>
+                        <button
+                          type="button"
+                          className="receipt-item-remove"
+                          disabled={uncertain}
+                          onClick={() => editCart(item, 0)}
+                          aria-label={t("Hapus {0}", { "0": item.name })}
+                        >
+                          <TrashIcon size={14} weight="regular" />
+                          <span>{t("Hapus")}</span>
+                        </button>
+                      </div>
+                      <Input
+                        className="text-field receipt-note-input"
+                        aria-label={t("Catatan untuk {0}", { "0": item.name })}
+                        placeholder={t("Catatan untuk item ini (opsional)")}
+                        maxLength={500}
+                        disabled={uncertain}
+                        value={item.note}
+                        onChange={(event) => editCart({ ...item, note: event.target.value }, item.quantity)}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="receipt-card-summary">
+              <div className="receipt-summary-line">
+                <span>{t("Total item")}</span>
+                <span>{cart.reduce((n, item) => n + item.quantity, 0)}</span>
+              </div>
+              <div className="receipt-summary-line total">
+                <span>{t("Subtotal")}</span>
+                <span className="receipt-summary-subtotal">{money(cartSubtotal(cart))}</span>
+              </div>
+            </div>
+          </div>
+          {error && <Alert className="inline-alert" role="alert">{t(error)}</Alert>}
+          {table.status === "RESERVED" && <Alert className="inline-alert info">{t("Kasir perlu melakukan check-in meja reservasi sebelum Anda dapat memesan.")}</Alert>}
+          <div className="receipt-actions">
+            <Button className="primary-button full-width" disabled={busy || table.status === "RESERVED"} onClick={() => void checkout()}>{busy ? t("Mengirim pesanan…") : uncertain ? t("Coba Lagi dengan Aman") : t("Konfirmasi Pesanan")}</Button>
+            <Button className="secondary-button full-width" disabled={busy || uncertain} onClick={() => router.push(base)}>{t("Kembali ke Menu")}</Button>
+          </div>
+        </>
+      )}
     </> : <>
       <p className="context-label">{t("MEJA")}{" "}{table.tableNumber} {" "}{t("· HAI,")}{" "}{guest.customerName.toUpperCase()}</p><h1>{t("Pilih yang Anda suka.")}</h1><p className="section-intro">{t("Menu yang tersedia hari ini. Tambahkan pilihan Anda ke keranjang.")}</p>
       {uncertain && <Alert className="inline-alert" role="alert">{t("Pengiriman pesanan sebelumnya belum pasti. Buka keranjang dan coba lagi sebelum mengubah pesanan.")}{" "}<Button className="text-button" onClick={() => router.push(`${base}/cart`)}>{t("Buka keranjang")}</Button></Alert>}
@@ -339,7 +434,7 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
               <Button
                 className="add-button full-width"
                 disabled={uncertain}
-                onClick={() => editCart(current ?? { id: item.id, name: item.name, priceIdr: item.priceIdr, quantity: 0, note: "" }, 1)}
+                onClick={() => editCart(current ?? { id: item.id, name: item.name, priceIdr: item.priceIdr, quantity: 0, note: "", imageUrl: item.imageUrl }, 1)}
                 aria-label={t("Tambahkan {0} ke keranjang", { "0": item.name })}
               >
                 <PlusIcon size={14} weight="bold" />
