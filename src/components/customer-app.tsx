@@ -247,8 +247,8 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
     ? <div className="sticky-action"><Button className="primary-button full-width" onClick={() => router.push(`${base}/cart`)}><span>{t("Lihat Keranjang ·")}{" "}{cart.reduce((n, item) => n + item.quantity, 0)} {" "}{t("item")}</span><span>{money(cartSubtotal(cart))}</span></Button></div>
     : null;
 
-  return <CustomerShell tableNumber={table?.tableNumber} footer={footer} revision={JSON.stringify([cart, statuses])}>
-    {view === "status" ? <>
+  return <CustomerShell tableNumber={table?.tableNumber} footer={footer} revision={view}>
+    {view === "status" ? <div className="customer-status-view">
       {placed && <div className="success-panel" role="status"><h1>{t("Terima kasih!")}</h1><p>{t("Pesanan Anda telah dikirim ke kasir dan menunggu konfirmasi.")}</p></div>}
       <h1>{t("Status pesanan")}</h1>
       <p className="section-intro">{t("Status diperbarui otomatis. Hanya pesanan dari browser ini yang ditampilkan.")}</p>
@@ -266,7 +266,7 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
       {updatedAt && <p className="muted">{t("Terakhir diperbarui")}{" "}{updatedAt.toLocaleTimeString(locale === "en" ? "en-GB" : "id-ID", {timeZone: "Asia/Jakarta",  hour: "2-digit", minute: "2-digit" })}</p>}
       <p className="muted" style={{ marginTop: 24 }}>{t("Perlu membatalkan pesanan? Silakan hubungi kasir.")}</p>
       <Button className="secondary-button full-width" style={{ marginTop: 24 }} onClick={() => router.push(base)}>{t("Tambah pesanan")}</Button>
-    </> : !table ? null : !guest ? <>
+    </div> : !table ? null : !guest ? <div className="customer-welcome-view">
       <div className="hero-panel"><p className="context-label">{t("SELAMAT DATANG DI MEJA")}{" "}{table.tableNumber}</p><h1>{t("Mau pesan apa hari ini?")}</h1><p>{t("Isi nama Anda dulu, lalu pilih hidangan yang Anda suka.")}</p></div>
       <form onSubmit={submitName}>
         <label className="field-label" htmlFor="customer-name">{t("Nama pemesan *")}</label>
@@ -275,7 +275,7 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
         {table.status === "RESERVED" && <Alert className="inline-alert info">{t("Meja ini sedang direservasi. Kasir perlu melakukan check-in sebelum pesanan dapat dikirim.")}</Alert>}
         <Button className="primary-button full-width" style={{ marginTop: 20 }} disabled={busy || !name.trim()}>{busy ? t("Menyiapkan menu…") : t("Lihat Menu")}</Button>
       </form>
-    </> : view === "cart" ? <>
+    </div> : view === "cart" ? <div className="customer-cart-view">
       <p className="context-label">{t("MEJA")}{" "}{table.tableNumber} · {guest.customerName}</p><h1>{t("Keranjang Anda")}</h1>
       {!cart.length ? (
         <EmptyState className="empty-state">
@@ -386,7 +386,7 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
           </div>
         </>
       )}
-    </> : <>
+    </div> : <>
       <p className="context-label">{t("MEJA")}{" "}{table.tableNumber} {" "}{t("· HAI,")}{" "}{guest.customerName.toUpperCase()}</p><h1>{t("Pilih yang Anda suka.")}</h1><p className="section-intro">{t("Menu yang tersedia hari ini. Tambahkan pilihan Anda ke keranjang.")}</p>
       {uncertain && <Alert className="inline-alert" role="alert">{t("Pengiriman pesanan sebelumnya belum pasti. Buka keranjang dan coba lagi sebelum mengubah pesanan.")}{" "}<Button className="text-button" onClick={() => router.push(`${base}/cart`)}>{t("Buka keranjang")}</Button></Alert>}
       {orders.length > 0 && <Button className="text-button" onClick={() => router.push(`${base}/status`)}>{t("Lihat status pesanan saya →")}</Button>}

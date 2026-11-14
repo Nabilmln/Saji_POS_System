@@ -9,13 +9,19 @@ export type CartItem = {
 
 export function changeCart(cart: CartItem[], item: CartItem, quantity: number): CartItem[] {
   if (quantity < 0 || quantity > 99 || !Number.isInteger(quantity)) return cart;
-  const existing = cart.find((current) => current.id === item.id);
-  const next = cart.filter((current) => current.id !== item.id);
-  if (quantity) {
-    const imageUrl = item.imageUrl !== undefined ? item.imageUrl : existing?.imageUrl;
-    next.push({ ...item, ...(imageUrl !== undefined ? { imageUrl } : {}), quantity });
+  const index = cart.findIndex((current) => current.id === item.id);
+  if (quantity === 0) {
+    return cart.filter((current) => current.id !== item.id);
   }
-  return next;
+  const existing = index >= 0 ? cart[index] : undefined;
+  const imageUrl = item.imageUrl !== undefined ? item.imageUrl : existing?.imageUrl;
+  const updatedItem: CartItem = { ...item, ...(imageUrl !== undefined ? { imageUrl } : {}), quantity };
+  if (index >= 0) {
+    const next = [...cart];
+    next[index] = updatedItem;
+    return next;
+  }
+  return [...cart, updatedItem];
 }
 
 export function cartSubtotal(cart: CartItem[]): bigint {

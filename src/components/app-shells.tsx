@@ -39,7 +39,7 @@ export function CustomerShell({ tableNumber, children, footer, revision }: {
       <div className="customer-header-actions">{tableNumber && <span className="table-badge">{t("Meja")}{" "}{tableNumber}</span>}<LanguageSwitch /></div>
     </header>
     <main ref={content} className="customer-main">{children}</main>
-    <Suspense fallback={null}><EntranceMotion target={content} revision={revision} /></Suspense>
+    <Suspense fallback={null}><EntranceMotion target={content} variant="content" revision={revision} /></Suspense>
     {footer}
   </div>;
 }

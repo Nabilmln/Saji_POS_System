@@ -8,6 +8,11 @@ describe("customer cart", () => {
     expect(changeCart([item], item, 0)).toEqual([]);
     expect(changeCart([item], item, 100)).toEqual([item]);
     expect(changeCart([item], { ...item, imageUrl: undefined }, 3)).toEqual([{ ...item, quantity: 3 }]);
+    const second = { id: "b", name: "Teh", priceIdr: "5000", quantity: 1, note: "" };
+    const cart = [item, second];
+    const editedFirst = changeCart(cart, { ...item, note: "pedas" }, 1);
+    expect(editedFirst[0].note).toBe("pedas");
+    expect(editedFirst[1].id).toBe("b");
   });
   it("totals integer rupiah without floating point loss", () => {
     expect(cartSubtotal([{ ...item, quantity: 3 }])).toBe(75000n);

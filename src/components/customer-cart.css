@@ -1,4 +1,17 @@
 /* Customer Cart Receipt View */
+.customer-cart-view,
+.customer-status-view {
+  max-width: 600px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.customer-welcome-view {
+  max-width: 480px;
+  margin: 16px auto 0;
+  width: 100%;
+}
+
 .customer-receipt-card {
   background: var(--surface);
   border: 1px solid var(--border);
