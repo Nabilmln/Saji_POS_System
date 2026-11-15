@@ -25,7 +25,7 @@ export async function GET(request: Request) {
   const rows = await db.select({
     id: orders.id, tableId: diningTables.id, tableNumber: diningTables.tableNumber,
     sessionId: orders.sessionId, customerName: orders.customerName, source: orders.source,
-    status: orders.status, itemCount: sql<number>`count(${orderItems.id})::int`,
+    status: orders.status, itemCount: sql<number>`coalesce(sum(${orderItems.quantity}), 0)::int`,
     createdAt: orders.createdAt,
   }).from(orders)
     .innerJoin(tableSessions, eq(orders.sessionId, tableSessions.id))
