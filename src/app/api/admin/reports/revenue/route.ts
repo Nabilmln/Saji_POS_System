@@ -7,7 +7,7 @@ import { reportBounds, reportRangeSchema } from "@/lib/admin/report-range";
 import { requireAdmin } from "@/lib/auth/guards";
 import { RESTAURANT_TIME_ZONE } from "@/lib/time";
 
-const querySchema = reportRangeSchema.safeExtend({ groupBy: z.literal("day") });
+const querySchema = reportRangeSchema.safeExtend({ groupBy: z.literal("day").default("day") });
 
 export async function GET(request: Request) {
   const admin = await requireAdmin(request);
