@@ -24,15 +24,21 @@ export async function GET(request: Request, context: { params: Promise<{ orderId
   if (!order) return apiError(404, "ORDER_NOT_FOUND", "Order not found");
   const items = await db.select({
     menuName: orderItems.menuNameSnapshot, quantity: orderItems.quantity,
+    unitPriceIdr: orderItems.unitPriceIdr,
     servedAt: orderItems.servedAt, voidedAt: orderItems.voidedAt,
   }).from(orderItems).where(eq(orderItems.orderId, orderId)).orderBy(asc(orderItems.id));
+  const subtotal = items.reduce((sum, item) =>
+    sum + (item.voidedAt ? 0n : item.unitPriceIdr * BigInt(item.quantity)), 0n);
   return apiSuccess({
     orderId: order.orderId, tableNumber: order.tableNumber,
     customerName: order.customerName, status: order.status,
     voided: order.voidedAt !== null, updatedAt: order.updatedAt,
     session: { status: !order.closedAt ? "OPEN" : order.closureReason === "PAID" ? "PAID" : "CLOSED", closedAt: order.closedAt },
+    subtotalIdr: subtotal.toString(),
     items: items.map((item) => ({
       menuName: item.menuName, quantity: item.quantity,
+      unitPriceIdr: item.unitPriceIdr.toString(),
+      lineTotalIdr: (item.unitPriceIdr * BigInt(item.quantity)).toString(),
       served: item.servedAt !== null, voided: item.voidedAt !== null,
     })),
   });

@@ -26,7 +26,9 @@ type Guest = { guestToken: string; customerName: string; cycleNumber: number };
 type OwnOrder = { id: string; token: string };
 type OrderStatus = {
   orderId: string; tableNumber: string; customerName: string; status: "PENDING" | "PREPARING" | "SERVED";
-  voided: boolean; updatedAt: string; items: { menuName: string; quantity: number; served: boolean; voided: boolean }[];
+  voided: boolean; updatedAt: string;
+  subtotalIdr?: string;
+  items: { menuName: string; quantity: number; unitPriceIdr?: string; lineTotalIdr?: string; served: boolean; voided: boolean }[];
   session: { status: "OPEN" | "PAID" | "CLOSED"; closedAt: string | null };
 };
 type Completion = { status: "PAID" | "CLOSED"; customerName: string; tableNumber: string };
@@ -259,8 +261,32 @@ export function CustomerApp({ tableToken, view }: { tableToken: string; view: Vi
           return <article className="status-card" key={order.id}>
             <div className="status-top"><div><p className="context-label">{t("PESANAN #")}{order.id.slice(0, 8).toUpperCase()}</p><h2>{status ? status.customerName : t("Memuat pesanan…")}</h2></div>
               {status && <StatusBadge status={status.voided ? "VOID" : status.status} />}</div>
-            {status && <><ul>{status.items.map((item, index) => <li key={index}>{item.quantity}× {item.menuName} <span className="muted">· {item.voided ? t("Dibatalkan") : item.served ? t("Sudah disajikan") : t("Belum disajikan")}</span></li>)}</ul>
-              <p className="muted" style={{ marginTop: 14 }}>{status.items.filter((item) => item.served && !item.voided).length} {" "}{t("dari")}{" "}{status.items.filter((item) => !item.voided).length} {" "}{t("jenis item disajikan")}</p></>}
+            {status && <>
+              <ul className="status-items-list">
+                {status.items.map((item, index) => (
+                  <li key={index}>
+                    {item.quantity}× {item.menuName}{" "}
+                    <span className="muted">· {item.voided ? t("Dibatalkan") : item.served ? t("Sudah disajikan") : t("Belum disajikan")}</span>
+                    {item.lineTotalIdr && (
+                      <span className={`status-item-price ${item.voided ? "muted strike" : ""}`}>
+                        {" "}· {money(item.lineTotalIdr)}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <div className="status-card-footer">
+                <p className="muted">
+                  {status.items.filter((item) => item.served && !item.voided).length} {t("dari")} {status.items.filter((item) => !item.voided).length} {t("jenis item disajikan")}
+                </p>
+                {status.subtotalIdr && (
+                  <p className="status-card-total">
+                    <span className="muted">{t("Total")}</span>{" "}
+                    <strong>{money(status.subtotalIdr)}</strong>
+                  </p>
+                )}
+              </div>
+            </>}
           </article>;
         })}
       {updatedAt && <p className="muted">{t("Terakhir diperbarui")}{" "}{updatedAt.toLocaleTimeString(locale === "en" ? "en-GB" : "id-ID", {timeZone: "Asia/Jakarta",  hour: "2-digit", minute: "2-digit" })}</p>}
