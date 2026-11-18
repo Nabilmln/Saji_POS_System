@@ -3,7 +3,7 @@
 import { useLocale } from "@/components/locale-provider";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { adminApi, AdminApiError, jsonRequest } from "@/lib/admin/client";
-import { cartSubtotal, type CartItem } from "@/lib/customer/cart";
+import { cartSubtotal, changeCart, type CartItem } from "@/lib/customer/cart";
 import { randomId } from "@/lib/random-id";
 import { usePagination } from "@/lib/use-pagination";
 import { Alert, Button, LoadingState, Input, Pagination } from "@/components/ui/controls";
@@ -41,16 +41,6 @@ type Draft = {
   key: string;
   uncertain?: boolean;
 };
-
-function updateCart(cart: CartItem[], item: CartItem, quantity: number): CartItem[] {
-  if (quantity <= 0) return cart.filter((entry) => entry.id !== item.id);
-  if (quantity > 99) return cart;
-  const exists = cart.some((entry) => entry.id === item.id);
-  if (exists) {
-    return cart.map((entry) => (entry.id === item.id ? { ...entry, quantity } : entry));
-  }
-  return [...cart, { ...item, quantity }];
-}
 
 export function PosManualOrderModal({
   tableId,
@@ -377,7 +367,7 @@ export function PosManualOrderModal({
                         onClick={() => {
                           if (quantity === 0) {
                             editDraft({
-                              cart: updateCart(
+                              cart: changeCart(
                                 draft.cart,
                                 {
                                   id: item.id,
@@ -416,7 +406,7 @@ export function PosManualOrderModal({
                               aria-label={t("Kurangi {0}", { "0": item.name })}
                               onClick={() =>
                                 editDraft({
-                                  cart: updateCart(
+                                  cart: changeCart(
                                     draft.cart,
                                     {
                                       id: item.id,
@@ -439,7 +429,7 @@ export function PosManualOrderModal({
                               aria-label={t("Tambah {0}", { "0": item.name })}
                               onClick={() =>
                                 editDraft({
-                                  cart: updateCart(
+                                  cart: changeCart(
                                     draft.cart,
                                     {
                                       id: item.id,
@@ -565,7 +555,7 @@ export function PosManualOrderModal({
                             className="pos-cart-stepper-btn"
                             onClick={() =>
                               editDraft({
-                                cart: updateCart(draft.cart, item, item.quantity - 1),
+                                cart: changeCart(draft.cart, item, item.quantity - 1),
                               })
                             }
                             aria-label={t("Kurangi")}
@@ -578,7 +568,7 @@ export function PosManualOrderModal({
                             className="pos-cart-stepper-btn"
                             onClick={() =>
                               editDraft({
-                                cart: updateCart(draft.cart, item, item.quantity + 1),
+                                cart: changeCart(draft.cart, item, item.quantity + 1),
                               })
                             }
                             aria-label={t("Tambah")}
@@ -590,7 +580,7 @@ export function PosManualOrderModal({
                             className="pos-cart-remove-btn"
                             onClick={() =>
                               editDraft({
-                                cart: updateCart(draft.cart, item, 0),
+                                cart: changeCart(draft.cart, item, 0),
                               })
                             }
                             title={t("Hapus")}
