@@ -28,6 +28,20 @@ describe("reportBounds", () => {
     expect(start.toISOString()).toBe(new Date("2026-12-31T00:00:00+07:00").toISOString());
     expect(end.toISOString()).toBe(new Date("2027-01-01T00:00:00+07:00").toISOString());
   });
+
+  it("handles optional from and to bounds", () => {
+    const fromOnly = reportBounds("2026-11-18", undefined);
+    expect(fromOnly.start?.toISOString()).toBe(new Date("2026-11-18T00:00:00+07:00").toISOString());
+    expect(fromOnly.end).toBeUndefined();
+
+    const toOnly = reportBounds(undefined, "2026-11-18");
+    expect(toOnly.start).toBeUndefined();
+    expect(toOnly.end?.toISOString()).toBe(new Date("2026-11-19T00:00:00+07:00").toISOString());
+
+    const neither = reportBounds();
+    expect(neither.start).toBeUndefined();
+    expect(neither.end).toBeUndefined();
+  });
 });
 
 describe("reportRangeSchema", () => {

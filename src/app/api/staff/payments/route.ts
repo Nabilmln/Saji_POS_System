@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { diningTables, payments, tableSessions } from "@/db/schema";
 import { apiPage, apiError, apiValidationError } from "@/lib/api-response";
 import { requireStaff } from "@/lib/auth/guards";
+import { reportBounds } from "@/lib/admin/report-range";
 
 const querySchema = z.strictObject({
   from: z.iso.date().optional(),
@@ -22,8 +23,7 @@ export async function GET(request: Request) {
   if (from && to && (from > to || Date.parse(to) - Date.parse(from) > 366 * 86_400_000)) {
     return apiError(422, "VALIDATION_ERROR", "Date range must be at most 366 days");
   }
-  const fromDate = from ? new Date(`${from}T00:00:00+07:00`) : undefined;
-  const toDate = to ? new Date(Date.parse(`${to}T00:00:00+07:00`) + 86_400_000) : undefined;
+  const { start: fromDate, end: toDate } = reportBounds(from, to);
   const rows = await db.select({
     id: payments.id, sessionId: payments.sessionId, tableId: diningTables.id,
     tableNumber: diningTables.tableNumber, method: payments.method,
