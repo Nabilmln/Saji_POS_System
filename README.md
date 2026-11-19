@@ -25,6 +25,23 @@ Saji is designed for in-store single-outlet dining operations with cash settleme
 | <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/amazonwebservices/amazonwebservices-plain-wordmark.svg" width="22" alt="" /> | **Neon Object Storage** | S3-compatible private cloud storage for uploaded menu photos |
 | <img src="https://cdn.jsdelivr.net/gh/devicons/devicon@latest/icons/vitest/vitest-original.svg" width="22" alt="" /> | **Vitest** | Unit tests, business calculation verification, and API contract tests |
 
+## System architecture
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="public/images/architecture-dark.png">
+    <img alt="Saji POS System Architecture" src="public/images/architecture-light.png" width="100%">
+  </picture>
+</p>
+
+Saji is structured around a unified full-stack architecture that decouples customer-facing dining interactions from staff management while sharing single-source data models:
+
+- **Customer Touchpoint (`/order/[tableToken]`)**: Guests access dynamic table menus via QR codes. Session integrity is guaranteed using stateless HMAC-SHA256 tokens signed with `CUSTOMER_TOKEN_SECRET` without requiring account creation.
+- **Staff Operations (`/pos`, `/admin/*`)**: Unified authenticated console for cashiers and restaurant owners. Protected by `@neondatabase/auth` role guards (`ADMIN` / `CASHIER`) and signed session cookies.
+- **Application Engine (`Next.js App Router`)**: Executes React Server Components for fast page loads and Server Actions for transactional mutations, validating all requests through Zod contracts.
+- **Media Pipeline (`sharp` + S3)**: Ingests dish photos, transforms and optimizes them into 1600px WebP assets, and dispatches them to private S3-compatible Neon Object Storage.
+- **Persistence & Cloud (`Neon PostgreSQL + Drizzle`)**: Executes pooled database queries and atomic transactions covering table occupancy, order lifecycles, and receipt calculations.
+
 ## Workspaces and access
 
 All staff members sign in through the unified `/login` page. The system inspects the account's active role profile and routes users to their respective workspace:
