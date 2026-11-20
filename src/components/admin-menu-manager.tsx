@@ -294,7 +294,7 @@ export function MenuManager() {
     </Section>
 
     <div id="menu-filters" className="menu-filters" role="search">
-      <label className="menu-search"><MagnifyingGlassIcon size={18} aria-hidden="true" /><Input className="text-field" type="search" maxLength={160} value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder={t("Cari menu")} /></label>
+      <label className="menu-search">{t("Cari menu")}<MagnifyingGlassIcon size={18} aria-hidden="true" /><Input className="text-field" type="search" maxLength={160} value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder={t("Cari menu")} /></label>
       <Selection label={t("Kategori")} kind="dropdown" value={categoryFilter} onChange={(value) => { setCategoryFilter(value); setPage(1); }} options={[{ value: "", label: t("Semua kategori") }, ...categories.map((category) => ({ value: category.id, label: category.name }))]} />
       <Selection label={t("Ketersediaan")} value={availability} onChange={(value) => { setAvailability(value); setPage(1); }} options={[{ value: "", label: t("Semua") }, { value: "true", label: t("Tersedia") }, { value: "false", label: t("Tidak tersedia") }]} />
     </div>

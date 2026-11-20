@@ -110,8 +110,8 @@ export function PosManualOrderModal({
   }, [storageKey]);
 
   function editDraft(changes: Partial<Draft>) {
-    if (manualInFlight.current) return;
-    const next = { ...draft, ...changes, uncertain: false, key: changes.key ?? (draft.key || randomId()) };
+    if (manualInFlight.current || draft.uncertain) return;
+    const next = { ...draft, ...changes, key: changes.key ?? (draft.key || randomId()) };
     sessionStorage.setItem(storageKey, JSON.stringify(next));
     setDraft(next);
   }
@@ -175,12 +175,15 @@ export function PosManualOrderModal({
         headers: { "Content-Type": "application/json", "Idempotency-Key": key },
       });
       sessionStorage.removeItem(storageKey);
+      setDraft({ customerName: "", note: "", cart: [], key: "" });
       onSuccess();
     } catch (cause) {
-      let message = "Belum dapat memastikan pesanan tersimpan. Coba lagi.";
+      let message = "Belum dapat memastikan pesanan tersimpan. Coba lagi tanpa mengubah isian untuk memakai kunci transaksi yang sama.";
       let newKey = key;
+      let uncertain = true;
 
       if (cause instanceof AdminApiError) {
+        uncertain = false;
         if (cause.code === "MENU_UNAVAILABLE") {
           message = "Menu berubah. Periksa ketersediaan sebelum mencoba lagi.";
         } else if (cause.code === "IDEMPOTENCY_KEY_REUSED") {
@@ -197,7 +200,7 @@ export function PosManualOrderModal({
         }
       }
 
-      const editable = { ...draft, key: newKey, uncertain: false };
+      const editable = { ...draft, key: newKey, uncertain };
       setDraft(editable);
       sessionStorage.setItem(storageKey, JSON.stringify(editable));
       setError(message);
@@ -208,11 +211,6 @@ export function PosManualOrderModal({
   }
 
   function handleClose() {
-    if (draft.uncertain) {
-      const reset = { ...draft, uncertain: false };
-      sessionStorage.setItem(storageKey, JSON.stringify(reset));
-      setDraft(reset);
-    }
     onClose();
   }
 
@@ -222,6 +220,7 @@ export function PosManualOrderModal({
       busy={busy}
       onClose={handleClose}
       className="pos-order-modal-dialog"
+      modal={false}
     >
       <div className="pos-order-modal">
         {/* Modal Header */}
@@ -268,12 +267,13 @@ export function PosManualOrderModal({
                 <MagnifyingGlassIcon size={16} className="pos-order-search-icon" />
                 <Input
                   className="text-field pos-order-search-input"
+                  aria-label={t("Cari menu")}
                   value={search}
                   onChange={(e) => {
                     setSearch(e.target.value);
                     setMenuPage(1);
                   }}
-                  placeholder={t("Cari nama menu...")}
+                  placeholder={t("Cari menu")}
                 />
                 {search && (
                   <Button
@@ -451,6 +451,22 @@ export function PosManualOrderModal({
                             type="button"
                             className="pos-menu-tile-add"
                             aria-label={t("Tambah {0}", { "0": item.name })}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              editDraft({
+                                cart: changeCart(
+                                  draft.cart,
+                                  {
+                                    id: item.id,
+                                    name: item.name,
+                                    priceIdr: item.priceIdr,
+                                    quantity: 1,
+                                    note: "",
+                                  },
+                                  1
+                                ),
+                              });
+                            }}
                           >
                             <PlusIcon size={14} weight="bold" />
                           </button>
@@ -489,21 +505,23 @@ export function PosManualOrderModal({
 
               {/* Form fields */}
               <div className="pos-order-drawer-fields">
-                {!tableOccupied ? (
-                  <label className="pos-drawer-field">
-                    <span className="pos-drawer-field-label">
-                      {t("Nama Pelanggan")} <span className="danger-text">*</span>
-                    </span>
-                    <Input
-                      className="text-field pos-drawer-input"
-                      required
-                      maxLength={120}
-                      placeholder={t("Contoh: Budi, Meja 1")}
-                      value={draft.customerName}
-                      onChange={(e) => editDraft({ customerName: e.target.value })}
-                    />
-                  </label>
-                ) : (
+                <label className="pos-drawer-field">
+                  <span className="pos-drawer-field-label">
+                    {t("Nama pelanggan / label")} {!tableOccupied && <span className="danger-text">*</span>}
+                  </span>
+                  <Input
+                    className="text-field pos-drawer-input"
+                    aria-label={t("Nama pelanggan / label")}
+                    required={!tableOccupied}
+                    disabled={busy || draft.uncertain}
+                    maxLength={120}
+                    placeholder={tableOccupied ? t("Sesi aktif (opsional)") : t("Contoh: Budi, Meja 1")}
+                    value={draft.customerName}
+                    onChange={(e) => editDraft({ customerName: e.target.value })}
+                  />
+                </label>
+
+                {tableOccupied && (
                   <div className="pos-drawer-session-info">
                     <span className="pos-drawer-session-dot" />
                     <span>{t("Sesi Aktif · Pelanggan terhubung")}</span>
@@ -536,7 +554,10 @@ export function PosManualOrderModal({
                   </small>
                 </div>
               ) : (
-                <div className="pos-order-cart-list">
+                <div className="pos-order-cart-list summary-card">
+                  <div className="pos-order-summary-header">
+                    <h3>{t("Ringkasan order")}</h3>
+                  </div>
                   {draft.cart.map((item) => (
                     <div key={item.id} className="pos-order-cart-card">
                       <div className="pos-cart-card-header">
@@ -649,8 +670,8 @@ export function PosManualOrderModal({
                   {busy
                     ? t("Menyimpan…")
                     : draft.uncertain
-                    ? t("Coba Lagi")
-                    : t("Simpan Pesanan")}
+                    ? t("Coba Lagi dengan Aman")
+                    : t("Simpan order Menunggu")}
                 </Button>
               </div>
             </div>

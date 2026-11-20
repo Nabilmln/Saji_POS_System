@@ -521,6 +521,15 @@
   gap: 8px;
 }
 
+.pos-order-summary-header h3 {
+  font-size: 13px;
+  font-weight: 700;
+  margin: 0 0 4px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .pos-order-cart-card {
   display: flex;
   flex-direction: column;
