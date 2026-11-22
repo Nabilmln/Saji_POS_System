@@ -107,7 +107,7 @@ To optionally populate sample dining tables, starter categories, and dishes for 
 npm run db:seed -- --demo
 ```
 
-### 4. Start the application
+<!-- ### 4. Start the application
 
 Launch the local development server:
 
@@ -126,4 +126,4 @@ npm run lint        # Check code quality with ESLint
 npm run typecheck   # Typecheck TypeScript codebase
 npm test            # Run unit and contract test suites
 npm run build       # Build production Next.js application
-```
+``` -->
