@@ -1,0 +1,377 @@
+/* ==========================================================================
+   POS Professional Payment Modal Styles
+   ========================================================================== */
+
+.pos-payment-modal-dialog {
+  width: min(780px, calc(100vw - 32px)) !important;
+  max-height: calc(100dvh - 36px) !important;
+  padding: 0 !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 16px !important;
+  background: var(--surface) !important;
+  color: var(--foreground) !important;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.24) !important;
+  overflow: hidden !important;
+  display: flex !important;
+  flex-direction: column !important;
+  z-index: 100 !important;
+}
+
+.pos-payment-modal {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  max-height: calc(100dvh - 36px);
+  overflow: hidden;
+}
+
+/* Modal Header */
+.pos-payment-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  flex: none;
+  gap: 12px;
+}
+
+.pos-payment-modal-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.pos-payment-table-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 6px;
+  background: var(--accent-ink);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.pos-payment-modal-header h2 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+  color: var(--foreground);
+  white-space: nowrap;
+}
+
+.pos-payment-modal-header .pos-payment-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border-radius: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.pos-payment-modal-header .pos-payment-close-btn:hover {
+  background: var(--surface-muted);
+  color: var(--foreground);
+}
+
+/* Modal Body: 2-Column Responsive Layout */
+.pos-payment-modal-body {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(0, 1.25fr);
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+@media (max-width: 679px) {
+  .pos-payment-modal-body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Left Column: Bill & Orders Summary */
+.pos-payment-bill-col {
+  padding: 20px;
+  border-right: 1px solid var(--border);
+  background: var(--surface-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  overflow-y: auto;
+}
+
+@media (max-width: 679px) {
+  .pos-payment-bill-col {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}
+
+.pos-payment-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  margin: 0 0 8px;
+}
+
+/* Prominent Grand Total Card */
+.pos-payment-grand-total-card {
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pos-payment-grand-total-card span {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.pos-payment-grand-total-card strong {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--accent-ink);
+  letter-spacing: -0.02em;
+}
+
+.pos-payment-order-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.pos-payment-order-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+}
+
+.pos-payment-order-row-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.pos-payment-order-row-info strong {
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pos-payment-order-row-info small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.pos-payment-order-row-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Right Column: Payment Entry & Cash Input */
+.pos-payment-form-col {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  background: var(--surface);
+  overflow-y: auto;
+}
+
+.pos-payment-form-col .payment-entry {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pos-payment-form-col .payment-entry legend {
+  font-size: 15px;
+  font-weight: 700;
+  padding: 0;
+  margin-bottom: 4px;
+}
+
+.pos-payment-cash-input-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.pos-payment-cash-input-wrap .field-label {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--foreground);
+}
+
+.pos-payment-cash-input {
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  font-variant-numeric: tabular-nums !important;
+  padding: 10px 14px !important;
+}
+
+/* Quick Cash Presets */
+.pos-payment-quick-cash {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.pos-payment-preset-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--surface-muted);
+  color: var(--foreground);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pos-payment-preset-btn:hover {
+  background: var(--accent-ink);
+  color: #fff;
+  border-color: var(--accent-ink);
+}
+
+.pos-payment-change-box {
+  padding: 12px 14px;
+  border-radius: 8px;
+  background: var(--surface-muted);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.pos-payment-change-box span {
+  font-size: 13px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.pos-payment-change-box strong {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--foreground);
+}
+
+.pos-payment-change-box strong.positive {
+  color: var(--success, #16a34a);
+}
+
+/* Actions in payment entry */
+.pos-payment-form-col .admin-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+/* Success View */
+.pos-payment-success-card {
+  padding: 28px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+  width: 100%;
+  max-width: 480px;
+  margin: auto;
+}
+
+.pos-payment-success-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--success-soft, rgba(22, 163, 74, 0.1));
+  color: var(--success, #16a34a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pos-payment-success-card h2 {
+  font-size: 20px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.pos-payment-success-meta {
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: var(--surface-muted);
+  font-size: 13px;
+  color: var(--foreground);
+  width: 100%;
+}
+
+.pos-payment-success-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  width: 100%;
+}
+
+/* Confirmation Sub-view */
+.pos-payment-confirm-card {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 480px;
+  margin: auto;
+}
+
+.pos-payment-confirm-card h2 {
+  font-size: 18px;
+  font-weight: 700;
+  margin: 0;
+}
+
+.pos-payment-confirm-meta {
+  padding: 14px;
+  border-radius: 8px;
+  background: var(--surface-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}

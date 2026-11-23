@@ -16,6 +16,7 @@ import { PosTableActions } from "@/components/pos-table-actions";
 import { ReceiptPreview } from "@/components/pos-receipt";
 import { OrderItemDeletion } from "@/components/order-item-deletion";
 import { PosManualOrderModal } from "@/components/pos-manual-order-modal";
+import { PosPaymentModal } from "@/components/pos-payment-modal";
 
 export type StaffTable = { id: string; tableNumber: string; status: "AVAILABLE" | "OCCUPIED" | "RESERVED"; session: { id: string; billRevision: string } | null; orders: Order[]; bill: { subtotalIdr: string; grandTotalIdr: string } | null };
 
@@ -33,6 +34,7 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
   const [closing, setClosing] = useState<"EMPTY" | "ALL_VOID" | null>(null);
   const [showManual, setShowManual] = useState(initialManual);
   const [receiptSessionId, setReceiptSessionId] = useState("");
+  const [paymentSessionId, setPaymentSessionId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
     try { setTable(await adminApi<StaffTable>(`/api/staff/tables/${tableId}`)); setError(""); setSyncedAt(new Date()); setSyncFailed(false); }
@@ -85,11 +87,26 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
         <p className="muted">{table.status === "AVAILABLE" ? t("Tersedia") : table.status === "RESERVED" ? t("Dipesan · check-in diperlukan sebelum order manual") : t("Terisi")}{table.session ? t(" · Sesi {0}", { "0": table.session.id.slice(0, 8) }) : ""}</p>
         <div className="admin-actions">{allVoid && <Button className="secondary-button danger-text" onClick={() => setClosing("ALL_VOID")}>{t("Tutup sesi tanpa pembayaran")}</Button>}{table.session && !table.orders.length && <Button className="secondary-button danger-text" onClick={() => setClosing("EMPTY")}>{t("Tutup sesi kosong")}</Button>}</div>
       </Panel>
-      <DetailPane revision={JSON.stringify([table, receiptSessionId])} footer={table.session && receiptSessionId === table.session.id ? undefined : <PosTableActions sessionId={table.session?.id} reserved={table.status === "RESERVED"} busy={Boolean(busy)} addLabel="Tambah order manual" onAddOrder={() => setShowManual(true)} onReceipt={() => setReceiptSessionId(table.session?.id ?? "")} onPayment={onPayment} />}>{table.session && receiptSessionId === table.session.id ? <ReceiptPreview key={table.session.id} sessionId={table.session.id} onClose={() => setReceiptSessionId("")} /> : <><OrderDetails orders={table.orders} busy={busy}
+      <DetailPane revision={JSON.stringify([table, receiptSessionId])} footer={table.session && receiptSessionId === table.session.id ? undefined : <PosTableActions sessionId={table.session?.id} reserved={table.status === "RESERVED"} busy={Boolean(busy)} addLabel="Tambah order manual" onAddOrder={() => setShowManual(true)} onReceipt={() => setReceiptSessionId(table.session?.id ?? "")} onPayment={(sid) => onPayment ? onPayment(sid) : setPaymentSessionId(sid)} preferLink={!onPayment} />}>{table.session && receiptSessionId === table.session.id ? <ReceiptPreview key={table.session.id} sessionId={table.session.id} onClose={() => setReceiptSessionId("")} /> : <><OrderDetails orders={table.orders} busy={busy}
         onConfirm={(id) => void mutate(`/api/staff/orders/${id}/confirm`, jsonRequest("POST", {}), `confirm:${id}`)}
         onServe={(id) => void mutate(`/api/staff/order-items/${id}/served`, jsonRequest("PATCH", { served: true }), `served:${id}`)}
         onVoid={setVoidItem}
       />{table.session && <PosBillPreview key={table.session.id} sessionId={table.session.id} />}</>}</DetailPane>
+      {paymentSessionId && (
+        <PosPaymentModal
+          key={paymentSessionId}
+          sessionId={paymentSessionId}
+          onClose={() => {
+            setPaymentSessionId(null);
+            void refresh();
+          }}
+          onViewReceipt={() => {
+            setPaymentSessionId(null);
+            setReceiptSessionId(paymentSessionId);
+            void refresh();
+          }}
+        />
+      )}
       {showManual && (
         <PosManualOrderModal
           tableId={table.id}
