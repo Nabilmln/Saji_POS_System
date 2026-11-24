@@ -5,7 +5,7 @@ Saji is a single-outlet restaurant point-of-sale (POS) and QR table ordering app
 ## What you can do
 
 - **Customer QR Ordering**: Guests scan their table QR code, browse dishes and categories, submit orders with item notes directly to the kitchen, and monitor live preparation progress.
-- **Cashier POS Operations**: Cashiers track a real-time table grid with a unified search and status filter toolbar, create manual orders via a dedicated POS modal with automated customer-name detection, manage order progression (`Pending` → `Preparing` → `Served`), and settle payments in cash.
+- **Cashier POS Operations**: Cashiers track a real-time table grid with a unified search and status filter toolbar, create manual orders via a dedicated POS modal with automated customer-name detection, manage order progression (`Pending` → `Preparing` → `Served`), and settle payments in cash with real-time bill breakdown and change calculation directly from the active view.
 - **Table & Reservation Management**: Real-time occupancy tracking, bill previews with tax and service charges, side detail panes for quick edits, and reservation check-in or cancellation.
 - **Owner Administration**: Catalog management for dishes and categories with drag-and-drop photo uploads (automatically converted to WebP on cloud storage), table layout setups with printable QR codes, cashier account provisioning, and tax/service settings.
 - **Sales Analytics & Reports**: Live sales activity, revenue insights, top-selling items, and daily performance metrics, along with payment transaction history featuring calendar-based date range pickers.
@@ -107,7 +107,7 @@ To optionally populate sample dining tables, starter categories, and dishes for 
 npm run db:seed -- --demo
 ```
 
-<!-- ### 4. Start the application
+### 4. Start the application
 
 Launch the local development server:
 
@@ -126,4 +126,4 @@ npm run lint        # Check code quality with ESLint
 npm run typecheck   # Typecheck TypeScript codebase
 npm test            # Run unit and contract test suites
 npm run build       # Build production Next.js application
-``` -->
+```

@@ -133,7 +133,7 @@ export function StaffManager() {
           </div>
           <p className="muted">{t("Pemilik mengelola akun kasir untuk restoran ini.")}</p>
           <div className="detail-stat"><span>{t("Akun pada halaman ini")}</span><strong>{staff.length}</strong></div>
-          <p className="detail-note">{t("Email dapat dilihat. Kata sandi lama tidak dapat dibaca; atur kata sandi baru jika kasir lupa.")}</p>
+          {/* <p className="detail-note">{t("Email dapat dilihat. Kata sandi lama tidak dapat dibaca; atur kata sandi baru jika kasir lupa.")}</p> */}
         </>
       )}
     </DetailPane>
