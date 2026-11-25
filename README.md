@@ -100,17 +100,13 @@ Apply schema migrations and initialize default store settings:
 npm run db:migrate
 npm run db:seed
 ```
-
 To optionally populate sample dining tables, starter categories, and dishes for testing:
-
 ```bash
 npm run db:seed -- --demo
 ```
-
 ### 4. Start the application
 
 Launch the local development server:
-
 ```bash
 npm run dev
 ```
@@ -118,9 +114,7 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000) in your browser. Visiting the root page redirects to `/login`.
 
 ## Verification and code quality
-
 Run the test suite and quality checks:
-
 ```bash
 npm run lint        # Check code quality with ESLint
 npm run typecheck   # Typecheck TypeScript codebase
