@@ -33,7 +33,7 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
   const [closeReason, setCloseReason] = useState("");
   const [closing, setClosing] = useState<"EMPTY" | "ALL_VOID" | null>(null);
   const [showManual, setShowManual] = useState(initialManual);
-  const [receiptSessionId, setReceiptSessionId] = useState("");
+  const [receipt, setReceipt] = useState<{ sessionId: string; paymentId?: never } | { paymentId: string; sessionId?: never } | null>(null);
   const [paymentSessionId, setPaymentSessionId] = useState<string | null>(null);
 
   const refresh = useCallback(async () => {
@@ -87,7 +87,7 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
         <p className="muted">{table.status === "AVAILABLE" ? t("Tersedia") : table.status === "RESERVED" ? t("Dipesan · check-in diperlukan sebelum order manual") : t("Terisi")}{table.session ? t(" · Sesi {0}", { "0": table.session.id.slice(0, 8) }) : ""}</p>
         <div className="admin-actions">{allVoid && <Button className="secondary-button danger-text" onClick={() => setClosing("ALL_VOID")}>{t("Tutup sesi tanpa pembayaran")}</Button>}{table.session && !table.orders.length && <Button className="secondary-button danger-text" onClick={() => setClosing("EMPTY")}>{t("Tutup sesi kosong")}</Button>}</div>
       </Panel>
-      <DetailPane revision={JSON.stringify([table, receiptSessionId])} footer={table.session && receiptSessionId === table.session.id ? undefined : <PosTableActions sessionId={table.session?.id} reserved={table.status === "RESERVED"} busy={Boolean(busy)} addLabel="Tambah order manual" onAddOrder={() => setShowManual(true)} onReceipt={() => setReceiptSessionId(table.session?.id ?? "")} onPayment={(sid) => onPayment ? onPayment(sid) : setPaymentSessionId(sid)} preferLink={!onPayment} />}>{table.session && receiptSessionId === table.session.id ? <ReceiptPreview key={table.session.id} sessionId={table.session.id} onClose={() => setReceiptSessionId("")} /> : <><OrderDetails orders={table.orders} busy={busy}
+      <DetailPane revision={JSON.stringify([table, receipt])} footer={receipt ? undefined : <PosTableActions sessionId={table.session?.id} reserved={table.status === "RESERVED"} busy={Boolean(busy)} addLabel="Tambah order manual" onAddOrder={() => setShowManual(true)} onReceipt={() => table.session && setReceipt({ sessionId: table.session.id })} onPayment={(sid) => onPayment ? onPayment(sid) : setPaymentSessionId(sid)} preferLink={!onPayment} />}>{receipt ? <ReceiptPreview key={receipt.paymentId ?? receipt.sessionId} {...receipt} onClose={() => setReceipt(null)} /> : <><OrderDetails orders={table.orders} busy={busy}
         onConfirm={(id) => void mutate(`/api/staff/orders/${id}/confirm`, jsonRequest("POST", {}), `confirm:${id}`)}
         onServe={(id) => void mutate(`/api/staff/order-items/${id}/served`, jsonRequest("PATCH", { served: true }), `served:${id}`)}
         onVoid={setVoidItem}
@@ -100,9 +100,9 @@ export function PosTable({ tableId, onClose, onPayment, initialManual = false }:
             setPaymentSessionId(null);
             void refresh();
           }}
-          onViewReceipt={() => {
+          onViewReceipt={(paymentId) => {
             setPaymentSessionId(null);
-            setReceiptSessionId(paymentSessionId);
+            setReceipt({ paymentId });
             void refresh();
           }}
         />
