@@ -41,8 +41,8 @@ class ApiFailure extends Error {
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, { cache: "no-store", ...init });
-  const body = await response.json() as ApiResult<T>;
-  if (!response.ok || "error" in body) {
+  const body = (await response.json().catch(() => ({}))) as ApiResult<T>;
+  if (!response.ok || !("data" in body)) {
     const code = "error" in body ? body.error.code : "REQUEST_FAILED";
     const messages: Record<string, string> = {
       INVALID_TABLE_TOKEN: "Kode QR meja tidak valid. Minta bantuan kasir.",

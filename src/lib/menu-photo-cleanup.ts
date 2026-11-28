@@ -1,5 +1,5 @@
 import "server-only";
-import { eq, or, sql } from "drizzle-orm";
+import { eq, isNotNull, or, sql } from "drizzle-orm";
 import type { db } from "../db";
 import { menuItems } from "../db/schema";
 import { apiError } from "./api-response";
@@ -28,9 +28,17 @@ export async function checkMenuPhoto(tx: Transaction, imageUrl: string | null, o
 export async function cleanupMenuPhotos(database: typeof db, apply = false) {
   const cutoff = Date.now() - 24 * 60 * 60 * 1000;
   const result = { scanned: 0, recent: 0, referenced: 0, candidates: [] as string[], deleted: 0 };
+  const referencedRows = await database.select({ imageUrl: menuItems.imageUrl }).from(menuItems).where(isNotNull(menuItems.imageUrl));
+  const referencedIds = new Set<string>();
+  for (const { imageUrl } of referencedRows) {
+    if (!imageUrl) continue;
+    const match = /\/api\/menu-images\/([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})/i.exec(imageUrl);
+    if (match) referencedIds.add(match[1].toLowerCase());
+  }
   for await (const image of listMenuImages()) {
     result.scanned++;
     if (image.modifiedAt >= cutoff) { result.recent++; continue; }
+    if (referencedIds.has(image.id.toLowerCase())) { result.referenced++; continue; }
     const path = `/api/menu-images/${image.id}`;
     await database.transaction(async (tx) => {
       await lockPhoto(tx, path);

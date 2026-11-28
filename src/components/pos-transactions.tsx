@@ -4,7 +4,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 
 import { useLocale } from "@/components/locale-provider";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { DetailPane, HeaderAction } from "@/components/app-shells";
 import { SyncStatus } from "@/components/ui/sync-status";
 import { usePolling } from "@/lib/use-polling";
@@ -41,10 +41,6 @@ export function PosTransactions({ initialReceiptId = "" }: { initialReceiptId?: 
     finally { setLoaded(true); }
   }, [from, to, page, pageSize]);
   usePolling(refresh);
-  useEffect(() => {
-    const initial = window.setTimeout(() => void refresh(), 0);
-    return () => window.clearTimeout(initial);
-  }, [refresh]);
   return (
     <div className="admin-stack">
       <HeaderAction>
